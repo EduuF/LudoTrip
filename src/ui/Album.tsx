@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { placeStates } from '../engine'
-import type { ID, Place, PlaceState, Rarity } from '../engine'
+import type { ID, Place, PlaceKind, PlaceState, Rarity } from '../engine'
 import { uid, useApp } from '../app/store'
+import { searchOnline } from '../providers/places'
+import type { OnlinePlace } from '../providers/places'
 import { colorOf, sealOf } from './colors'
 import { Seal } from './kit'
+import { PLACE_KINDS } from './placeKinds'
 import { RARITY } from './rarity'
 
 // Mochila = álbum de figurinhas (spec §17.5).
@@ -42,6 +45,11 @@ export function StickerCard({
       <span className="gems">{RARITY[place.rarity].gems}</span>
       <span className="nm">{place.name}</span>
       <span className={`when${placed ? '' : ' loose'}`}>{when}</span>
+      {place.lat !== undefined ? (
+        <span className="pin" aria-hidden="true">
+          {PLACE_KINDS[place.kind ?? 'sight'].glyph}
+        </span>
+      ) : null}
       {state?.visited ? <span className="stamp">済</span> : null}
     </button>
   )
@@ -106,8 +114,9 @@ export function Album() {
         Álbum de <em>figurinhas</em>
       </h1>
       <p className="note">
-        Cada lugar que vocês querem conhecer é uma figurinha. Cole no dia: arraste da bandeja no Roteiro ou
-        toque na figurinha. Dourada brilhando é imperdível ainda sem dia.
+        Cada lugar que vocês querem conhecer é uma figurinha. Cole no dia: arraste da bandeja nos dias ou
+        toque na figurinha. Dourada brilhando é imperdível ainda sem dia. Com lugar no mapa, ela aparece no
+        mapa da cidade.
       </p>
       {order.map((id) => page(id))}
       {dayTrips.map((d) => page(d.id, 'bate-volta'))}
@@ -117,13 +126,55 @@ export function Album() {
   )
 }
 
+/** Nova figurinha: nome (com sugestões do mundo todo, perto do destino) e a prioridade num toque. */
 function NewSticker({ destId, name }: { destId: ID; name: string }) {
+  const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
+  const dest = doc.destinations.find((d) => d.id === destId)
   const [text, setText] = useState('')
+  const [picked, setPicked] = useState<{ lat: number; lon: number; kind: PlaceKind } | null>(null)
+  const [web, setWeb] = useState<OnlinePlace[]>([])
+  const t = text.trim()
+  const lat = dest?.lat
+  const lon = dest?.lon
+
+  useEffect(() => {
+    if (picked || t.length < 3) {
+      setWeb([])
+      return
+    }
+    const ctl = new AbortController()
+    const timer = setTimeout(() => {
+      void searchOnline(t, {
+        ...(lat !== undefined && lon !== undefined ? { lat, lon } : {}),
+        limit: 6,
+        signal: ctl.signal,
+      }).then((r) => {
+        if (!ctl.signal.aborted) setWeb(r.filter((o) => o.kind === 'poi' || o.kind === 'park'))
+      })
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+      ctl.abort()
+    }
+  }, [t, picked, lat, lon])
+
   const create = (rarity: Rarity) => {
-    if (!text.trim()) return
-    if (act({ type: 'addPlace', place: { id: uid('p'), destinationId: destId, name: text, rarity } }))
+    if (!t) return
+    const ok = act({
+      type: 'addPlace',
+      place: {
+        id: uid('p'),
+        destinationId: destId,
+        name: t,
+        rarity,
+        ...(picked ? { lat: picked.lat, lon: picked.lon, kind: picked.kind } : {}),
+      },
+    })
+    if (ok) {
       setText('')
+      setPicked(null)
+    }
   }
   return (
     <form
@@ -136,20 +187,39 @@ function NewSticker({ destId, name }: { destId: ID; name: string }) {
       <input
         id={`novo-${destId}`}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value)
+          setPicked(null)
+        }}
         placeholder={`Nova figurinha em ${name}`}
         aria-label={`Nova figurinha em ${name}`}
         enterKeyHint="done"
+        autoComplete="off"
       />
-      <div className="rarity-row" role="group" aria-label="Criar com a raridade">
+      {web.length ? (
+        <div className="suggest">
+          {web.map((o) => (
+            <button
+              key={`${o.name}-${o.lat}`}
+              type="button"
+              onClick={() => {
+                setText(o.name)
+                setPicked({ lat: o.lat, lon: o.lon, kind: o.placeKind ?? 'sight' })
+                setWeb([])
+              }}
+            >
+              <span>{o.name}</span>
+              <small>{o.detail}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {picked ? (
+        <small className="note">{PLACE_KINDS[picked.kind].glyph} já com lugar no mapa da cidade</small>
+      ) : null}
+      <div className="rarity-row" role="group" aria-label="Criar com a prioridade">
         {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
-          <button
-            key={r}
-            type="button"
-            className={`rar r-${r}`}
-            disabled={!text.trim()}
-            onClick={() => create(r)}
-          >
+          <button key={r} type="button" className={`rar r-${r}`} disabled={!t} onClick={() => create(r)}>
             {RARITY[r].gems} {RARITY[r].label}
           </button>
         ))}

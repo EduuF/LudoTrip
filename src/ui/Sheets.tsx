@@ -874,7 +874,7 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
     const id = uid('d-')
     const dest = {
       id,
-      kind: 'city' as const,
+      kind: p.destKind ?? ('city' as const),
       name: p.name,
       ...(p.localName ? { localName: p.localName } : {}),
       ...(p.country ? { country: p.country } : {}),
@@ -910,6 +910,11 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
           kinds={['city']}
           within={doc.scope?.country}
           exclude={doc.destinations.map((d) => d.name)}
+          bias={
+            doc.scope?.lat !== undefined && doc.scope.lon !== undefined
+              ? { lat: doc.scope.lat, lon: doc.scope.lon }
+              : undefined
+          }
           onPick={add}
         />
       </label>

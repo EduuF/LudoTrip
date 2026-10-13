@@ -55,7 +55,7 @@ export function Create() {
     const destinations: Destination[] = picks.map((c, i) => ({
       id: `d-${i + 1}`,
       name: c.name,
-      kind: 'city',
+      kind: c.kind === 'city' ? (c.destKind ?? 'city') : 'city',
       ...(c.localName ? { localName: c.localName } : {}),
       ...(c.country ? { country: c.country } : {}),
       ...(c.kind === 'city' && c.lat !== undefined && c.lon !== undefined ? { lat: c.lat, lon: c.lon } : {}),
