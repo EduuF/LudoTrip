@@ -1,0 +1,13 @@
+:root {
+  --washi: #f6edeb;
+  --ink: #241a28;
+  font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Segoe UI', system-ui, sans-serif;
+}
+body {
+  margin: 0;
+  background: var(--washi);
+  color: var(--ink);
+}
+.boot {
+  padding: 24px 16px;
+}
