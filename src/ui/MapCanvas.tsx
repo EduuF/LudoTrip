@@ -6,19 +6,12 @@ import { cityFrame, frame } from '../map/frame'
 import type { BBox } from '../map/frame'
 import { paperAdapter } from '../map/paper'
 import { tilesAdapter } from '../map/tiles'
-import type { Theme } from '../map/style/washi'
+import { currentTheme } from '../app/theme'
 import { BoardOverlay } from './BoardOverlay'
 import { CityOverlay } from './CityOverlay'
 
 // O mapa de verdade (spec §8): começa no papel (instantâneo, sem rede) e troca para os tiles do
 // OpenStreetMap no estilo washi assim que há WebGL e rede. A nossa camada SVG fica por cima dos dois.
-
-function currentTheme(): Theme {
-  const t = document.documentElement.dataset.theme
-  if (t === 'dark') return 'dark'
-  if (t === 'light') return 'light'
-  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
 
 const HOLD_MS = 550
 
@@ -51,6 +44,10 @@ export function MapCanvas() {
     void tilesAdapter(tel, currentTheme()).then((t) => {
       if (!t) return
       if (dead) return t.destroy()
+      // Nunca uma tela vazia: se o contêiner dos tiles não tiver tamanho (CSS alheio, WebGL capenga),
+      // o papel continua valendo.
+      const [w, h] = t.size()
+      if (el.clientWidth > 0 && el.clientHeight > 0 && !(w > 0 && h > 0)) return t.destroy()
       live = t
       setAdapter(t)
     })
@@ -70,6 +67,17 @@ export function MapCanvas() {
     })
   }, [adapter])
 
+  // Modo dia/noite: o mapa de tiles troca o estilo junto com o app (e com o aparelho, no "auto").
+  const theme = useApp((s) => s.theme)
+  useEffect(() => {
+    if (!adapter) return
+    const apply = () => adapter.setTheme?.(currentTheme())
+    apply()
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [adapter, theme])
+
   // Enquadramento: a viagem inteira ou a cidade aberta; anima quando muda com o mesmo adaptador.
   const target = useMemo<BBox | null>(() => {
     const trip = frame(doc)?.bbox ?? null
@@ -85,7 +93,7 @@ export function MapCanvas() {
     prev.current = { adapter, key }
   }, [adapter, target])
 
-  // Toque no mapa: marcar uma figurinha ("placing") ou criar um lugar novo. Segurar: "+ Lugar aqui".
+  // Toque no mapa: marcar uma atividade ("placing") ou criar uma nova. Segurar: "+ Atividade aqui".
   const lonLatAt = (clientX: number, clientY: number) => {
     const r = box.current?.getBoundingClientRect()
     if (!r || !adapter) return null
@@ -96,7 +104,7 @@ export function MapCanvas() {
     if (!placing || !cityId) return
     const ll = lonLatAt(e.clientX, e.clientY)
     if (!ll) return
-    if (placing === 'new') openSheet({ kind: 'newPlace', destId: cityId, lon: ll[0], lat: ll[1] })
+    if (placing === 'new') openSheet({ kind: 'newActivity', destId: cityId, lon: ll[0], lat: ll[1] })
     else act({ type: 'setPlace', id: placing, patch: { lon: ll[0], lat: ll[1] } })
     setPlacing(null)
   }
@@ -111,7 +119,7 @@ export function MapCanvas() {
       t: window.setTimeout(() => {
         const ll = lonLatAt(x, y)
         hold.current = null
-        if (ll) openSheet({ kind: 'newPlace', destId: cityId, lon: ll[0], lat: ll[1] })
+        if (ll) openSheet({ kind: 'newActivity', destId: cityId, lon: ll[0], lat: ll[1] })
       }, HOLD_MS),
     }
   }
@@ -127,7 +135,11 @@ export function MapCanvas() {
     hold.current = null
   }
   const placingName =
-    placing === 'new' ? 'o lugar novo' : placing ? (doc.places.find((p) => p.id === placing)?.name ?? '') : ''
+    placing === 'new'
+      ? 'a atividade nova'
+      : placing
+        ? (doc.places.find((p) => p.id === placing)?.name ?? '')
+        : ''
 
   const [W, H] = adapter?.size() ?? [0, 0]
   return (
@@ -174,8 +186,8 @@ export function MapCanvas() {
       {!target ? (
         <div className="note-box">
           <p className="note">
-            O mapa aparece quando a viagem tem destinos com localização. Toque em + Destino e escolha da
-            lista.
+            O mapa aparece quando a viagem tem destinos com localização. Toque em "+ Adicionar destino" e
+            escolha da lista.
           </p>
         </div>
       ) : null}

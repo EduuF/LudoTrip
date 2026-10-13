@@ -1,18 +1,13 @@
-import { useApp } from '../app/store'
 import { DayCard } from './DayCard'
 import { MapPanel } from './MapPanel'
-import { RoteiroList, Tray } from './Roteiro'
+import { addDestinationAtEnd } from '../app/choices'
+import { RoteiroList } from './Roteiro'
 import { Trilha } from './Trilha'
 
 // A tela principal (spec §17.2): mapa, trilha, cartão do dia e o roteiro, numa tela só.
 // No celular, uma coluna; em telas largas, mapa e trilha à esquerda e o roteiro à direita (como na v1).
 
 export function Mapa() {
-  const doc = useApp((s) => s.doc)!
-  const openStop = useApp((s) => s.openStop)
-  const it = doc.itinerary
-  const trayStop = it.stops.find((s) => s.id === openStop && s.destinationId)
-
   return (
     <div className="mapa-grid">
       <div className="mapa-left">
@@ -23,10 +18,13 @@ export function Mapa() {
       <div className="mapa-right">
         <h2 className="sec">
           Roteiro <small>NA ORDEM DA VIAGEM</small>
+          <span className="spacer" />
+          <button type="button" className="btn small" onClick={addDestinationAtEnd}>
+            + Adicionar destino
+          </button>
         </h2>
         <RoteiroList />
       </div>
-      {trayStop ? <Tray stop={trayStop} /> : null}
     </div>
   )
 }

@@ -7,21 +7,25 @@ import type { DocAction, TripDoc, TripMeta, UndoStep } from './doc'
 import { narrate } from './narration'
 import { localRepo } from './repo'
 import type { TripRepo } from './repo'
+import { applyTheme, readThemeChoice } from './theme'
+import type { ThemeChoice } from './theme'
+import { tutorialSeen } from './tutorial'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
-import { tutorialSeen } from './tutorial'
 
-export type Tab = 'mapa' | 'mochila' | 'tarefas'
+export type Tab = 'mapa' | 'atividades' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
-/** O mapa mostra a viagem inteira ou uma cidade (com os lugares de cada dia). */
-export type MapView = { kind: 'trip' } | { kind: 'city'; destId: ID }
 export type ExampleKey = keyof typeof ALL_TRIPS
+/** O mapa mostra a viagem inteira ou uma cidade (com as atividades de cada dia). */
+export type MapView = { kind: 'trip' } | { kind: 'city'; destId: ID }
 
 export interface ToastState {
   id: number
   text: string
   warn: boolean
   undo: boolean
+  /** Desfazer especial (ex.: trazer de volta uma viagem apagada). */
+  action?: () => void
 }
 
 export type CelebrationBody =
@@ -38,6 +42,8 @@ interface ActOptions {
   stamp?: boolean
   /** Pétalas (algo saiu, "puf"). */
   burst?: boolean
+  /** Deixa o painel aberto (painéis com vários campos, como "Sua viagem"). */
+  keep?: boolean
 }
 
 export interface AppState {
@@ -50,16 +56,16 @@ export interface AppState {
   toast: ToastState | null
   celebrations: Celebration[]
   sheet: SheetSpec | null
-  openStop: ID | null
   /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
   cursorDay: number | null
   mapView: MapView
-  /** À espera de um toque no mapa: marcar esta figurinha, ou criar um lugar novo ('new'). */
+  /** À espera de um toque no mapa: marcar esta atividade, ou criar uma nova ('new'). */
   placing: ID | 'new' | null
   /** "▶ Ver a viagem": os dias passam sozinhos. */
   playing: boolean
   /** "Como jogar" aberto. */
   tutorial: boolean
+  theme: ThemeChoice
   focus: string | null
   sound: boolean
   init(): Promise<void>
@@ -73,7 +79,6 @@ export interface AppState {
   openSheet(sheet: SheetSpec): void
   patchSheet(patch: Partial<SheetSpec>): void
   closeSheet(): void
-  setOpenStop(id: ID | null): void
   setCursorDay(index: number | null): void
   /** Entra no mapa da cidade; o cursor de dias vai para o primeiro dia dela, como na v1. */
   enterCity(destId: ID): void
@@ -81,11 +86,15 @@ export interface AppState {
   setPlacing(what: ID | 'new' | null): void
   setPlaying(on: boolean): void
   setTutorial(on: boolean): void
+  setTheme(choice: ThemeChoice): void
   focusOn(elementId: string, tab?: Tab): void
   clearFocus(): void
+  /** Abre a cópia já existente do exemplo, ou cria uma. */
   addExample(key: ExampleKey): Promise<void>
   addTrip(doc: TripDoc): Promise<void>
+  /** Apaga com aviso e Desfazer (a viagem volta inteira). */
   removeTrip(id: string): Promise<void>
+  renameTrip(id: string, name: string): Promise<void>
   dismiss(id: number): void
   toggleSound(): void
 }
@@ -112,6 +121,25 @@ export function exampleDoc(key: ExampleKey, now = Date.now()): TripDoc {
   }
 }
 
+/** Viagens de exemplo salvas antes ganham o que as fixtures ganharam depois (lugar no mapa, escopo). */
+export function refreshExample(doc: TripDoc): TripDoc {
+  const key = doc.meta.example
+  if (!key || !(key in ALL_TRIPS)) return doc
+  const fresh = ALL_TRIPS[key as ExampleKey]()
+  const byName = new Map(fresh.places.map((p) => [`${p.destinationId}|${p.name}`, p]))
+  let changed = false
+  const places = doc.places.map((p) => {
+    if (p.lat !== undefined) return p
+    const f = byName.get(`${p.destinationId}|${p.name}`)
+    if (!f || f.lat === undefined || f.lon === undefined) return p
+    changed = true
+    return { ...p, lat: f.lat, lon: f.lon, ...(f.kind ? { kind: f.kind } : {}) }
+  })
+  const scope = doc.scope ?? fresh.scope
+  if (!changed && (doc.scope || !fresh.scope)) return doc
+  return { ...doc, places, ...(scope ? { scope } : {}) }
+}
+
 function completedPages(doc: TripDoc): Set<ID> {
   const states = placeStates(doc.itinerary, doc.places)
   const out = new Set<ID>()
@@ -128,12 +156,15 @@ export const useApp = create<AppState>((set, get) => {
     void repo.save(stamped).then(() => repo.list().then((trips) => set({ trips })))
     return stamped
   }
-  const toast = (text: string, warn = false, undo = false) => {
+  const toast = (text: string, warn = false, undo = false, action?: () => void) => {
     const id = nextId()
-    set({ toast: { id, text, warn, undo } })
-    setTimeout(() => {
-      if (get().toast?.id === id) set({ toast: null })
-    }, 6000)
+    set({ toast: { id, text, warn, undo, ...(action ? { action } : {}) } })
+    setTimeout(
+      () => {
+        if (get().toast?.id === id) set({ toast: null })
+      },
+      action ? 8000 : 6000,
+    )
   }
   const celebrate = (c: CelebrationBody) =>
     set((s) => ({ celebrations: [...s.celebrations, { ...c, id: nextId() }] }))
@@ -148,30 +179,33 @@ export const useApp = create<AppState>((set, get) => {
     toast: null,
     celebrations: [],
     sheet: null,
-    openStop: null,
     cursorDay: null,
     mapView: { kind: 'trip' },
     placing: null,
     playing: false,
     tutorial: false,
+    theme: 'auto',
     focus: null,
     sound: false,
 
     async init() {
+      const theme = readThemeChoice()
+      applyTheme(theme)
       const trips = await repo.list()
-      set({ trips, ready: true })
+      set({ trips, ready: true, theme })
     },
 
     async openTrip(id) {
-      const doc = await repo.load(id)
-      if (!doc) return toast('Essa viagem não está mais aqui.', true)
+      const loaded = await repo.load(id)
+      if (!loaded) return toast('Essa viagem não está mais aqui.', true)
+      const doc = refreshExample(loaded)
+      if (doc !== loaded) void repo.save(doc)
       set({
         doc,
         screen: 'trip',
         tab: 'mapa',
         undoStack: [],
         sheet: null,
-        openStop: null,
         cursorDay: null,
         mapView: { kind: 'trip' },
         placing: null,
@@ -183,7 +217,7 @@ export const useApp = create<AppState>((set, get) => {
 
     goHome() {
       // Primeiro sai da tela da viagem; só depois solta o documento (nenhuma tela desenha sem viagem).
-      set({ screen: 'home', sheet: null, toast: null, undoStack: [], openStop: null })
+      set({ screen: 'home', sheet: null, toast: null, undoStack: [], playing: false })
       setTimeout(() => {
         if (get().screen !== 'trip') set({ doc: null })
       }, 0)
@@ -212,11 +246,11 @@ export const useApp = create<AppState>((set, get) => {
       set((s) => ({
         doc: after,
         undoStack: [...s.undoStack.slice(-49), { steps: r.steps, text }],
-        sheet: null,
+        sheet: opts.keep ? s.sheet : null,
       }))
       toast(text, false, true)
 
-      // Jogo: XP, nível, carimbo, página completa (spec §17.1).
+      // Jogo: XP, nível, carimbo, destino completo (spec §17.1).
       const p0 = progress(before.itinerary, before)
       const p1 = progress(after.itinerary, after)
       if (opts.stamp) {
@@ -268,19 +302,10 @@ export const useApp = create<AppState>((set, get) => {
       set({ sheet: null })
     },
 
-    setOpenStop(id) {
-      set({ openStop: id })
-    },
     setCursorDay(index) {
       if (index === get().cursorDay) return
       set({ cursorDay: index })
       if (index !== null) sfx.step()
-    },
-    setPlaying(on) {
-      set({ playing: on })
-    },
-    setTutorial(on) {
-      set({ tutorial: on, sheet: null })
     },
     enterCity(destId) {
       const { doc, cursorDay } = get()
@@ -300,6 +325,16 @@ export const useApp = create<AppState>((set, get) => {
     setPlacing(what) {
       set({ placing: what, sheet: null })
     },
+    setPlaying(on) {
+      set({ playing: on })
+    },
+    setTutorial(on) {
+      set({ tutorial: on, sheet: null })
+    },
+    setTheme(choice) {
+      applyTheme(choice)
+      set({ theme: choice })
+    },
 
     focusOn(elementId, tab) {
       set((s) => ({ focus: elementId, tab: tab ?? s.tab, sheet: null }))
@@ -309,6 +344,8 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     async addExample(key) {
+      const existing = get().trips.find((t) => t.example === key)
+      if (existing) return get().openTrip(existing.id)
       const doc = exampleDoc(key)
       await repo.save(doc)
       set({ trips: await repo.list() })
@@ -324,7 +361,21 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     async removeTrip(id) {
+      const removed = await repo.load(id)
       await repo.remove(id)
+      set({ trips: await repo.list() })
+      if (!removed) return
+      toast(`${removed.meta.name} apagada.`, false, true, () => {
+        void repo.save(removed).then(async () => set({ trips: await repo.list(), toast: null }))
+      })
+    },
+
+    async renameTrip(id, name) {
+      const d = await repo.load(id)
+      if (!d) return
+      const r = runDoc(d, { type: 'rename', name })
+      if (!r.ok) return
+      await repo.save({ ...r.doc, meta: { ...r.doc.meta, updatedAt: Date.now() } })
       set({ trips: await repo.list() })
     },
 
@@ -346,7 +397,7 @@ export function todayISO(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/** Id novo para coisas criadas na tela (visitas, reservas, figurinhas). */
+/** Id novo para coisas criadas na tela (visitas, reservas, atividades). */
 export function uid(prefix: string): string {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 }

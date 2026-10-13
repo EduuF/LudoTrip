@@ -9,7 +9,7 @@ import { f1, placeLabels, relax, smoothPath } from './mapBits'
 import type { Rect } from './mapBits'
 import { PLACE_KINDS } from './placeKinds'
 
-// A camada da cidade (v1 "mapa local"): cada figurinha com coordenadas é um ponto com o selo do tipo,
+// A camada da cidade (v1 "mapa local"): cada atividade com coordenadas é um ponto com o selo do tipo,
 // os dias viram trilhas pontilhadas coloridas e, com um dia escolhido, o resto esmaece.
 // O grupo em pixel fica no primeiro lugar do dia.
 

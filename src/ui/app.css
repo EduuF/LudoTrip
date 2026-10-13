@@ -281,6 +281,12 @@ h3 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
 }
 .hud-btn {
   min-height: 38px;
@@ -306,9 +312,12 @@ h3 {
 .cd-chip {
   background: var(--sakura);
   color: #241a28;
+  border: 0;
   border-radius: 4px;
   padding: 2px 7px 1px;
   white-space: nowrap;
+  font: inherit;
+  cursor: pointer;
 }
 .lv {
   white-space: nowrap;
@@ -496,6 +505,23 @@ h3 {
   height: 9px;
   background: var(--beni);
   clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.tr-blk.charging {
+  animation: charge 0.45s ease-in forwards;
+}
+@keyframes charge {
+  to {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 6px 12px color-mix(in srgb, var(--ink) 28%, transparent);
+  }
+}
+.tr-grip {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  font: 10px/1 var(--f-pixel);
+  letter-spacing: -2px;
+  opacity: 0.5;
 }
 .tr-blk.lifted {
   z-index: 6;
@@ -980,7 +1006,7 @@ button.pill {
   border-color: var(--ink);
 }
 
-/* Dias e figurinhas coladas */
+/* Dias e atividades marcadas */
 .days {
   display: flex;
   flex-direction: column;
@@ -1061,53 +1087,51 @@ button.pill {
   color: var(--ink-soft);
 }
 
-/* Bandeja de figurinhas soltas */
-.tray {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  z-index: 25;
-  background: color-mix(in srgb, var(--washi) 94%, transparent);
-  backdrop-filter: blur(6px);
-  border-top: 2px solid var(--ink);
-  padding: 6px 0 8px;
+/* Atividades ainda sem dia, dentro do cartão do destino (segure e arraste até o dia, ou toque) */
+.loose-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1.5px dashed var(--line);
+  padding-top: 8px;
 }
-.tray-in {
-  max-width: 640px;
-  margin: 0 auto;
-}
-.tray-t {
-  font: 11.5px var(--f-pixel);
+.loose-t {
+  font: 11px var(--f-pixel);
   color: var(--ink-soft);
-  padding: 0 14px 4px;
   letter-spacing: 0.06em;
-  display: flex;
-  gap: 8px;
 }
-.tray-row {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px 14px 4px;
-  touch-action: pan-x;
+.mini.loose {
+  border-style: dashed;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
-.tray .sticker {
-  width: 104px;
-  min-height: 70px;
-  flex: none;
-  padding: 5px 7px;
+.mini .gems {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--fr);
 }
-.tray .sticker .nm {
-  font-size: 12.5px;
+.mini.lifted {
+  opacity: 0.35;
 }
-.tray-t span:first-child {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.drag-ghost.mini {
+  z-index: 60;
+}
+.pill.r-must {
+  border-color: var(--gold);
+}
+.pill.r-want {
+  border-color: var(--ai);
+}
+.pill.r-maybe {
+  border-color: var(--silver);
+}
+.rar[disabled] {
+  opacity: 0.45;
 }
 
-/* Álbum de figurinhas */
+/* Atividades: cartões com cara de coleção */
 .page {
   margin-top: 22px;
   scroll-margin-top: 110px;
@@ -1346,9 +1370,13 @@ button.pill {
   position: absolute;
   inset: 0;
 }
-.map-tiles {
-  position: absolute;
-  inset: 0;
+/* O CSS do MapLibre (.maplibregl-map: position relative, overflow hidden) carrega depois e tem a mesma
+   especificidade: sem o !important o contêiner fica com altura 0 e o mapa some (bug do M3 no celular). */
+.board .map-tiles {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 .board.paper .map-tiles {
   visibility: hidden;
@@ -1563,7 +1591,7 @@ a.opt {
   background: var(--hud);
   color: var(--hud-fg);
   border-radius: 10px;
-  padding: 7px 11px 8px;
+  padding: 6px 10px 7px;
   box-shadow: 3px 3px 0 var(--sakura);
   pointer-events: none;
 }
@@ -1583,8 +1611,23 @@ a.opt {
   gap: 6px;
 }
 .map-head .big b {
-  font: 400 34px/1 var(--f-pixel);
+  font: 400 28px/1 var(--f-pixel);
   color: var(--sakura);
+}
+.map-head .cd-open {
+  pointer-events: auto;
+  display: block;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.map-head .cd-open .lbl,
+.map-head .cd-open .clock {
+  display: block;
 }
 .map-head .big span {
   font: 13px var(--f-pixel);
@@ -1731,19 +1774,39 @@ a.opt {
   grid-template-columns: 1fr auto;
 }
 .card.add-dest {
-  border: 2px dashed var(--ink-soft);
-  background: transparent;
-  box-shadow: none;
-  text-align: left;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   margin: 10px 0;
+  padding: 14px 16px;
+  border: 2.5px dashed var(--ink);
+  background: color-mix(in srgb, var(--sakura) 14%, var(--paper));
+  box-shadow: 4px 4px 0 var(--sakura);
+  text-align: left;
   cursor: pointer;
 }
-.card.add-dest b {
-  font: 800 16px var(--f-display);
+.card.add-dest .plus {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ink);
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  font: 400 28px/1 var(--f-pixel);
+  color: var(--ink);
 }
-.card.add-dest span {
+.card.add-dest .txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.card.add-dest b {
+  font: 800 17px var(--f-display);
+}
+.card.add-dest .txt span {
   font-size: 12.5px;
   color: var(--ink-soft);
 }
@@ -1803,8 +1866,7 @@ a.opt {
 @media (min-width: 900px) {
   .wrap.wide,
   .hud-in,
-  .tabs-in,
-  .tray-in {
+  .tabs-in {
     max-width: 1180px;
   }
   .mapa-grid {
@@ -1853,6 +1915,47 @@ a.opt {
 }
 .trip-card .c-title h3 {
   font-size: 18px;
+}
+.trip-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.trip-menu {
+  position: relative;
+  flex: none;
+}
+.popmenu {
+  position: absolute;
+  right: 0;
+  top: 40px;
+  z-index: 30;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 3px 3px 0 var(--sakura);
+}
+.popmenu button {
+  min-height: 44px;
+  text-align: left;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+}
+.popmenu button.danger {
+  color: var(--beni);
 }
 .examples {
   display: grid;
@@ -2093,9 +2196,6 @@ a.opt {
   align-items: center;
   box-shadow: 4px 4px 0 var(--sakura);
   animation: rise 0.25s ease-out;
-}
-.toast.with-tray {
-  bottom: calc(var(--nav-h) + 170px + env(safe-area-inset-bottom, 0px));
 }
 .toast.warn {
   box-shadow: 4px 4px 0 var(--gold);

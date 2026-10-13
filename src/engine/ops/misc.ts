@@ -65,3 +65,15 @@ export function setDefaultMode(it: Itinerary, _b: Itinerary, a: { mode: LegMode 
 export function setTravelers(it: Itinerary, _b: Itinerary, a: { travelers: Traveler[] }) {
   it.travelers = a.travelers.map((t) => ({ ...t }))
 }
+
+/** De onde a viagem sai e para onde volta (nome e lugar); null tira a casa. */
+export function setHome(it: Itinerary, _b: Itinerary, a: { home: NonNullable<Itinerary['home']> | null }) {
+  if (a.home === null) {
+    if (!it.home) fail('NO_CHANGE')
+    delete it.home
+    return
+  }
+  const name = a.home.name.trim()
+  if (!name) fail('INVALID', { reason: 'empty-name' })
+  it.home = { ...a.home, name }
+}

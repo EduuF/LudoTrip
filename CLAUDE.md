@@ -6,13 +6,13 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 
 ## Leia antes de trabalhar
 
-| Documento | Para quê |
-|---|---|
-| `docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md` | O design: gramática da viagem, regras de edição, Mochila, mapa, permissões, tecnologia |
-| `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md` | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox) |
-| `docs/guia-de-vibe.md` | Identidade visual e de movimento que precisa ser mantida |
-| `docs/aprendizados.md` | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.** |
-| `docs/inventario-de-experiencia.md` | Tudo o que já foi validado com o mantenedor. **Confira antes de mostrar qualquer tela:** nada da lista pode sumir sem decisão registrada. |
+| Documento                                                          | Para quê                                                                                                                                  |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md`          | O design: gramática da viagem, regras de edição, Mochila, mapa, permissões, tecnologia                                                    |
+| `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md` | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox)                                                                  |
+| `docs/guia-de-vibe.md`                                             | Identidade visual e de movimento que precisa ser mantida                                                                                  |
+| `docs/aprendizados.md`                                             | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.**                                                               |
+| `docs/inventario-de-experiencia.md`                                | Tudo o que já foi validado com o mantenedor. **Confira antes de mostrar qualquer tela:** nada da lista pode sumir sem decisão registrada. |
 
 ## Regras de ouro (vencem qualquer outra coisa)
 
@@ -28,11 +28,12 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 ## Como escrever textos da interface
 
 - Curto e exato: **cada palavra precisa de motivo.**
-- Palavras de quem viaja (cidade, noite, volta, passagem, mochila), nunca termos internos (parada, trava, vizinha, trecho órfão, entidade).
+- Palavras de quem viaja (destino, noite, volta, passagem, atividade, hospedagem), nunca termos internos (parada, trava, vizinha, trecho órfão, entidade).
 - Nunca deixe a pessoa num beco sem saída: em vez de erro, mostre as saídas como botões.
   - Exemplo: "Ginzan Onsen tem só 1 noite." [Tirar de Osaka] [Adiar a volta]
-- Ações dizem a intenção de quem viaja ("Tirar do roteiro", "Chegar 1 dia antes", "Desfazer"), nunca o nome da operação; ícone ou seta sozinha não basta. Os avisos confirmam o que aconteceu ("Sensō-ji voltou para a mochila").
-- Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, figurinhas, estrelas); **navegação e ações em palavras comuns** (Mapa, Roteiro, Mochila, Tarefas, Destino). Nada de "Quest", "Mundo", "LV" ou "Fase" em rótulos.
+- Ações dizem a intenção de quem viaja ("Tirar do roteiro", "Chegar 1 dia antes", "Desfazer"), nunca o nome da operação; ícone ou seta sozinha não basta. Os avisos confirmam o que aconteceu ("Sensō-ji ficou sem dia").
+- Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, estrelas); **navegação e ações em palavras comuns** (Mapa, Atividades, Tarefas, Destino, Atividade, Hospedagem). Nada de "Quest", "Mundo", "LV", "Fase", "Mochila" ou "figurinha" em rótulos ("mochila" só no motor).
+- **Não inventar problema:** toda ação visível responde a uma frase de quem viaja; se não há frase, não há botão.
 - **"Destino" é a palavra genérica** (país, região, cidade, parque, ilha, navio); "cidade" só quando é mesmo uma cidade.
 
 ## Como trabalhar

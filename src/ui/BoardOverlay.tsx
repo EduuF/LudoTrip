@@ -87,7 +87,7 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
       if (seq[seq.length - 1] !== id) seq.push(id)
       stopSeq.set(s.id, seq.length - 1)
     })
-    // Bate-volta: ligado à parada onde a figurinha está colada.
+    // Bate-volta: ligado à parada onde a atividade está marcada.
     const states = placeStates(it, doc.places)
     const baseOf = (destId: ID): ID | undefined => {
       const placed = doc.places.find((p) => p.destinationId === destId && states.get(p.id)?.days.length)

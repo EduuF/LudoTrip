@@ -7,31 +7,31 @@ A V2 generaliza a v1 para qualquer viagem e troca o tema conforme o destino, mas
 ## Identidade
 
 - **Clima:** um jogo de mapa-mundo (Super Mario World, Clair Obscur) que também é um caderno de viagem caprichado. Papel, tinta, carimbo, pixel art.
-- **Tom do texto:** brincalhão no vocabulário do jogo (Fase, Mundo, Quest, LV, Mochila), mas curto e exato. Nunca enrola.
+- **Tom do texto:** brincalhão nas comemorações e no visual (carimbo, nível, XP, estrelas, pétalas), mas curto e exato; nos rótulos, a palavra comum (Mapa, Atividades, Tarefas, Destino). Nunca enrola.
 - **Escrita local:** o nome do destino no alfabeto local aparece como marca d'água e detalhe (京都, Río, Paris), como os kanji da v1.
 
 ## Paleta (tema "sakura" da v1; outros temas trocam os valores e mantêm os papéis)
 
-| Papel | Claro | Escuro |
-|---|---|---|
-| fundo papel japonês (`--washi`) | `#F6EDEB` | `#13111D` |
-| cartão (`--paper`) | `#FFFBFA` | `#1D1929` |
-| tinta (`--ink`) | `#241A28` | `#F5EAF0` |
-| tinta suave (`--ink-soft`) | `#6E5B69` | `#B5A3B6` |
-| destaque (`--sakura`) | `#E2809F` | `#F49BB9` |
-| alerta / carimbo (`--beni`) | `#C4313A` | `#FF5C63` |
-| feito (`--matcha`) | `#557A3E` | `#9DC57F` |
-| índigo (`--ai`) | `#2B3F6B` | `#9DB4F0` |
-| conquista (`--gold`) | `#E2A92F` | `#F2C14E` |
+| Papel                                                | Claro                             | Escuro                            |
+| ---------------------------------------------------- | --------------------------------- | --------------------------------- |
+| fundo papel japonês (`--washi`)                      | `#F6EDEB`                         | `#13111D`                         |
+| cartão (`--paper`)                                   | `#FFFBFA`                         | `#1D1929`                         |
+| tinta (`--ink`)                                      | `#241A28`                         | `#F5EAF0`                         |
+| tinta suave (`--ink-soft`)                           | `#6E5B69`                         | `#B5A3B6`                         |
+| destaque (`--sakura`)                                | `#E2809F`                         | `#F49BB9`                         |
+| alerta / carimbo (`--beni`)                          | `#C4313A`                         | `#FF5C63`                         |
+| feito (`--matcha`)                                   | `#557A3E`                         | `#9DC57F`                         |
+| índigo (`--ai`)                                      | `#2B3F6B`                         | `#9DB4F0`                         |
+| conquista (`--gold`)                                 | `#E2A92F`                         | `#F2C14E`                         |
 | mar (`--sea`) / terra (`--land`) / contorno da terra | `#DCE8EE` / `#FBF5EC` / `#3A2C3A` | `#141A2E` / `#2A2438` / `#E9DCE6` |
 
 ## Tipografia
 
-| Papel | Fonte | Uso |
-|---|---|---|
-| Display | **Shippori Mincho B1** 700/800 | Títulos, nome da fase, marcas d'água em escrita local |
-| Texto | **Zen Kaku Gothic New** 400/500/700 | Todo o texto corrido e a interface |
-| Pixel | **DotGothic16** | Números, datas, HUD, rótulos curtos, avisos ("LV 3", "FASE 2 / 7", "+100 XP") |
+| Papel   | Fonte                               | Uso                                                                           |
+| ------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| Display | **Shippori Mincho B1** 700/800      | Títulos, nome da fase, marcas d'água em escrita local                         |
+| Texto   | **Zen Kaku Gothic New** 400/500/700 | Todo o texto corrido e a interface                                            |
+| Pixel   | **DotGothic16**                     | Números, datas, HUD, rótulos curtos, avisos ("LV 3", "FASE 2 / 7", "+100 XP") |
 
 ## Elementos assinatura (manter em toda tela onde fizerem sentido)
 

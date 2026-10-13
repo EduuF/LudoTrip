@@ -1,5 +1,6 @@
 import type { GeoPath } from 'd3-geo'
 import type { BBox } from './frame'
+import type { Theme } from './style/washi'
 
 // O mapa por baixo da nossa camada SVG tem dois adaptadores (spec §8): "papel" (d3-geo, sem rede)
 // e "tiles" (MapLibre + OpenFreeMap, com rede e WebGL). A camada SVG só conhece esta interface.
@@ -20,6 +21,8 @@ export interface MapAdapter {
   size(): [number, number]
   resize(): void
   destroy(): void
+  /** Só nos tiles: troca o estilo para o modo dia ou noite. */
+  setTheme?(theme: Theme): void
   /** Só no papel: desenha contornos com a mesma projeção. */
   geoPath?(): GeoPath
 }

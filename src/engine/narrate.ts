@@ -71,8 +71,8 @@ export function describeEffects(
   ]
   if (placeNames.length) {
     const one = eff.returned.length === 1
-    const verb = done ? (one ? 'voltou' : 'voltaram') : one ? 'volta' : 'voltam'
-    parts.push(`${listNames(placeNames)} ${verb} para a mochila.`)
+    const verb = done ? (one ? 'ficou' : 'ficaram') : one ? 'fica' : 'ficam'
+    parts.push(`${listNames(placeNames)} ${verb} sem dia.`)
   }
 
   for (const m of eff.merged) {

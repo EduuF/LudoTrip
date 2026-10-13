@@ -39,7 +39,7 @@ export function levelOf(bbox: BBox): Level {
   return km < 50 ? 'city' : km < 400 ? 'region' : km < 4000 ? 'country' : 'world'
 }
 
-/** Destinos localizados das paradas (na ordem) e os bate-voltas com figurinha colada. */
+/** Destinos localizados das paradas (na ordem) e os bate-voltas com atividade marcada. */
 export function framePoints(doc: TripDoc): FramePoint[] {
   const it = doc.itinerary
   const byId = new Map(doc.destinations.map((d) => [d.id, d]))
@@ -101,7 +101,7 @@ export function frame(doc: TripDoc): Frame | null {
   return { bbox, level: levelOf(bbox), points }
 }
 
-/** Caixa dos lugares de um destino (figurinhas com coordenadas), para "entrar na cidade". */
+/** Caixa dos lugares de um destino (atividades com coordenadas), para "entrar na cidade". */
 export function cityFrame(doc: TripDoc, destId: ID): BBox | null {
   const d = doc.destinations.find((x) => x.id === destId)
   const pts = doc.places

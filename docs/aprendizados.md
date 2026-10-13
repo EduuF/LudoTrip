@@ -5,20 +5,40 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M3.1: revisão de uso (bugs, a jornada das atividades, clareza)
+
+### Bugs
+
+- **O mapa sumia só em produção.** O CSS do MapLibre (`.maplibregl-map { position: relative }`) carrega depois do nosso e tem a mesma especificidade que `.map-tiles { position: absolute; inset: 0 }`: o contêiner dos tiles ficava com altura 0, o canvas cortado e a camada SVG sem altura. No servidor de desenvolvimento a ordem de carga era outra, por isso passou. **Regras:** regra que disputa com CSS de biblioteca ganha especificidade e um `!important` comentado; o `MapCanvas` descarta um adaptador sem tamanho (nunca uma tela vazia); teste ponta a ponta com tiles simulados mede o canvas; as abas ficam montadas (escondidas) para o mapa não ser recriado a cada ida e volta.
+- **Arrastar na trilha falhava no toque.** O estado "levantado" só existia no quadro seguinte do React; o primeiro `touchmove` passava sem `preventDefault`, o Chrome começava a rolar e cancelava o ponteiro. **Regras:** o que um ouvinte nativo precisa ler fica num ref escrito de forma síncrona (antes do `setState`); `pointercancel` com algo levantado continua pelos eventos de toque do documento; segurar 450 ms com o bloco "inflando" (padrão iOS/Material); teste de toque de verdade via CDP (`Input.dispatchTouchEvent`), porque `pointer*` sintéticos não passam pelo detector de rolagem do navegador.
+- **Abas montadas e escondidas mudam os testes:** `getByText` do Playwright enxerga o escondido; `getByRole` respeita `hidden`. Título dentro de botão sai da árvore de acessibilidade (filhos de botão são "apresentacionais"): testar pelo DOM.
+
+### Jornadas
+
+- **"Não inventar problema."** "Noites incertas", o menu da cidade e "Mais ações" não respondiam a nenhuma frase de quem viaja; a frase que faltava ("quero marcar o que vou fazer neste dia") não tinha caminho. **Regra:** toda ação visível responde a uma frase de quem viaja; se não há frase, não há botão. Simular as jornadas inteiras no celular (macro) acha mais que corrigir ponto a ponto.
+- **Palavras de jogo nos rótulos confundem** ("figurinhas", "colar", "mochila"). **Regra:** jogo no visual e nas comemorações; nos rótulos, a palavra comum (atividade, pôr no dia, sem dia).
+- **Viagens já salvas não ganhavam dados novos das fixtures.** Agora `openTrip` completa coordenadas e escopo dos exemplos (migração leve) e abrir um exemplo de novo reaproveita a cópia.
+
+### Ferramentas
+
+- **O navegador interno do app de desktop, no preset de celular e contra o endereço publicado, reproduziu o bug do mapa.** Serve para páginas publicadas e para o build (`npm run preview`); a limitação fica só com arquivos locais. A aba fecha entre turnos: reabrir com `navigate` e aplicar o preset de novo.
+
 ## 2026-10-13 — M3: mapa vivo e roteiro numa tela só
 
 ### Causas-raiz do retorno do M2 (16 pontos)
-1. **O mapa foi tratado como tela de abertura, não como o centro.** Na v1 o mapa era onde se via *onde* e *quando*; o roteiro era o painel ao lado. **Regra:** a tela principal é mapa + trilha + cartão do dia + roteiro, numa só.
+
+1. **O mapa foi tratado como tela de abertura, não como o centro.** Na v1 o mapa era onde se via _onde_ e _quando_; o roteiro era o painel ao lado. **Regra:** a tela principal é mapa + trilha + cartão do dia + roteiro, numa só.
 2. **"Destino" nasceu como "cidade".** País, região e "ainda não sei" não cabiam; sem busca online, qualquer lugar fora da lista ficava sem mapa (a Romênia). **Regra:** o escopo da viagem (país, região ou cidade) é um dado próprio; "destino" é a palavra genérica; a busca online é obrigatória, com a lista própria como plano B.
 3. **O enquadramento incluía a casa** e usava contornos sem detalhe de cidade. **Regra:** enquadrar só pelos destinos; a casa é uma seta na borda; o detalhe vem de tiles.
 4. **Vocabulário e prioridades não estavam escritos.** **Regra:** prioridades de ouro (sem bugs, resolve de verdade, intuitivo, divertido, dinâmico, simples) e vocabulário de jogo só no visual estão no `CLAUDE.md`.
 
 ### Técnica
+
 - **Mapa em duas camadas:** tiles (MapLibre + OpenFreeMap, estilo washi) por baixo e a nossa camada SVG por cima, com um adaptador que só sabe `project`/`unproject`/`fit`. O papel (d3-geo) é o primeiro desenho, o modo sem rede, o modo do artifact e o dublê dos testes. **Regra:** nenhuma peça do mapa conhece o MapLibre.
 - **O worker do MapLibre não carrega no Vite em modo dev** com a dependência pré-empacotada. **Regra:** importar `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url` e chamar `setWorkerUrl`.
 - **Interpolar escala em logaritmo quebra com escala negativa** (área menor que a folga, como no jsdom): vira NaN e o mapa some. **Regra:** só animar com escalas positivas.
 - **Posições do grupo como fração do caminho**, não em pixels: sobrevivem ao zoom e ao arraste do mapa.
-- **Viagens já salvas não ganham dados novos das fixtures** (as figurinhas antigas não tinham coordenadas). **Regra:** ao testar algo que depende de dados de exemplo, abrir o exemplo de novo pela lista.
+- **Viagens já salvas não ganham dados novos das fixtures** (as atividades antigas não tinham coordenadas). **Regra:** ao testar algo que depende de dados de exemplo, abrir o exemplo de novo pela lista. (Resolvido no M3.1 com a migração leve ao abrir.)
 - **Testes nunca falam com a internet:** `fetch` recusado no setup; quem precisa de rede simula com `vi.stubGlobal`.
 - **Photon:** a primeira resposta leva uns segundos; nomes em português de cidades fora da lista própria não existem lá ("Bucareste" é "Bucharest"). **Regra:** a lista própria cobre os destinos mais comuns em português.
 - **Página pública:** o GitHub Pages (`BASE_PATH=/LudoTrip/`) é onde o mantenedor testa de verdade; o artifact é plano B em modo papel.
@@ -52,6 +72,7 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
 ## 2026-10-13 — M1: motor do roteiro
 
 ### Motor
+
 - **As invariantes com fast-check acharam dois defeitos de modelo** que os testes de cenário não viam:
   - noite a bordo no trecho de volta caía no mesmo dia da partida. **Regra:** na volta, a noite no avião é `arrDayOffset` (+1), nunca noite da viagem;
   - comandos que não mudam nada (mover uma visita para onde ela já está) geravam um Desfazer vazio. **Regra:** `dispatch` devolve `NO_CHANGE` quando o remendo sai vazio.
@@ -60,13 +81,16 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
 - **Reservas apontam para destino + data**, nunca para id de parada; ids somem em fusões e divisões, destinos e datas não.
 
 ### Texto
+
 - **Abreviações de dia da semana colidem com palavras.** "Volta passa a ter 23/04" ("ter" = terça) ficou ambíguo. **Regra:** reler toda frase que junta verbo e data; na prévia, usar "Volta vai para ter 23/04".
 
 ### Repositório público
+
 - **Datas reais da viagem tinham escapado para a spec e o plano** (exemplos com as datas de verdade). Foram trocadas por datas fictícias de 2030, mas continuam no histórico já enviado.
   - **Regra:** antes de cada push, procurar nomes e datas reais (`grep -rn` por nomes, ano e "dd/mm" do mês da viagem).
 
 ### Ferramentas e ambiente
+
 - **O painel de navegador roda o servidor de desenvolvimento** (`.claude/launch.json` com `npm --prefix …/LudoTrip run dev`), com scripts e console.
   - A simulação de celular (`resize_window` mobile) **desloca as coordenadas do mouse**: o clique cai em outro elemento. **Regra:** para testar fluxos, clicar pela própria página (`element.click()` via javascript) e usar capturas só para olhar.
 - **Heredoc longo no Bash falha** ("unexpected EOF"), mesmo com aspas. **Regra:** escrever o script com a ferramenta de arquivo e rodar o arquivo.
@@ -74,6 +98,7 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
 ## 2026-10-13 — Protótipo de edição e retorno do mantenedor
 
 ### Texto e interface
+
 - **Mensagens técnicas confundem.** "Ginzan Onsen ficaria sem noites. Destrave a duração…" fez a pessoa perguntar "que trava?".
   - **Regra:** escrever com as palavras de quem viaja (cidade, noite, volta, passagem), nunca termos internos (parada, trava, vizinha, órfã).
   - Toda situação sem saída vira uma escolha com botões.
@@ -81,6 +106,7 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
 - **"Saco" é feio em português.** Virou **Mochila** (inventário de jogo), e a prioridade virou **raridade** (Se der · Quero · Imperdível).
 
 ### Faixa e edição
+
 - **Pegadores de arraste sobre os blocos** cobriam as cidades de 1 noite e atropelavam as datas.
   - **Regra:** pegadores **sob** a Faixa, com largura mínima por noite.
   - Uma lista horizontal rolável precisa de esmaecido nas bordas e deve rolar sozinha até o item editado.
@@ -91,15 +117,18 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
   - Remover uma cidade deixa **noites em aberto** (espaço com "+"), em vez de decidir sozinho para onde vão as noites.
 
 ### Testes
+
 - **Testes com sequências aleatórias acham bugs reais.** 900 sequências encontraram um defeito: ao deslocar uma parada, a vizinha que ganhava a noite ficava sem o dia vazio correspondente.
   - **Regra:** todo motor de regras tem testes de invariantes com fast-check.
 
 ### Vibe
+
 - **O protótipo ficou "limpo demais" e perdeu a vibe da v1.**
   - **Regra:** toda tela nova segue `docs/guia-de-vibe.md`.
 
 ### Ferramentas e ambiente
-- **O navegador interno do app de desktop** não executa scripts em arquivos locais e não simula o tamanho de celular de forma confiável.
+
+- **O navegador interno do app de desktop** não executa scripts em arquivos locais. (M3.1: contra o build ou a página publicada, com o preset de celular, funciona bem.)
   - **Regra:** para testar páginas publicadas, usar o Chrome do mantenedor (Claude in Chrome), que costuma ficar aberto numa segunda tela.
   - Dentro do iframe do artifact, a árvore de acessibilidade não aparece; usar coordenadas e capturas de tela.
 

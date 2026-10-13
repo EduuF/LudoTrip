@@ -2,14 +2,14 @@ import { days as allDays, placeStates } from '../engine'
 import type { Day, ID, Place } from '../engine'
 import type { TripDoc } from '../app/doc'
 
-// Os lugares de um destino no mapa da cidade (spec §8 e v1): figurinhas com coordenadas, a trilha de
+// Os lugares de um destino no mapa da cidade (spec §8 e v1): atividades com coordenadas, a trilha de
 // cada dia (na ordem dos turnos) e o que ainda não tem lugar no mapa. Funções puras.
 
 export interface Spot {
   place: Place
   lon: number
   lat: number
-  /** Índices dos dias em que está colada. */
+  /** Índices dos dias em que está marcada. */
   days: number[]
   visited: boolean
 }
@@ -26,7 +26,7 @@ export interface DayTrail {
 export interface CitySpots {
   spots: Spot[]
   trails: DayTrail[]
-  /** Figurinhas do destino sem coordenadas. */
+  /** Atividades do destino sem coordenadas. */
   unplaced: Place[]
   /** Dias dormindo neste destino. */
   cityDays: Day[]

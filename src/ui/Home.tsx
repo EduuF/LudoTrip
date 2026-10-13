@@ -3,7 +3,7 @@ import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
 import type { ExampleKey } from '../app/store'
 
-// Suas viagens, exemplos para explorar e criar viagem (spec §17.7).
+// Suas viagens (com renomear e apagar), exemplos para explorar e criar viagem (spec §17.7).
 
 const EXAMPLES: Record<ExampleKey, { title: string; text: string }> = {
   japao: { title: 'Japão de trem', text: '9 paradas, volta marcada, bate-volta a Nara' },
@@ -19,10 +19,20 @@ export function Home() {
   const openTrip = useApp((s) => s.openTrip)
   const addExample = useApp((s) => s.addExample)
   const goCreate = useApp((s) => s.goCreate)
+  const removeTrip = useApp((s) => s.removeTrip)
+  const renameTrip = useApp((s) => s.renameTrip)
   const [busy, setBusy] = useState(false)
+  const [menu, setMenu] = useState<string | null>(null)
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   useEffect(() => {
     document.title = 'LudoTrip'
   }, [])
+  const saveName = async () => {
+    if (!editing) return
+    const n = editing.name.trim()
+    setEditing(null)
+    if (n) await renameTrip(editing.id, n)
+  }
   return (
     <div className="wrap">
       <header className="home-head">
@@ -33,8 +43,8 @@ export function Home() {
           Ludo<em>Trip</em>
         </h1>
         <p className="note">
-          Planeje a viagem como quem joga: veja o mapa do lugar, arraste os destinos na trilha, cole
-          figurinhas nos dias e resolva as tarefas.
+          Planeje a viagem como quem joga: veja o mapa do lugar, arraste os destinos na trilha, marque as
+          atividades de cada dia e resolva as tarefas.
         </p>
       </header>
       <button type="button" className="btn big main" onClick={goCreate} style={{ marginTop: 12 }}>
@@ -45,13 +55,77 @@ export function Home() {
           <h2 className="sec">Suas viagens</h2>
           <div className="trips">
             {trips.map((t) => (
-              <button key={t.id} type="button" className="trip-card" onClick={() => openTrip(t.id)}>
-                <span className="seal">{t.name.slice(0, 1)}</span>
-                <span className="c-title">
-                  <h3>{t.name}</h3>
-                  <span className="dates">{t.example ? 'exemplo para mexer à vontade' : 'sua viagem'}</span>
-                </span>
-              </button>
+              <div key={t.id} className="trip-card">
+                {editing?.id === t.id ? (
+                  <form
+                    className="row"
+                    style={{ flex: 1 }}
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void saveName()
+                    }}
+                  >
+                    <input
+                      className="input"
+                      style={{ flex: 1 }}
+                      value={editing.name}
+                      aria-label="Nome da viagem"
+                      autoFocus
+                      onChange={(e) => setEditing({ id: t.id, name: e.target.value })}
+                      onBlur={() => void saveName()}
+                    />
+                    <button type="submit" className="btn small">
+                      Salvar
+                    </button>
+                  </form>
+                ) : (
+                  <button type="button" className="trip-open" onClick={() => openTrip(t.id)}>
+                    <span className="seal">{t.name.slice(0, 1)}</span>
+                    <span className="c-title">
+                      <h3>{t.name}</h3>
+                      <span className="dates">
+                        {t.example ? 'exemplo para mexer à vontade' : 'sua viagem'}
+                      </span>
+                    </span>
+                  </button>
+                )}
+                <div className="trip-menu">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={`Mais opções de ${t.name}`}
+                    aria-expanded={menu === t.id}
+                    onClick={() => setMenu(menu === t.id ? null : t.id)}
+                  >
+                    ⋯
+                  </button>
+                  {menu === t.id ? (
+                    <div className="popmenu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenu(null)
+                          setEditing({ id: t.id, name: t.name })
+                        }}
+                      >
+                        Renomear
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="danger"
+                        onClick={() => {
+                          setMenu(null)
+                          void removeTrip(t.id)
+                        }}
+                      >
+                        Apagar
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             ))}
           </div>
         </>

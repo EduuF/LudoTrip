@@ -5,7 +5,7 @@ import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
-// resumo por cima, "+ Destino" / "+ Lugar aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
+// resumo por cima, "+ Adicionar destino" / "+ Atividade aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
 // anda pelo mapa). A porta de shoji fecha e abre ao entrar e sair da cidade. O mapa em si carrega sob
 // demanda (d3, contornos e MapLibre).
 
@@ -34,7 +34,7 @@ function Countdown() {
           type="button"
           className="btn small"
           style={{ marginTop: 6 }}
-          onClick={() => openSheet({ kind: 'end', date: null })}
+          onClick={() => openSheet({ kind: 'trip' })}
         >
           Escolher a data de ida
         </button>
@@ -44,16 +44,21 @@ function Countdown() {
     const [y, m, d] = phase.start.split('-').map(Number) as [number, number, number]
     const { days, hh, mm, ss } = countdownTo(phase.start, now)
     return (
-      <div role="timer" aria-label={`Faltam ${days} dias para a viagem`}>
-        <div className="lbl">PARTIDA · FALTAM</div>
-        <div className="big">
+      <button
+        type="button"
+        className="cd-open"
+        onClick={() => openSheet({ kind: 'trip' })}
+        aria-label={`Faltam ${days} dias para a viagem. Toque para mudar as datas`}
+      >
+        <span className="lbl">PARTIDA · FALTAM</span>
+        <span className="big">
           <b>{days}</b>
           <span>{days === 1 ? 'dia' : 'dias'}</span>
-        </div>
-        <div className="clock">
+        </span>
+        <span className="clock">
           {hh}:{mm}:{ss} · {String(d).padStart(2, '0')} {MONTHS[m - 1]} {y}
-        </div>
-      </div>
+        </span>
+      </button>
     )
   }
   if (phase.kind === 'during') {
@@ -155,7 +160,7 @@ function CityHead({ destId }: { destId: string }) {
               openSheet({
                 kind: 'choice',
                 title: 'Sem lugar no mapa',
-                sub: 'Toque numa figurinha e depois no mapa, onde ela fica.',
+                sub: 'Toque numa atividade e depois no mapa, onde ela fica.',
                 options: city.unplaced.map((p) => ({
                   label: p.name,
                   detail: ['Marcar no mapa'],
@@ -167,7 +172,7 @@ function CityHead({ destId }: { destId: string }) {
               })
             }
           >
-            ⚑ {city.unplaced.length} sem lugar
+            ⚑ {city.unplaced.length} sem lugar no mapa
           </button>
         ) : null}
       </div>
@@ -285,10 +290,10 @@ export function MapPanel() {
             className="btn small"
             onClick={() => {
               setPlacing('new')
-              say('Toque no mapa onde fica o lugar novo. Ou segure no mapa a qualquer hora.')
+              say('Toque no mapa onde fica a atividade nova. Ou segure no mapa a qualquer hora.')
             }}
           >
-            + Lugar aqui
+            + Atividade aqui
           </button>
         ) : (
           <button
@@ -302,7 +307,7 @@ export function MapPanel() {
               })
             }
           >
-            + Destino
+            + Adicionar destino
           </button>
         )}
       </div>

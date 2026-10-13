@@ -1,7 +1,7 @@
 {
   "name": "LudoTrip",
   "short_name": "LudoTrip",
-  "description": "Planejador de viagens com cara de jogo: mapa, trilha de dias e álbum de figurinhas.",
+  "description": "Planejador de viagens com cara de jogo: mapa, trilha de dias e as atividades de cada dia.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

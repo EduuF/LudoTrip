@@ -24,7 +24,7 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
     case 'reorderStop':
       return `${city(cmd.stopId)} mudou de lugar na viagem.`
     case 'removeStop':
-      return `${city(cmd.stopId)} saiu do roteiro. A mochila dela fica guardada.`
+      return `${city(cmd.stopId)} saiu do roteiro. As atividades ficam guardadas.`
     case 'fillOpen':
       return `${dest(cmd.destinationId)} entrou nas noites em aberto.`
     case 'stretchInto': {
@@ -50,12 +50,12 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
       return `${plural(cmd.nights, 'noite', 'noites')} a bordo.`
     case 'scheduleVisit': {
       const p = doc.places.find((x) => x.id === cmd.placeId)
-      return `${p?.name ?? 'Figurinha'} colada no dia.`
+      return `${p?.name ?? 'Atividade'} marcada no dia.`
     }
     case 'unscheduleVisit':
-      return 'Figurinha descolada; continua no álbum.'
+      return 'Atividade tirada do dia; continua na lista.'
     case 'moveVisit':
-      return 'Figurinha mudou de dia.'
+      return 'Atividade mudou de dia.'
     case 'setVisitMeta':
       return 'Salvo.'
     case 'setLock':
@@ -66,6 +66,10 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
       return cmd.tentative ? 'Noites incertas: as datas depois ficam estimadas.' : 'Noites confirmadas.'
     case 'setLodging':
       return 'Pouso salvo.'
+    case 'setTravelers':
+      return 'Quem vai: salvo.'
+    case 'setHome':
+      return cmd.home ? `Saída e volta por ${cmd.home.name}.` : 'Sem cidade de saída.'
     default:
       return null
   }
@@ -76,7 +80,7 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
     case 'engine':
       return leadForCommand(action.command, doc)
     case 'addPlace':
-      return `Figurinha nova: ${action.place.name.trim()}.`
+      return `Atividade nova: ${action.place.name.trim()}.`
     case 'setPlace':
       return action.patch.lat !== undefined
         ? 'Lugar marcado no mapa.'
@@ -84,10 +88,10 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
           ? 'Prioridade trocada.'
           : action.patch.kind
             ? 'Tipo do lugar salvo.'
-            : 'Figurinha salva.'
+            : 'Atividade salva.'
     case 'removePlace': {
       const p = doc.places.find((x) => x.id === action.id)
-      return `${p?.name ?? 'Figurinha'} saiu do álbum.`
+      return `${p?.name ?? 'Atividade'} apagada.`
     }
     case 'addDestination':
       return `${action.destination.name} entrou nos destinos.`
@@ -106,7 +110,7 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
   }
 }
 
-/** Texto do aviso. Une a intenção ("Kyoto chega 1 dia depois.") e as consequências ("Gion voltou para a mochila."). */
+/** Texto do aviso. Une a intenção ("Kyoto chega 1 dia depois.") e as consequências ("Gion ficou sem dia."). */
 export function narrate(action: DocAction, before: TripDoc, after: TripDoc, effects: Effects): string {
   const merged =
     action.type === 'engine' &&

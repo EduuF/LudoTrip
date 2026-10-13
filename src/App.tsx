@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { health, progress, tripPhase } from './engine'
 import { countdownTo, todayISO, useApp } from './app/store'
 import type { Tab } from './app/store'
-import { Album } from './ui/Album'
+import { nextChoice, THEME_GLYPH, THEME_LABEL } from './app/theme'
+import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
 import { Celebrations, Petals, Toast } from './ui/kit'
@@ -21,8 +22,11 @@ function Hud() {
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const sound = useApp((s) => s.sound)
   const toggleSound = useApp((s) => s.toggleSound)
+  const theme = useApp((s) => s.theme)
+  const setTheme = useApp((s) => s.setTheme)
   const setTutorial = useApp((s) => s.setTutorial)
   const setTab = useApp((s) => s.setTab)
+  const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
   const p = progress(it, doc)
   const phase = tripPhase(it, todayISO())
@@ -41,7 +45,14 @@ function Hud() {
           <button type="button" className="hud-btn" onClick={goHome} aria-label="Suas viagens">
             ‹
           </button>
-          <span className="hud-name">{doc.meta.name}</span>
+          <button
+            type="button"
+            className="hud-name"
+            onClick={() => openSheet({ kind: 'trip' })}
+            aria-label={`${doc.meta.name}: nome, quem vai e datas`}
+          >
+            {doc.meta.name}
+          </button>
           <button
             type="button"
             className="hud-btn"
@@ -56,18 +67,35 @@ function Hud() {
           <button
             type="button"
             className="hud-btn"
+            aria-label={THEME_LABEL[theme]}
+            title={THEME_LABEL[theme]}
+            onClick={() => setTheme(nextChoice(theme))}
+          >
+            {THEME_GLYPH[theme]}
+          </button>
+          <button
+            type="button"
+            className="hud-btn"
             aria-pressed={sound}
             onClick={toggleSound}
             aria-label={sound ? 'Desligar sons' : 'Ligar sons'}
+            title={sound ? 'Sons ligados' : 'Sons desligados'}
           >
-            {sound ? '♪ on' : '♪ off'}
+            {sound ? '♪' : '♪̸'}
           </button>
           <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
             ↶ Desfazer
           </button>
         </div>
         <div className="hud-bottom">
-          <span className="cd-chip">{cd}</span>
+          <button
+            type="button"
+            className="cd-chip"
+            onClick={() => openSheet({ kind: 'trip' })}
+            aria-label={`${cd}. Toque para mudar as datas`}
+          >
+            {cd}
+          </button>
           <span className="lv">NÍVEL {p.level}</span>
           <span
             className="xpbar"
@@ -88,7 +116,7 @@ function Hud() {
 
 const TABS: { id: Tab; k: string; label: string }[] = [
   { id: 'mapa', k: '図', label: 'Mapa' },
-  { id: 'mochila', k: '帖', label: 'Mochila' },
+  { id: 'atividades', k: '帖', label: 'Atividades' },
   { id: 'tarefas', k: '任', label: 'Tarefas' },
 ]
 
@@ -125,7 +153,6 @@ function Tabs() {
 
 function Trip() {
   const tab = useApp((s) => s.tab)
-  const openStop = useApp((s) => s.openStop)
   const focus = useApp((s) => s.focus)
   const clearFocus = useApp((s) => s.clearFocus)
   const name = useApp((s) => s.doc?.meta.name)
@@ -149,11 +176,20 @@ function Trip() {
   return (
     <>
       <Hud />
+      {/* As três abas ficam montadas (o mapa não é recriado a cada ida e volta); as inativas ficam escondidas. */}
       <main className={`wrap${tab === 'mapa' ? ' wide' : ''}`}>
-        {tab === 'mapa' ? <Mapa /> : tab === 'mochila' ? <Album /> : <Tarefas />}
+        <div hidden={tab !== 'mapa'}>
+          <Mapa />
+        </div>
+        <div hidden={tab !== 'atividades'}>
+          <Atividades />
+        </div>
+        <div hidden={tab !== 'tarefas'}>
+          <Tarefas />
+        </div>
       </main>
       <Tabs />
-      <Toast withTray={tab === 'mapa' && !!openStop} />
+      <Toast />
       <Sheets />
       {tab === 'mapa' ? <Tutorial /> : null}
     </>
@@ -171,7 +207,7 @@ export default function App() {
     <>
       <Petals />
       {!ready ? null : screen === 'trip' ? <Trip /> : screen === 'create' ? <Create /> : <Home />}
-      {screen !== 'trip' ? <Toast withTray={false} /> : null}
+      {screen !== 'trip' ? <Toast /> : null}
       <Celebrations />
     </>
   )

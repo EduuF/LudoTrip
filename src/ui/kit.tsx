@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import type { LegMode } from '../engine'
 import { useApp } from '../app/store'
 import type { Opt } from './sheetTypes'
-import { petalBurst, takeBursts } from './petals'
+import { currentTheme } from '../app/theme'
+import { palette, petalBurst, takeBursts } from './petals'
 import type { Petal } from './petals'
 
 // Peças visuais da casa (guia de vibe): pixel art, selos, pétalas, painel, aviso e comemorações.
@@ -151,6 +152,8 @@ export function Travelers({ count, px = 4 }: { count: number; px?: number }) {
 
 export function Petals() {
   const ref = useRef<HTMLCanvasElement>(null)
+  const country = useApp((s) => s.doc?.scope?.country)
+  const theme = useApp((s) => s.theme)
   useEffect(() => {
     const cv = ref.current
     if (!cv) return
@@ -165,7 +168,9 @@ export function Petals() {
     }
     resize()
     addEventListener('resize', resize)
-    const colors = ['#f3a9c0', '#e2809f', '#ffd1df']
+    // Pétalas de sakura, folhas tropicais ou de outono, pelo país da viagem; cores pelo modo dia/noite.
+    const { colors, shape } = palette(country, currentTheme())
+    const dim = currentTheme() === 'dark' ? 0.8 : 1
     const make = (top: boolean): Petal => ({
       x: Math.random() * W,
       y: top ? -20 * dpr : Math.random() * H,
@@ -186,7 +191,7 @@ export function Petals() {
     let tick = 0
     const draw = (p: Petal) => {
       ctx.save()
-      ctx.globalAlpha = p.o * (p.life === undefined ? 1 : Math.min(1, p.life / 40))
+      ctx.globalAlpha = dim * p.o * (p.life === undefined ? 1 : Math.min(1, p.life / 40))
       ctx.fillStyle = colors[p.t]!
       ctx.translate(p.x, p.y)
       ctx.rotate(p.r)
@@ -194,10 +199,15 @@ export function Petals() {
       const s = p.s / 2
       ctx.beginPath()
       ctx.moveTo(0, -s)
-      ctx.quadraticCurveTo(s * 1.1, -s * 0.6, s * 0.25, s)
-      ctx.lineTo(0, s * 0.7)
-      ctx.lineTo(-s * 0.25, s)
-      ctx.quadraticCurveTo(-s * 1.1, -s * 0.6, 0, -s)
+      if (shape === 'leaf') {
+        ctx.quadraticCurveTo(s * 0.95, -s * 0.1, 0, s * 1.1)
+        ctx.quadraticCurveTo(-s * 0.95, -s * 0.1, 0, -s)
+      } else {
+        ctx.quadraticCurveTo(s * 1.1, -s * 0.6, s * 0.25, s)
+        ctx.lineTo(0, s * 0.7)
+        ctx.lineTo(-s * 0.25, s)
+        ctx.quadraticCurveTo(-s * 1.1, -s * 0.6, 0, -s)
+      }
       ctx.fill()
       ctx.restore()
     }
@@ -246,7 +256,7 @@ export function Petals() {
       cancelAnimationFrame(raf)
       removeEventListener('resize', resize)
     }
-  }, [])
+  }, [country, theme])
   return <canvas className="petals" ref={ref} aria-hidden="true" />
 }
 
@@ -333,20 +343,16 @@ export function SheetFrame({ children, onClose }: { children: ReactNode; onClose
   )
 }
 
-export function Toast({ withTray }: { withTray: boolean }) {
+export function Toast() {
   const toast = useApp((s) => s.toast)
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const undo = useApp((s) => s.undo)
   if (!toast) return null
   return (
-    <div
-      className={`toast${toast.warn ? ' warn' : ''}${withTray ? ' with-tray' : ''}`}
-      role="status"
-      key={toast.id}
-    >
+    <div className={`toast${toast.warn ? ' warn' : ''}`} role="status" key={toast.id}>
       <p>{toast.text}</p>
-      {toast.undo && canUndo ? (
-        <button type="button" onClick={undo}>
+      {toast.action || (toast.undo && canUndo) ? (
+        <button type="button" onClick={toast.action ?? undo}>
           Desfazer
         </button>
       ) : null}
@@ -399,8 +405,8 @@ export function Celebrations() {
             return (
               <button key={c.id} type="button" className="levelup" onClick={() => dismiss(c.id)}>
                 <span className="box" role="status">
-                  <b>PÁGINA COMPLETA</b>
-                  <span>{c.name}: todas as figurinhas coladas</span>
+                  <b>TUDO COM DIA!</b>
+                  <span>{c.name}: todas as atividades marcadas num dia</span>
                 </span>
               </button>
             )

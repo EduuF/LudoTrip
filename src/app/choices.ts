@@ -38,7 +38,7 @@ export function windowText(it: Itinerary, stopId: ID): string {
   return `${ddmm(w.start)} a ${ddmm(w.end)}`
 }
 
-/** Linhas da prévia de um comando, no presente ("Gion volta para a mochila."). */
+/** Linhas da prévia de um comando, no presente ("Gion fica sem dia."). */
 export function previewLines(cmd: Command, d = doc()): { ok: boolean; lines: string[] } {
   const p = preview(d.itinerary, cmd)
   if (!p.ok) return { ok: false, lines: [describeError(p.error!, d.itinerary, names(d)) ?? 'Não muda nada.'] }
@@ -109,7 +109,7 @@ const donorLabel = (it: Itinerary, s: Stop) =>
 // ---------------------------------------------------------------------------
 
 /** Marca como reservada a hospedagem das noites ainda descobertas de um destino (com carimbo). */
-export function markLodging(stopId: ID) {
+export function markLodging(stopId: ID, title?: string, status: 'planned' | 'booked' = 'booked') {
   const d = doc()
   const it = d.itinerary
   const s = it.stops.find((x) => x.id === stopId)
@@ -123,14 +123,14 @@ export function markLodging(stopId: ID) {
       booking: {
         id: uid('h'),
         kind: 'lodging',
-        title: `Hospedagem em ${name}`,
+        title: title?.trim() || `Hospedagem em ${name}`,
         destinationId: s.destinationId,
         checkin: addDays(w.start, gap.missing[0]!.ordinal),
         checkout: addDays(w.start, gap.missing[gap.missing.length - 1]!.ordinal + 1),
-        status: 'booked',
+        status,
       },
     },
-    { stamp: true },
+    { stamp: status === 'booked' },
   )
 }
 
@@ -175,7 +175,7 @@ export function minusNight(stopId: ID) {
       options: [
         {
           ...cmdOpt('Tirar do roteiro', { type: 'removeStop', stopId }),
-          detail: ['A noite fica em aberto, com as mesmas datas. A mochila dele fica guardada.'],
+          detail: ['A noite fica em aberto, com as mesmas datas. As atividades ficam guardadas.'],
         },
       ],
     })
@@ -232,7 +232,7 @@ export function removeDayChoice(stopId: ID, ordinal: number) {
   S().openSheet({
     kind: 'choice',
     title: `Remover ${day?.label ?? 'este dia'}?`,
-    sub: 'As figurinhas desse dia voltam para o álbum.',
+    sub: 'As atividades desse dia ficam sem dia (continuam na lista).',
     options: vias.map(([label, via], k) =>
       cmdOpt(label, { type: 'removeDay', stopId, ordinal, via }, { main: k === 0 }),
     ),
@@ -245,9 +245,9 @@ export function swapDayChoice(stopId: ID, ordinal: number) {
   S().openSheet({
     kind: 'choice',
     title: 'Trocar com qual dia?',
-    sub: 'As figurinhas trocam de dia; as datas ficam.',
+    sub: 'As atividades trocam de dia; as datas ficam.',
     options: ds.map((d) =>
-      cmdOpt(`${d.label} · ${plural(d.visits.length, 'figurinha', 'figurinhas')}`, {
+      cmdOpt(`${d.label} · ${plural(d.visits.length, 'atividade', 'atividades')}`, {
         type: 'swapDays',
         stopId,
         a: ordinal,
@@ -387,4 +387,15 @@ export function endOptions(target: ISODate): Opt[] {
         ),
       )
   return []
+}
+
+/** "+ Adicionar destino": a escolha do destino novo para o fim da viagem (cartão, cabeçalho do roteiro). */
+export function addDestinationAtEnd() {
+  const st = S()
+  const count = st.doc?.itinerary.stops.length ?? 0
+  st.openSheet({
+    kind: 'dest',
+    title: 'Que destino entra no fim da viagem?',
+    pick: (destId) => S().openSheet({ kind: 'insert', index: count, destId, nights: 1 }),
+  })
 }

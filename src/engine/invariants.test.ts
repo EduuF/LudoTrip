@@ -192,7 +192,7 @@ function check(before: Itinerary, after: Itinerary, cmd: Command, returned: ID[]
   const legIds = [...after.legs, ...after.archivedLegs].map((l) => l.id)
   expect(new Set(legIds).size, where).toBe(legIds.length)
   for (const l of after.archivedLegs) expect(l.aboard, where).toEqual([])
-  // 4. Nenhuma visita some: ou continua, ou voltou para a mochila, ou foi tirada de propósito.
+  // 4. Nenhuma visita some: ou continua, ou ficou sem dia, ou foi tirada de propósito.
   const ids = (it: Itinerary) => allVisits(it).map((v) => v.visit.id)
   const a = ids(after)
   expect(new Set(a).size, where).toBe(a.length)

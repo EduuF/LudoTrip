@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as RPointerEvent } from 'react'
 import {
+  addDays,
   bookingStatus,
   dayLabel,
   days as allDays,
@@ -13,17 +14,26 @@ import {
   placeStates,
   plural,
   stopWindows,
-  addDays,
 } from '../engine'
 import type { Booking, Day, DayRef, ID, Leg, LegMode, Stop } from '../engine'
 import { uid, useApp } from '../app/store'
 import type { DocAction } from '../app/doc'
-import { cityName, markLodging, minusNight, plusNight, removeDayChoice, swapDayChoice } from '../app/choices'
+import {
+  addDestinationAtEnd,
+  cityName,
+  minusNight,
+  plusNight,
+  removeDayChoice,
+  shiftCity,
+  swapDayChoice,
+} from '../app/choices'
 import { colorOf, sealOf } from './colors'
+import { RARITY } from './rarity'
 import { Seal, Stepper, Vehicle } from './kit'
 
-// Roteiro (spec §17.4): a lista na ordem da viagem (destinos, trechos e dias), "+ Adicionar destino"
-// e a bandeja de figurinhas. A Trilha e o cartão do dia ficam acima, na tela do Mapa.
+// Roteiro (spec §17.4): a lista na ordem da viagem. Cada destino mostra os dias e as atividades à vista,
+// com "+ Atividade" em cada dia, onde se dorme, as atividades ainda sem dia (arrastáveis até o dia) e um
+// "⋯" com o raro (ordem, chegar antes ou depois, tirar). Entre os destinos, o trecho com a passagem.
 
 const NEEDS_TICKET = new Set<LegMode>(['flight', 'train', 'bus', 'boat'])
 const SLOT_LABEL = { morning: 'manhã', afternoon: 'tarde', evening: 'noite', any: '' } as const
@@ -55,159 +65,161 @@ export function RoteiroList() {
 
 /** "… Adicionar destino … Volta": mais um lugar antes de voltar para casa. */
 function AddDestCard() {
-  const openSheet = useApp((s) => s.openSheet)
-  const count = useApp((s) => s.doc!.itinerary.stops.length)
   return (
-    <button
-      type="button"
-      className="card add-dest"
-      onClick={() =>
-        openSheet({
-          kind: 'dest',
-          title: 'Que destino entra no fim da viagem?',
-          pick: (destId) => openSheet({ kind: 'insert', index: count, destId, nights: 1 }),
-        })
-      }
-    >
-      <b>+ Adicionar destino</b>
-      <span>Mais um lugar antes da volta. Para pôr no meio, use "+ Parar no caminho" num trecho.</span>
+    <button type="button" className="card add-dest" onClick={addDestinationAtEnd}>
+      <span className="plus" aria-hidden="true">
+        +
+      </span>
+      <span className="txt">
+        <b>Adicionar destino</b>
+        <span>Mais um lugar antes da volta. Para pôr no meio, use "+ Parar no caminho" num trecho.</span>
+      </span>
     </button>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Cidade
+// Destino
 // ---------------------------------------------------------------------------
 
 function CityCard({ stop, index, days }: { stop: Stop; index: number; days: Day[] }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
-  const openStop = useApp((s) => s.openStop)
-  const setOpenStop = useApp((s) => s.setOpenStop)
   const it = doc.itinerary
   const dest = doc.destinations.find((d) => d.id === stop.destinationId)
   const w = stopWindows(it).find((x) => x.stopId === stop.id)!
   const n = stop.days.length
-  const open = openStop === stop.id
   const dates =
     w.start && w.end
       ? `${dayLabel(w.start)} → ${dayLabel(w.end)}`
       : `dia ${w.startIndex + 1} → dia ${w.startIndex + n + 1}`
   const color = colorOf(doc.destinations, stop.destinationId)
+  const name = dest?.name ?? 'Destino'
 
+  // Onde se dorme: hospedagens desta parada e o que ainda falta.
   const lodgings = doc.bookings.filter(
     (b): b is Extract<Booking, { kind: 'lodging' }> =>
-      b.kind === 'lodging' && !b.archived && b.destinationId === stop.destinationId,
+      b.kind === 'lodging' && !b.archived && bookingStatus(b, it).stopId === stop.id,
   )
   const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === stop.id)
+  const openLodging = () => openSheet({ kind: 'lodging', stopId: stop.id })
   const pills: JSX.Element[] = []
   if (stop.lodging === 'friends' || stop.lodging === 'onboard')
     pills.push(
       <span key="l" className="pill">
-        {stop.lodging === 'friends' ? 'casa de amigos' : 'a bordo'}
+        宿 {stop.lodging === 'friends' ? 'casa de amigos' : 'a bordo'}
       </span>,
     )
   else {
-    for (const b of lodgings) {
-      const st = bookingStatus(b, it)
-      if (st.stopId !== stop.id) continue
+    for (const b of lodgings)
       pills.push(
         <button
           key={b.id}
           type="button"
-          className={`pill ${st.state === 'ok' ? 'ok' : 'bad'}`}
-          onClick={() => act({ type: 'removeBooking', id: b.id })}
-          aria-label={`${b.title}. Toque para desmarcar`}
+          className={`pill ${b.status === 'booked' ? 'ok' : ''}`}
+          onClick={openLodging}
+          aria-label={`${b.title}. Toque para mudar`}
         >
-          {b.title} · {ddmm(b.checkin)} a {ddmm(b.checkout)} {st.state === 'ok' ? '済' : '· fora das datas'}
+          宿 {b.title} {b.status === 'booked' ? '済' : '· ainda não reservada'}
         </button>,
       )
-    }
-    if (gap && w.start && w.end) {
+    if (gap && w.start && w.end)
       pills.push(
-        <button key="gap" type="button" className="pill warn" onClick={() => markLodging(stop.id)}>
-          {gap.partial
-            ? `${gap.missing.map((m) => m.label).join(', ')} sem hospedagem`
-            : 'Hospedagem: falta reservar'}{' '}
-          · marcar reservada
+        <button key="gap" type="button" className="pill warn" onClick={openLodging}>
+          宿 {gap.partial ? `${gap.missing.map((m) => m.label).join(', ')}: ` : ''}onde vocês dormem?
         </button>,
       )
-    }
   }
+
+  const menu = () =>
+    openSheet({
+      kind: 'choice',
+      title: `${name} · ${plural(n, 'noite', 'noites')}`,
+      options: [
+        {
+          label: 'Mudar a ordem',
+          detail: ['Escolha depois de qual destino ele vem.'],
+          run: () => openSheet({ kind: 'order', stopId: stop.id }),
+        },
+        ...(index > 0 && index < it.stops.length - 1
+          ? [
+              {
+                label: 'Chegar 1 dia antes',
+                detail: ['Mesmas noites; o anterior cede um dia.'],
+                run: () => shiftCity(stop.id, -1),
+              },
+              {
+                label: 'Chegar 1 dia depois',
+                detail: ['Mesmas noites; o anterior ganha um dia.'],
+                run: () => shiftCity(stop.id, 1),
+              },
+            ]
+          : []),
+        {
+          label: 'Tirar do roteiro',
+          detail: ['As noites ficam em aberto, com as mesmas datas. As atividades ficam guardadas.'],
+          run: () =>
+            act({ type: 'engine', command: { type: 'removeStop', stopId: stop.id } }, { burst: true }),
+        },
+      ],
+    })
 
   return (
     <article className="card" id={`c-${stop.id}`} style={{ ['--c' as string]: color } as CSSProperties}>
       <div className="c-head">
         <Seal text={sealOf(dest)} color={color} />
         <div className="c-title">
-          <h3>{dest?.name}</h3>
+          <h3>{name}</h3>
           <div className="dates">{dates}</div>
-          {stop.tentative ? (
-            <div className="note">noites incertas: as datas depois ficam estimadas</div>
-          ) : null}
         </div>
+        <button type="button" className="icon-btn" aria-label={`Mais opções de ${name}`} onClick={menu}>
+          ⋯
+        </button>
       </div>
       <div className="row">
         <Stepper
           value={n}
           min={0}
-          label={`Noites em ${dest?.name}`}
+          label={`Noites em ${name}`}
           onMinus={() => minusNight(stop.id)}
           onPlus={() => plusNight(stop.id)}
         />
         <span className="spacer" />
-        <button
-          type="button"
-          className="btn small"
-          onClick={() => openSheet({ kind: 'city', stopId: stop.id })}
-        >
-          Mais ações
-        </button>
+        {pills}
       </div>
-      {pills.length ? <div className="pills">{pills}</div> : null}
-      <button
-        type="button"
-        className="link"
-        aria-expanded={open}
-        onClick={() => setOpenStop(open ? null : stop.id)}
-        style={{ alignSelf: 'flex-start' }}
-      >
-        {open ? 'Fechar os dias' : `Planejar os dias (${n}) e colar figurinhas`}
-      </button>
-      {open ? (
-        <div className="days">
-          {days
-            .filter((d) => d.stopId === stop.id && d.kind === 'stop')
-            .map((d) => (
-              <DayRow key={d.index} day={d} menu={() => dayMenu(stop, d)} />
-            ))}
-          {index === it.stops.length - 1
-            ? days
-                .filter((d) => d.kind === 'departure')
-                .map((d) => <DayRow key="dep" day={d} title="dia da volta" />)
-            : null}
-        </div>
-      ) : null}
+      <div className="days">
+        {days
+          .filter((d) => d.stopId === stop.id && d.kind === 'stop')
+          .map((d) => (
+            <DayRow key={d.index} day={d} destId={stop.destinationId} menu={() => dayMenu(d)} />
+          ))}
+        {index === it.stops.length - 1
+          ? days
+              .filter((d) => d.kind === 'departure')
+              .map((d) => <DayRow key="dep" day={d} destId={stop.destinationId} title="dia da volta" />)
+          : null}
+      </div>
+      <LooseRow destId={stop.destinationId!} />
     </article>
   )
 
-  function dayMenu(s: Stop, d: Day) {
+  function dayMenu(d: Day) {
     openSheet({
       kind: 'choice',
       title: d.label,
       options: [
         {
-          label: 'Remover este dia',
+          label: 'Tirar esta noite',
           detail: ['Depois você escolhe para onde vai a noite.'],
-          run: () => removeDayChoice(s.id, d.ordinal),
+          run: () => removeDayChoice(stop.id, d.ordinal),
         },
-        ...(s.days.length > 1
+        ...(stop.days.length > 1
           ? [
               {
                 label: 'Trocar com outro dia',
-                detail: ['As figurinhas trocam de dia; as datas ficam.'],
-                run: () => swapDayChoice(s.id, d.ordinal),
+                detail: ['As atividades trocam de dia; as datas ficam.'],
+                run: () => swapDayChoice(stop.id, d.ordinal),
               },
             ]
           : []),
@@ -216,13 +228,17 @@ function CityCard({ stop, index, days }: { stop: Stop; index: number; days: Day[
   }
 }
 
+/** Um dia: as atividades por turno e "+ Atividade". */
 export function DayRow({
   day,
+  destId,
   menu,
   title,
   compact,
 }: {
   day: Day
+  /** Destino das atividades novas deste dia. */
+  destId: ID | null
   menu?: () => void
   title?: string
   /** Sem a coluna da data (o cartão do dia já a mostra). */
@@ -255,14 +271,20 @@ export function DayRow({
               onClick={() => openSheet({ kind: 'visit', visitId: v.id })}
             >
               {SLOT_LABEL[v.slot] ? <span className="slot">{SLOT_LABEL[v.slot]}</span> : null}
-              {p?.name ?? 'Figurinha'}
+              {p?.name ?? 'Atividade'}
               {v.visited ? ' 済' : ''}
             </button>
           )
         })}
-        {day.ref ? (
-          <button type="button" className="mini add" onClick={() => pickStickerFor(day)}>
-            + colar
+        {day.ref && destId ? (
+          <button
+            type="button"
+            className="mini add"
+            onClick={() =>
+              openSheet({ kind: 'newActivity', destId, day: day.ref as DayRef, dayLabel: day.label })
+            }
+          >
+            + Atividade
           </button>
         ) : null}
       </div>
@@ -275,38 +297,163 @@ export function DayRow({
       )}
     </div>
   )
+}
 
-  function pickStickerFor(d: Day) {
-    const st = useApp.getState()
-    const dd = st.doc!
-    const states = placeStates(dd.itinerary, dd.places)
-    const here = d.destinationId
-    const sorted = [...dd.places].sort(
-      (a, b) =>
-        Number(!!states.get(a.id)?.days.length) - Number(!!states.get(b.id)?.days.length) ||
-        Number(b.destinationId === here) - Number(a.destinationId === here),
-    )
-    openSheet({
-      kind: 'choice',
-      title: `Colar qual figurinha em ${d.label}?`,
-      options: sorted.map((p) => {
-        const s = states.get(p.id)
-        const where = dd.destinations.find((x) => x.id === p.destinationId)?.name ?? ''
-        return {
-          label: p.name,
-          detail: [
-            `${where}${p.destinationId !== here ? ' · bate-volta' : ''} · ${p.rarity === 'must' ? 'Imperdível' : p.rarity === 'want' ? 'Quero' : 'Se der'}${s?.days.length ? ` · já em ${s.days.map((x) => x.label).join(', ')}` : ''}`,
-          ],
-          run: () =>
-            st.act({
-              type: 'engine',
-              command: { type: 'scheduleVisit', visitId: uid('v'), placeId: p.id, day: d.ref! },
-            }),
-          main: !s?.days.length && p.destinationId === here,
-        }
-      }),
-    })
+// ---------------------------------------------------------------------------
+// Atividades ainda sem dia, dentro do cartão (arrastar até o dia, ou tocar e escolher o dia)
+// ---------------------------------------------------------------------------
+
+function LooseRow({ destId }: { destId: ID }) {
+  const doc = useApp((s) => s.doc)!
+  const act = useApp((s) => s.act)
+  const openSheet = useApp((s) => s.openSheet)
+  const it = doc.itinerary
+  const states = placeStates(it, doc.places)
+  const inTrip = new Set(it.stops.map((s) => s.destinationId))
+  const loose = (id: ID) => doc.places.filter((p) => p.destinationId === id && !states.get(p.id)?.days.length)
+  const mine = loose(destId)
+  const nearby = doc.destinations.filter((d) => !inTrip.has(d.id)).flatMap((d) => loose(d.id))
+
+  const [lift, setLift] = useState<{ placeId: ID; x: number; y: number } | null>(null)
+  const liftRef = useRef(lift)
+  liftRef.current = lift
+  const pend = useRef<{ placeId: ID; x: number; y: number; t: number; el: HTMLElement; pid: number } | null>(
+    null,
+  )
+  const hover = useRef<HTMLElement | null>(null)
+  const edgeY = useRef<number | null>(null)
+
+  useEffect(() => {
+    const block = (e: TouchEvent) => {
+      if (liftRef.current) e.preventDefault()
+    }
+    addEventListener('touchmove', block, { passive: false })
+    let raf = 0
+    const loop = () => {
+      const y = edgeY.current
+      if (y !== null && liftRef.current) {
+        if (y < 120) scrollBy(0, -10)
+        else if (y > innerHeight - 160) scrollBy(0, 10)
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => {
+      removeEventListener('touchmove', block)
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  const setHover = (el: HTMLElement | null) => {
+    if (hover.current === el) return
+    hover.current?.classList.remove('drop')
+    el?.classList.add('drop')
+    hover.current = el
   }
+  const down = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
+    const el = e.currentTarget
+    const pid = e.pointerId
+    const x = e.clientX
+    const y = e.clientY
+    const t = window.setTimeout(() => {
+      try {
+        el.setPointerCapture(pid)
+      } catch {
+        /* o dedo já saiu */
+      }
+      navigator.vibrate?.(12)
+      liftRef.current = { placeId, x, y }
+      setLift({ placeId, x, y })
+    }, 260)
+    pend.current = { placeId, x, y, t, el, pid }
+  }
+  const move = (e: RPointerEvent<HTMLElement>) => {
+    const p = pend.current
+    if (p && !liftRef.current && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 9) {
+      clearTimeout(p.t)
+      pend.current = null
+    }
+    if (!liftRef.current) return
+    edgeY.current = e.clientY
+    setLift({ ...liftRef.current, x: e.clientX, y: e.clientY })
+    const under =
+      document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-dayref]') ?? null
+    setHover(under)
+  }
+  const up = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
+    const p = pend.current
+    if (p) clearTimeout(p.t)
+    pend.current = null
+    edgeY.current = null
+    const l = liftRef.current
+    if (l) {
+      const target = hover.current?.dataset.dayref
+      setHover(null)
+      liftRef.current = null
+      setLift(null)
+      if (target)
+        act({
+          type: 'engine',
+          command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: JSON.parse(target) as DayRef },
+        })
+      return
+    }
+    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= 9) {
+      const name = doc.places.find((x) => x.id === placeId)?.name ?? 'atividade'
+      openSheet({
+        kind: 'days',
+        title: `Pôr ${name} em qual dia?`,
+        prefer: destId,
+        pick: (ref) =>
+          act({ type: 'engine', command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: ref } }),
+      })
+    }
+  }
+  const cancel = () => {
+    if (pend.current) clearTimeout(pend.current.t)
+    pend.current = null
+    edgeY.current = null
+    setHover(null)
+    liftRef.current = null
+    setLift(null)
+  }
+
+  if (!mine.length && !nearby.length) return null
+  const chip = (placeId: ID, tag?: string) => {
+    const p = doc.places.find((x) => x.id === placeId)!
+    return (
+      <button
+        key={p.id}
+        type="button"
+        className={`mini r-${p.rarity} loose${lift?.placeId === p.id ? ' lifted' : ''}`}
+        onPointerDown={(e) => down(e, p.id)}
+        onPointerMove={move}
+        onPointerUp={(e) => up(e, p.id)}
+        onPointerCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-label={`${p.name}: toque para escolher o dia, ou segure e arraste até o dia`}
+      >
+        <span className="gems">{RARITY[p.rarity].gems}</span>
+        {p.name}
+        {tag ? <span className="slot">{tag}</span> : null}
+      </button>
+    )
+  }
+  const lifted = lift ? doc.places.find((p) => p.id === lift.placeId) : null
+  return (
+    <div className="loose-row">
+      <span className="loose-t">SEM DIA AINDA · segure e arraste até o dia, ou toque</span>
+      <div className="slots">
+        {mine.map((p) => chip(p.id))}
+        {nearby.map((p) => chip(p.id, 'bate-volta'))}
+      </div>
+      {lift && lifted ? (
+        <div className={`drag-ghost mini r-${lifted.rarity}`} style={{ left: lift.x, top: lift.y }}>
+          {lifted.name}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -405,7 +552,7 @@ function OpenCard({ stop, index }: { stop: Stop; index: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Trecho (ponte entre cidades)
+// Trecho (ponte entre destinos)
 // ---------------------------------------------------------------------------
 
 function fmtMinutes(m: number): string {
@@ -550,7 +697,7 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
         </div>
         {ticket}
         {legDays.map((d) => (
-          <DayRow key={d.index} day={d} title="noite a bordo" />
+          <DayRow key={d.index} day={d} destId={to === 'home' ? null : to} title="noite a bordo" />
         ))}
         <div className="row">
           <button type="button" className="link" onClick={() => openSheet({ kind: 'leg', legId: leg.id })}>
@@ -579,181 +726,6 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
           ) : null}
         </div>
       </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Bandeja de figurinhas soltas (arrastar até o dia, ou tocar e escolher o dia)
-// ---------------------------------------------------------------------------
-
-export function Tray({ stop }: { stop: Stop }) {
-  const doc = useApp((s) => s.doc)!
-  const act = useApp((s) => s.act)
-  const openSheet = useApp((s) => s.openSheet)
-  const it = doc.itinerary
-  const states = placeStates(it, doc.places)
-  const inTrip = new Set(it.stops.map((s) => s.destinationId))
-  const loose = (destId: ID) =>
-    doc.places.filter((p) => p.destinationId === destId && !states.get(p.id)?.days.length)
-  const mine = loose(stop.destinationId!)
-  const nearby = doc.destinations.filter((d) => !inTrip.has(d.id)).flatMap((d) => loose(d.id))
-  const dest = doc.destinations.find((d) => d.id === stop.destinationId)
-
-  const [lift, setLift] = useState<{ placeId: ID; x: number; y: number } | null>(null)
-  const liftRef = useRef(lift)
-  liftRef.current = lift
-  const pend = useRef<{ placeId: ID; x: number; y: number; t: number; el: HTMLElement; pid: number } | null>(
-    null,
-  )
-  const hover = useRef<HTMLElement | null>(null)
-  const edgeY = useRef<number | null>(null)
-
-  useEffect(() => {
-    const block = (e: TouchEvent) => {
-      if (liftRef.current) e.preventDefault()
-    }
-    addEventListener('touchmove', block, { passive: false })
-    let raf = 0
-    const loop = () => {
-      const y = edgeY.current
-      if (y !== null && liftRef.current) {
-        if (y < 120) scrollBy(0, -10)
-        else if (y > innerHeight - 230) scrollBy(0, 10)
-      }
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => {
-      removeEventListener('touchmove', block)
-      cancelAnimationFrame(raf)
-    }
-  }, [])
-
-  const setHover = (el: HTMLElement | null) => {
-    if (hover.current === el) return
-    hover.current?.classList.remove('drop')
-    el?.classList.add('drop')
-    hover.current = el
-  }
-
-  const down = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
-    const el = e.currentTarget
-    const pid = e.pointerId
-    const x = e.clientX
-    const y = e.clientY
-    const t = window.setTimeout(() => {
-      try {
-        el.setPointerCapture(pid)
-      } catch {
-        /* o dedo já saiu */
-      }
-      navigator.vibrate?.(12)
-      setLift({ placeId, x, y })
-    }, 260)
-    pend.current = { placeId, x, y, t, el, pid }
-  }
-  const move = (e: RPointerEvent<HTMLElement>) => {
-    const p = pend.current
-    if (p && !liftRef.current && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 9) {
-      clearTimeout(p.t)
-      pend.current = null
-    }
-    if (!liftRef.current) return
-    edgeY.current = e.clientY
-    setLift({ ...liftRef.current, x: e.clientX, y: e.clientY })
-    const under =
-      document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-dayref]') ?? null
-    setHover(under)
-  }
-  const up = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
-    const p = pend.current
-    if (p) clearTimeout(p.t)
-    pend.current = null
-    edgeY.current = null
-    const l = liftRef.current
-    if (l) {
-      const target = hover.current?.dataset.dayref
-      setHover(null)
-      setLift(null)
-      if (target)
-        act({
-          type: 'engine',
-          command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: JSON.parse(target) as DayRef },
-        })
-      return
-    }
-    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= 9) {
-      const name = doc.places.find((x) => x.id === placeId)?.name ?? 'figurinha'
-      openSheet({
-        kind: 'days',
-        title: `Colar ${name} em qual dia?`,
-        prefer: stop.destinationId,
-        pick: (ref) =>
-          act({ type: 'engine', command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: ref } }),
-      })
-    }
-  }
-  const cancel = () => {
-    if (pend.current) clearTimeout(pend.current.t)
-    pend.current = null
-    edgeY.current = null
-    setHover(null)
-    setLift(null)
-  }
-
-  const sticker = (placeId: ID) => {
-    const p = doc.places.find((x) => x.id === placeId)!
-    return (
-      <button
-        key={p.id}
-        type="button"
-        className={`sticker r-${p.rarity} loose${lift?.placeId === p.id ? ' lifted' : ''}`}
-        onPointerDown={(e) => down(e, p.id)}
-        onPointerMove={move}
-        onPointerUp={(e) => up(e, p.id)}
-        onPointerCancel={cancel}
-        onContextMenu={(e) => e.preventDefault()}
-        aria-label={`${p.name}: toque para escolher o dia, ou segure e arraste até o dia`}
-      >
-        <span className="gems">{p.rarity === 'must' ? '✦✦✦' : p.rarity === 'want' ? '✦✦' : '✦'}</span>
-        <span className="nm">{p.name}</span>
-      </button>
-    )
-  }
-
-  const lifted = lift ? doc.places.find((p) => p.id === lift.placeId) : null
-  return (
-    <div className="tray" aria-label="Figurinhas soltas">
-      <div className="tray-in">
-        <div className="tray-t">
-          <span>
-            SOLTAS · {dest?.name?.toUpperCase()} {mine.length}
-          </span>
-          <span className="spacer" />
-          <span>arraste até o dia</span>
-        </div>
-        <div className="tray-row">
-          {mine.map((p) => sticker(p.id))}
-          {nearby.length ? (
-            <span className="tray-t" style={{ alignSelf: 'center' }}>
-              BATE-VOLTA
-            </span>
-          ) : null}
-          {nearby.map((p) => sticker(p.id))}
-          {!mine.length && !nearby.length ? (
-            <span className="note">Todas coladas. Crie mais na Mochila.</span>
-          ) : null}
-        </div>
-      </div>
-      {lift && lifted ? (
-        <div
-          className={`drag-ghost sticker r-${lifted.rarity}`}
-          style={{ left: lift.x, top: lift.y, width: 96 }}
-        >
-          <span className="nm">{lifted.name}</span>
-        </div>
-      ) : null}
     </div>
   )
 }

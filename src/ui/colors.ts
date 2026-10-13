@@ -11,7 +11,7 @@ const PALETTE = [
   '#c77b3a',
 ]
 
-/** Cor fixa de cada destino (a mesma na trilha, nos cartões, no álbum e no tabuleiro). */
+/** Cor fixa de cada destino (a mesma na trilha, nos cartões, na lista de atividades e no mapa). */
 export function colorOf(destinations: Destination[], destId: ID | null | undefined): string {
   const i = destinations.findIndex((d) => d.id === destId)
   return i < 0 ? 'var(--ink-soft)' : PALETTE[i % PALETTE.length]!

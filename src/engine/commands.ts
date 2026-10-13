@@ -52,6 +52,7 @@ const HANDLERS = {
   setPace: misc.setPace,
   setDefaultMode: misc.setDefaultMode,
   setTravelers: misc.setTravelers,
+  setHome: misc.setHome,
 } satisfies Record<string, Handler<never>>
 
 type Handlers = typeof HANDLERS

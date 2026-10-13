@@ -9,17 +9,17 @@ const STEPS = [
   {
     target: '.mappanel',
     title: 'O mapa da viagem',
-    text: 'Toque numa fase para entrar na cidade e ver os lugares de cada dia. Arraste e dê zoom à vontade; "▶ Ver a viagem" passa os dias sozinho.',
+    text: 'Toque num destino para entrar na cidade e ver as atividades de cada dia. Arraste e dê zoom à vontade; "▶ Ver a viagem" passa os dias sozinho.',
   },
   {
     target: '.trilha',
     title: 'A trilha dos dias',
-    text: 'Arraste ◆ para passar noites entre destinos. Segure um destino para mudar a data ou a ordem. Arraste pelos dias e o grupo viaja no mapa.',
+    text: 'Arraste ◆ para passar noites entre destinos. Segure um destino (meio segundo) para arrastar: muda a data, a ordem, ou vai para a lixeira. Arraste pelos dias e o grupo viaja.',
   },
   {
     target: '.daycard',
     title: 'O cartão do dia',
-    text: 'Onde vocês estão, onde dormem e as figurinhas do dia. Role para baixo: o roteiro inteiro, com passagens e hospedagens. Tudo tem Desfazer.',
+    text: 'Onde vocês estão, onde dormem e as atividades do dia, com "+ Atividade". Role para baixo: o roteiro inteiro, com passagens e hospedagens. Tudo tem Desfazer.',
   },
 ]
 

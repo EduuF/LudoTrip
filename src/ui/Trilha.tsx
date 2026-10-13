@@ -24,7 +24,8 @@ import { PixelTrash, Vehicle } from './kit'
 // A Trilha (spec §17.3): régua de datas, blocos por cidade, pegadores, levantar e arrastar.
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
-const LIFT_MS = 320
+// Segurar ~450 ms (iOS e Material levantam entre 400 e 500 ms); o bloco "infla" enquanto espera.
+const LIFT_MS = 450
 const MOVE_TOLERANCE = 9
 
 type Drag =
@@ -58,6 +59,7 @@ export function Trilha() {
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const say = useApp((s) => s.say)
+  const focusOn = useApp((s) => s.focusOn)
   const cursor = useApp((s) => s.cursorDay)
   const setCursorDay = useApp((s) => s.setCursorDay)
   const it = doc.itinerary
@@ -70,6 +72,7 @@ export function Trilha() {
   const [zoom, setZoom] = useState<'dias' | 'tudo'>(total <= 9 ? 'tudo' : 'dias')
   const [drag, setDrag] = useState<Drag | null>(null)
   const [shake, setShake] = useState<ID | null>(null)
+  const [charging, setCharging] = useState<ID | null>(null)
   const dragRef = useRef<Drag | null>(null)
   const pending = useRef<Pending | null>(null)
   dragRef.current = drag
@@ -201,7 +204,7 @@ export function Trilha() {
   const blockText = useCallback(
     (stopId: ID, intent: BlockIntent, trash: boolean): { text: string; bad?: boolean } => {
       const name = cityName(stopId)
-      if (trash) return { text: `Soltar aqui tira ${name} do roteiro. A mochila dela fica guardada.` }
+      if (trash) return { text: `Soltar aqui tira ${name} do roteiro. As atividades ficam guardadas.` }
       if (intent.kind === 'shift') {
         const lines = previewLines({ type: 'shiftStop', stopId, by: intent.by })
         const n = it.stops.find((s) => s.id === stopId)?.days.length ?? 0
@@ -324,6 +327,7 @@ export function Trilha() {
   const cancelPending = () => {
     if (pending.current) clearTimeout(pending.current.timer)
     pending.current = null
+    setCharging(null)
   }
 
   const onLiftDown = (e: RPointerEvent<HTMLElement>, kind: 'block' | 'shelf', id: ID) => {
@@ -340,10 +344,12 @@ export function Trilha() {
         /* o dedo já saiu */
       }
       navigator.vibrate?.(12)
+      setCharging(null)
+      let d: Drag
       if (kind === 'block') {
         const grabDay = dayAt(x)
         const intent = blockIntent(it, id, 0, grabDay)
-        setDrag({
+        d = {
           kind: 'block',
           stopId: id,
           startX: x,
@@ -352,12 +358,14 @@ export function Trilha() {
           intent,
           trash: false,
           ...blockText(id, intent, false),
-        })
-      } else {
-        setDrag({ kind: 'shelf', destId: id, x, y, intent: null, text: shelfText(id, null) })
-      }
+        }
+      } else d = { kind: 'shelf', destId: id, x, y, intent: null, text: shelfText(id, null) }
+      // Levantado na hora, antes de o React desenhar: o primeiro movimento do dedo já não rola a página.
+      dragRef.current = d
+      setDrag(d)
     }, LIFT_MS)
     pending.current = { kind, id, pointerId, x, y, timer, el }
+    setCharging(id)
   }
 
   const overTrash = (x: number, y: number) => {
@@ -370,39 +378,41 @@ export function Trilha() {
     return !!r && y >= r.top - 10 && y <= r.top + 140
   }
 
-  const onLiftMove = (e: RPointerEvent<HTMLElement>) => {
+  const liftMove = (x: number, y: number) => {
     const p = pending.current
     const d = dragRef.current
-    if (p && !d && Math.hypot(e.clientX - p.x, e.clientY - p.y) > MOVE_TOLERANCE) cancelPending()
+    if (p && !d && Math.hypot(x - p.x, y - p.y) > MOVE_TOLERANCE) cancelPending()
     if (!d) return
-    edgeX.current = e.clientX
+    edgeX.current = x
     if (d.kind === 'block') {
-      const dx = e.clientX - d.startX
-      const trash = overTrash(e.clientX, e.clientY)
+      const dx = x - d.startX
+      const trash = overTrash(x, y)
       const intent = blockIntent(it, d.stopId, dx / dw, d.grabDay + dx / dw)
       setDrag({ ...d, dx, intent, trash, ...blockText(d.stopId, intent, trash) })
     } else if (d.kind === 'shelf') {
-      const intent = overStrip(e.clientY) ? shelfIntent(it, dayAt(e.clientX)) : null
-      setDrag({ ...d, x: e.clientX, y: e.clientY, intent, text: shelfText(d.destId, intent) })
+      const intent = overStrip(y) ? shelfIntent(it, dayAt(x)) : null
+      setDrag({ ...d, x, y, intent, text: shelfText(d.destId, intent) })
     }
   }
+  const onLiftMove = (e: RPointerEvent<HTMLElement>) => liftMove(e.clientX, e.clientY)
 
-  const onLiftUp = (e: RPointerEvent<HTMLElement>, kind: 'block' | 'shelf', id: ID) => {
+  const liftUp = (x: number, y: number, kind: 'block' | 'shelf', id: ID) => {
     const p = pending.current
     const d = dragRef.current
     cancelPending()
     edgeX.current = null
     if (!d) {
-      // Toque simples: abre as ações em palavras.
-      if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= MOVE_TOLERANCE) {
+      // Toque simples.
+      if (p && Math.hypot(x - p.x, y - p.y) <= MOVE_TOLERANCE) {
         if (kind === 'block') {
-          // Como na v1: tocar num destino leva o cursor de dias para o primeiro dia dele.
+          // Como na v1: o cursor vai ao primeiro dia do destino, e o roteiro rola até o cartão dele.
           setCursorDay(stopStart(id))
-          openSheet({ kind: 'city', stopId: id })
+          focusOn(`c-${id}`, 'mapa')
         } else openSheet({ kind: 'where', destId: id })
       }
       return
     }
+    dragRef.current = null
     setDrag(null)
     if (d.kind === 'block') {
       if (d.trash) {
@@ -451,11 +461,44 @@ export function Trilha() {
       }
     }
   }
+  const onLiftUp = (e: RPointerEvent<HTMLElement>, kind: 'block' | 'shelf', id: ID) =>
+    liftUp(e.clientX, e.clientY, kind, id)
 
-  const onLiftCancel = () => {
+  // No toque, o navegador cancela o ponteiro se achar que o dedo quer rolar. Com algo já levantado,
+  // o arraste não cai: segue pelos eventos de toque do documento até o dedo soltar.
+  const onLiftCancel = (e: RPointerEvent<HTMLElement>) => {
+    const d = dragRef.current
+    if (e.pointerType === 'touch' && d && (d.kind === 'block' || d.kind === 'shelf')) {
+      const kind = d.kind
+      const id = d.kind === 'block' ? d.stopId : d.destId
+      const move = (ev: TouchEvent) => {
+        const t = ev.touches[0]
+        if (!t) return
+        if (ev.cancelable) ev.preventDefault()
+        liftMove(t.clientX, t.clientY)
+      }
+      const end = (ev: TouchEvent) => {
+        removeEventListener('touchmove', move)
+        removeEventListener('touchend', end)
+        removeEventListener('touchcancel', end)
+        const t = ev.changedTouches[0]
+        if (t && ev.type === 'touchend') liftUp(t.clientX, t.clientY, kind, id)
+        else {
+          dragRef.current = null
+          setDrag(null)
+        }
+      }
+      addEventListener('touchmove', move, { passive: false })
+      addEventListener('touchend', end)
+      addEventListener('touchcancel', end)
+      return
+    }
     cancelPending()
     edgeX.current = null
-    if (dragRef.current?.kind === 'block' || dragRef.current?.kind === 'shelf') setDrag(null)
+    if (d?.kind === 'block' || d?.kind === 'shelf') {
+      dragRef.current = null
+      setDrag(null)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -510,8 +553,8 @@ export function Trilha() {
             type="button"
             className="tr-flag"
             style={{ left: 0 }}
-            onClick={() => openSheet({ kind: 'end', date: null })}
-            aria-label="Mudar a ida ou a volta"
+            onClick={() => openSheet({ kind: 'trip' })}
+            aria-label="Ida: mudar as datas"
           >
             {homeLeg ? <Vehicle mode={homeLeg.mode} px={1} /> : null} IDA {it.start ? ddmm(it.start) : ''}
           </button>
@@ -519,8 +562,8 @@ export function Trilha() {
             type="button"
             className="tr-flag end"
             style={{ left: innerW }}
-            onClick={() => openSheet({ kind: 'end', date: null })}
-            aria-label="Mudar a volta"
+            onClick={() => openSheet({ kind: 'trip' })}
+            aria-label="Volta: mudar as datas"
           >
             VOLTA {it.start ? ddmm(addDays(it.start, tl.total)) : ''} {it.lock === 'fixed' ? '🔒' : ''}{' '}
             {backLeg ? <Vehicle mode={backLeg.mode} px={1} /> : null}
@@ -564,6 +607,7 @@ export function Trilha() {
               stop.destinationId ? '' : 'open',
               isLifted ? 'lifted' : '',
               shake === stop.id ? 'shake' : '',
+              charging === stop.id ? 'charging' : '',
               warned.has(stop.id) ? 'warn' : '',
               target ? 'target' : '',
             ]
@@ -578,7 +622,7 @@ export function Trilha() {
                 type="button"
                 className={cls}
                 style={style}
-                aria-label={`${label}. Toque para ações; segure e arraste para mudar a data ou a ordem.`}
+                aria-label={`${label}. Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.`}
                 onPointerDown={(e) => onLiftDown(e, 'block', stop.id)}
                 onPointerMove={onLiftMove}
                 onPointerUp={(e) => onLiftUp(e, 'block', stop.id)}
@@ -590,6 +634,11 @@ export function Trilha() {
                   {w > 64 ? (stop.destinationId ? dest?.name : 'em aberto') : null}
                 </span>
                 <span className="n">{seg.nights}</span>
+                {w >= 56 ? (
+                  <span className="tr-grip" aria-hidden="true">
+                    ⋮⋮
+                  </span>
+                ) : null}
               </button>
             )
           })}
@@ -743,7 +792,7 @@ export function Trilha() {
       </div>
 
       <div className="shelf" aria-label="Destinos: segure e arraste para a trilha">
-        <span className="shelf-t">DESTINOS</span>
+        <span className="shelf-t">ARRASTE UM DESTINO PARA A TRILHA</span>
         {shelf.map((d) => (
           <button
             key={d.id}
@@ -774,13 +823,10 @@ export function Trilha() {
             })
           }
         >
-          + Destino
+          + Adicionar destino
         </button>
       </div>
-      <p className="tr-hint">
-        Arraste ◆ para mudar as noites. Segure um destino para mudar a data, a ordem ou tirar do roteiro.
-        Toque num dia para vê-lo no cartão.
-      </p>
+      <p className="tr-hint">Segure um destino para arrastar · toque para ver os dias · ◆ muda as noites.</p>
 
       {lifted ? (
         <div className={`trash${lifted.trash ? ' hot' : ''}`} ref={trashRef} aria-hidden="true">

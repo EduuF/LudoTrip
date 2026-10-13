@@ -61,7 +61,67 @@ test('criar viagem com um país e "decido no mapa": nasce com noites em aberto e
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
   await expect(page.getByText(/Romênia · 7 noites/)).toBeVisible()
-  await expect(page.getByText(/7 noites em aberto/)).toBeVisible()
+  // As abas ficam montadas (escondidas): getByRole respeita o `hidden`, getByText não.
+  await expect(page.getByRole('heading', { name: '7 noites em aberto' })).toBeVisible()
+})
+
+test('no toque: segurar levanta o destino; arrastar um dia muda a data; soltar na lixeira tira do roteiro', async ({
+  page,
+  context,
+}) => {
+  await abrirJapao(page)
+  const cdp = await context.newCDPSession(page)
+  const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', pts: { x: number; y: number }[]) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts })
+  // "Ver tudo": a viagem inteira cabe na tela (em "Dias", Kyoto fica fora da faixa visível).
+  await page.getByRole('button', { name: 'Ver tudo' }).click()
+  const kyoto = page.getByRole('button', { name: /^Kyoto, 7 noites/ })
+  await expect(kyoto).toBeInViewport()
+  await page.waitForTimeout(300) // os blocos animam a largura (0,18 s)
+  let b = (await kyoto.boundingBox())!
+  let x = b.x + b.width / 2
+  const y = b.y + b.height / 2
+  const dw = (b.width + 3) / 7
+
+  // Segurar 450 ms: o bloco infla e levanta; um dia para a direita = chega 1 dia depois.
+  await touch('touchStart', [{ x, y }])
+  await expect(kyoto).toHaveClass(/charging/)
+  await page.waitForTimeout(600)
+  await expect(kyoto).toHaveClass(/lifted/)
+  for (let i = 1; i <= 6; i++) await touch('touchMove', [{ x: x + (dw * 1.1 * i) / 6, y }])
+  await expect(page.getByRole('status').filter({ hasText: /chega 1 dia depois/ })).toBeVisible()
+  await touch('touchEnd', [])
+  await expect(page.getByText('Kyoto chega 1 dia depois.')).toBeVisible()
+
+  // Soltar na lixeira tira do roteiro (as noites ficam em aberto).
+  await page.waitForTimeout(300)
+  b = (await kyoto.boundingBox())!
+  x = b.x + b.width / 2
+  await touch('touchStart', [{ x, y }])
+  await page.waitForTimeout(600)
+  await expect(kyoto).toHaveClass(/lifted/)
+  const t = (await page.locator('.trash').boundingBox())!
+  const tx = t.x + t.width / 2
+  const ty = t.y + t.height / 2
+  for (let i = 1; i <= 12; i++)
+    await touch('touchMove', [{ x: x + ((tx - x) * i) / 12, y: y + ((ty - y) * i) / 12 }])
+  await expect(page.locator('.trash')).toHaveClass(/hot/)
+  await touch('touchEnd', [])
+  await expect(page.getByText(/Kyoto saiu do roteiro/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /^7 noites em aberto/ })).toBeVisible()
+})
+
+test('"+ Atividade" num dia do roteiro cria a atividade já naquele dia', async ({ page }) => {
+  await abrirJapao(page)
+  const card = page.locator('#c-s8')
+  await card.getByRole('button', { name: '+ Atividade' }).first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Nova atividade em Kyoto')
+  await expect(dialog).toContainText('Entra em sáb 13/04')
+  await dialog.getByLabel('Nome da atividade').fill('Ginkaku-ji')
+  await dialog.getByRole('button', { name: /Quero/ }).click()
+  await expect(page.getByText('Atividade nova: Ginkaku-ji.')).toBeVisible()
+  await expect(card.getByRole('button', { name: /Ginkaku-ji/ })).toBeVisible()
 })
 
 test('passagem: marcar, desmarcar e desfazer, com carimbo e XP', async ({ page }) => {

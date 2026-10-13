@@ -343,6 +343,25 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ---
 
+## M3.1 — Revisão de uso: bugs, a jornada das atividades e clareza
+
+*Resposta aos 9 pontos do retorno do M3 (plano aprovado em `~/.claude/plans/magical-weaving-waffle.md`).*
+
+- [x] **A1** Mapa que sumia em produção: especificidade sobre o CSS do MapLibre, adaptador sem tamanho é descartado, abas montadas e escondidas; e2e com tiles simulados mede o canvas.
+- [x] **A2** Arrastar na trilha no toque: levantado síncrono, 450 ms com o bloco inflando, alça ⋮⋮, continuação por eventos de toque; e2e de toque via CDP.
+- [x] **A3** Viagens: apagar com Desfazer, renomear, abrir um exemplo reaproveita a cópia, migração leve de coordenadas.
+- [x] **B1** "figurinha" → "atividade"; aba Atividades; tutorial e textos.
+- [x] **B2** Cartão do destino: dias à vista com "+ Atividade", "⋯" com o raro, atividades sem dia dentro do cartão; sem "noites incertas".
+- [x] **B3** Tocar na trilha leva ao cartão (sem menu).
+- [x] **B4** Painel "Nova atividade" (sugestões perto do destino, tipo, prioridade, chips sem dia).
+- [x] **B5** Hospedagem com nome e "já reservei".
+- [x] **B6** "Sua viagem" (nome, quem vai, de onde saem, datas) pelo HUD.
+- [x] **C1** "+ Adicionar destino" destacado em todos os lugares.
+- [x] **C2** Modo dia/noite (automático · claro · escuro); tiles e partículas seguem.
+- [x] **C3** Palavras; **C4** contagem compacta no mapa e partículas por destino; **C5** docs.
+
+**Ponto de revisão M3.1:** o mantenedor testa no celular em `https://eduuf.github.io/LudoTrip/`.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**

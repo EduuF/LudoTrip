@@ -1,36 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   allVisits,
+  bookingStatus,
   dayLabel,
   days as allDays,
   findVisit,
   legName,
+  lodgingGaps,
   MODE_NAMES,
   placeStates,
   plural,
+  stopWindows,
   tripRange,
 } from '../engine'
-import type { ID, LegMode, PlaceKind, Rarity, Slot } from '../engine'
+import type { Booking, ID, LegMode, PlaceKind, Rarity, Slot } from '../engine'
 import { uid, useApp } from '../app/store'
-import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
-import {
-  aboardChoice,
-  cityName,
-  endOptions,
-  insertOptions,
-  minusNight,
-  plusNight,
-  shiftCity,
-  splitOptions,
-} from '../app/choices'
+import { aboardChoice, cityName, endOptions, insertOptions, markLodging, splitOptions } from '../app/choices'
+import { searchOnline } from '../providers/places'
+import type { OnlinePlace } from '../providers/places'
 import { RARITY } from './rarity'
 import { colorOf, sealOf } from './colors'
 import { OptButton, SheetFrame, Stepper, Vehicle } from './kit'
 import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
+import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import type { SheetSpec } from './sheetTypes'
 
-// Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta).
+// Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
+// e os painéis de criar: atividade, hospedagem e "Sua viagem".
 
 const MODES: LegMode[] = ['flight', 'train', 'bus', 'car', 'boat', 'walk', 'bike', 'moto']
 
@@ -50,8 +47,6 @@ function Body({ sheet }: { sheet: SheetSpec }) {
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const patchSheet = useApp((s) => s.patchSheet)
-  const setOpenStop = useApp((s) => s.setOpenStop)
-  const focusOn = useApp((s) => s.focusOn)
   const enterCity = useApp((s) => s.enterCity)
   const setPlacing = useApp((s) => s.setPlacing)
   const say = useApp((s) => s.say)
@@ -69,100 +64,6 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           ))}
         </>
       )
-
-    case 'city': {
-      const s = it.stops.find((x) => x.id === sheet.stopId)
-      if (!s) return <h2>Esse destino saiu do roteiro.</h2>
-      const i = it.stops.indexOf(s)
-      const name = cityName(s.id)
-      if (!s.destinationId)
-        return (
-          <>
-            <h2>{plural(s.days.length, 'noite em aberto', 'noites em aberto')}</h2>
-            <OptButton o={{ label: 'Ver no roteiro', run: () => focusOn(`c-${s.id}`, 'mapa') }} />
-          </>
-        )
-      return (
-        <>
-          <h2>{name}</h2>
-          <p className="sub">{plural(s.days.length, 'noite', 'noites')}. O que você quer fazer?</p>
-          <OptButton
-            o={{
-              label: 'Planejar os dias e colar figurinhas',
-              main: true,
-              run: () => {
-                setOpenStop(s.id)
-                focusOn(`c-${s.id}`, 'mapa')
-              },
-            }}
-          />
-          <div className="row">
-            <button type="button" className="btn small" onClick={() => plusNight(s.id)}>
-              Mais 1 noite
-            </button>
-            <button type="button" className="btn small" onClick={() => minusNight(s.id)}>
-              Menos 1 noite
-            </button>
-          </div>
-          {i > 0 && i < it.stops.length - 1 ? (
-            <div className="row">
-              <button type="button" className="btn small" onClick={() => shiftCity(s.id, -1)}>
-                Chegar 1 dia antes
-              </button>
-              <button type="button" className="btn small" onClick={() => shiftCity(s.id, 1)}>
-                Chegar 1 dia depois
-              </button>
-            </div>
-          ) : null}
-          <OptButton
-            o={{
-              label: 'Mudar a ordem',
-              detail: ['Escolha depois de qual destino ele vem.'],
-              run: () => openSheet({ kind: 'order', stopId: s.id }),
-            }}
-          />
-          {s.days.length >= 2 ? (
-            <OptButton
-              o={{
-                label: 'Ir a outro destino no meio',
-                detail: [`Ex.: 2 noites em outro lugar no meio de ${name}.`],
-                run: () =>
-                  openSheet({
-                    kind: 'dest',
-                    title: `Que destino no meio de ${name}?`,
-                    pick: (destId) =>
-                      openSheet({
-                        kind: 'split',
-                        stopId: s.id,
-                        destId,
-                        nights: 1,
-                        after: Math.max(1, Math.floor(s.days.length / 2)),
-                      }),
-                  }),
-              }}
-            />
-          ) : null}
-          <OptButton
-            o={{
-              label: s.tentative ? 'Confirmar as noites' : 'Noites incertas ("2 ou 3, decidimos lá")',
-              run: () =>
-                act({
-                  type: 'engine',
-                  command: { type: 'setTentative', stopId: s.id, tentative: !s.tentative },
-                }),
-            }}
-          />
-          <OptButton
-            o={{
-              label: 'Tirar do roteiro',
-              detail: ['As noites ficam em aberto, com as mesmas datas. A mochila dele fica guardada.'],
-              run: () =>
-                act({ type: 'engine', command: { type: 'removeStop', stopId: s.id } }, { burst: true }),
-            }}
-          />
-        </>
-      )
-    }
 
     case 'order': {
       const s = it.stops.find((x) => x.id === sheet.stopId)
@@ -242,8 +143,8 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           )}
           <OptButton
             o={{
-              label: '+ Destino aqui',
-              detail: ['Um lugar novo entre esses dois.'],
+              label: '+ Parar no caminho',
+              detail: ['Um destino novo entre esses dois.'],
               run: () =>
                 openSheet({
                   kind: 'dest',
@@ -469,7 +370,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'sticker': {
       const p = doc.places.find((x) => x.id === sheet.placeId)
-      if (!p) return <h2>Essa figurinha saiu do álbum.</h2>
+      if (!p) return <h2>Essa atividade foi apagada.</h2>
       const st = placeStates(it, doc.places).get(p.id)
       const visits = allVisits(it).filter((v) => v.visit.placeId === p.id && !v.where.startsWith('w:'))
       const ds = allDays(it)
@@ -479,7 +380,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           <h2>{p.name}</h2>
           <p className="sub">
             {destName(p.destinationId)} ·{' '}
-            {st?.days.length ? `colada em ${st.days.map((d) => d.label).join(', ')}` : 'solta'}
+            {st?.days.length ? `em ${st.days.map((d) => d.label).join(', ')}` : 'ainda sem dia'}
           </p>
           <div className="rarity-row" role="group" aria-label="Prioridade">
             {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
@@ -494,7 +395,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
               </button>
             ))}
           </div>
-          <div className="kind-row" role="group" aria-label="Tipo do lugar">
+          <div className="kind-row" role="group" aria-label="Tipo de lugar">
             {PLACE_KIND_ORDER.map((k) => (
               <button
                 key={k}
@@ -509,6 +410,48 @@ function Body({ sheet }: { sheet: SheetSpec }) {
               </button>
             ))}
           </div>
+          <OptButton
+            o={{
+              label: st?.days.length ? 'Pôr em mais um dia' : 'Pôr num dia',
+              main: !st?.days.length,
+              run: () =>
+                openSheet({
+                  kind: 'days',
+                  title: `Pôr ${p.name} em qual dia?`,
+                  prefer: p.destinationId,
+                  pick: (ref) =>
+                    act({
+                      type: 'engine',
+                      command: { type: 'scheduleVisit', visitId: uid('v'), placeId: p.id, day: ref },
+                    }),
+                }),
+            }}
+          />
+          {visits.map((v) => (
+            <OptButton
+              key={v.visit.id}
+              o={{
+                label: `Tirar de ${visitDay(v.visit.id)?.label ?? 'um dia'}`,
+                detail: ['Continua na lista, sem dia.'],
+                run: () => act({ type: 'engine', command: { type: 'unscheduleVisit', visitId: v.visit.id } }),
+              }}
+            />
+          ))}
+          {visits.length ? (
+            <OptButton
+              o={{
+                label: st?.visited ? 'Desmarcar como feita' : 'Marcar como feita 済',
+                run: () =>
+                  act({
+                    type: 'batch',
+                    actions: visits.map((v) => ({
+                      type: 'engine' as const,
+                      command: { type: 'setVisitMeta' as const, visitId: v.visit.id, visited: !st?.visited },
+                    })),
+                  }),
+              }}
+            />
+          ) : null}
           {p.lat !== undefined && p.lon !== undefined ? (
             <>
               <OptButton o={{ label: 'Ver no mapa da cidade', run: () => enterCity(p.destinationId) }} />
@@ -537,49 +480,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           )}
           <OptButton
             o={{
-              label: st?.days.length ? 'Colar em mais um dia' : 'Colar num dia',
-              main: !st?.days.length,
-              run: () =>
-                openSheet({
-                  kind: 'days',
-                  title: `Colar ${p.name} em qual dia?`,
-                  prefer: p.destinationId,
-                  pick: (ref) =>
-                    act({
-                      type: 'engine',
-                      command: { type: 'scheduleVisit', visitId: uid('v'), placeId: p.id, day: ref },
-                    }),
-                }),
-            }}
-          />
-          {visits.map((v) => (
-            <OptButton
-              key={v.visit.id}
-              o={{
-                label: `Descolar de ${visitDay(v.visit.id)?.label ?? 'um dia'}`,
-                detail: ['Continua no álbum.'],
-                run: () => act({ type: 'engine', command: { type: 'unscheduleVisit', visitId: v.visit.id } }),
-              }}
-            />
-          ))}
-          {visits.length ? (
-            <OptButton
-              o={{
-                label: st?.visited ? 'Desmarcar visitada' : 'Marcar visitada 済',
-                run: () =>
-                  act({
-                    type: 'batch',
-                    actions: visits.map((v) => ({
-                      type: 'engine' as const,
-                      command: { type: 'setVisitMeta' as const, visitId: v.visit.id, visited: !st?.visited },
-                    })),
-                  }),
-              }}
-            />
-          ) : null}
-          <OptButton
-            o={{
-              label: 'Tirar do álbum',
+              label: 'Apagar atividade',
               detail: ['Sai de todos os dias também. Dá para desfazer.'],
               run: () => act({ type: 'removePlace', id: p.id }),
             }}
@@ -591,7 +492,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
     case 'visit': {
       const f = findVisit(it, sheet.visitId)
       const v = f?.list[f.index]
-      if (!v) return <h2>Essa figurinha não está mais aqui.</h2>
+      if (!v) return <h2>Essa atividade não está mais aqui.</h2>
       const p = doc.places.find((x) => x.id === v.placeId)
       const slots: [Slot, string][] = [
         ['any', 'qualquer hora'],
@@ -601,7 +502,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
       ]
       return (
         <>
-          <h2>{p?.name ?? 'Figurinha'}</h2>
+          <h2>{p?.name ?? 'Atividade'}</h2>
           <div className="field">
             <span>Turno</span>
             <div className="segs">
@@ -636,7 +537,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           />
           <OptButton
             o={{
-              label: v.visited ? 'Desmarcar visitada' : 'Marcar visitada 済',
+              label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita 済',
               run: () =>
                 act({
                   type: 'engine',
@@ -644,10 +545,19 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 }),
             }}
           />
+          {p ? (
+            <OptButton
+              o={{
+                label: 'Detalhes da atividade',
+                detail: ['Prioridade, tipo, lugar no mapa.'],
+                run: () => openSheet({ kind: 'sticker', placeId: p.id }),
+              }}
+            />
+          ) : null}
           <OptButton
             o={{
-              label: 'Descolar do dia',
-              detail: ['Continua no álbum.'],
+              label: 'Tirar do dia',
+              detail: ['Continua na lista, sem dia.'],
               run: () => act({ type: 'engine', command: { type: 'unscheduleVisit', visitId: v.id } }),
             }}
           />
@@ -655,42 +565,125 @@ function Body({ sheet }: { sheet: SheetSpec }) {
       )
     }
 
-    case 'end':
-      return <Dates />
+    case 'trip':
+      return <TripSheet />
 
-    case 'newPlace':
-      return <NewPlace destId={sheet.destId} lat={sheet.lat} lon={sheet.lon} />
+    case 'newActivity':
+      return <NewActivity spec={sheet} />
+
+    case 'lodging':
+      return <LodgingSheet stopId={sheet.stopId} />
   }
 }
 
-/** Lugar novo marcado no mapa da cidade: nome, tipo e prioridade (um toque cria). */
-function NewPlace({ destId, lat, lon }: { destId: ID; lat: number; lon: number }) {
+// ---------------------------------------------------------------------------
+// Nova atividade: nome com sugestões perto do destino, tipo, prioridade (um toque cria e já põe no dia)
+// ---------------------------------------------------------------------------
+
+function useNearby(q: string, lat: number | undefined, lon: number | undefined, on: boolean) {
+  const [web, setWeb] = useState<OnlinePlace[]>([])
+  useEffect(() => {
+    if (!on || q.length < 3) {
+      setWeb([])
+      return
+    }
+    const ctl = new AbortController()
+    const timer = setTimeout(() => {
+      void searchOnline(q, {
+        ...(lat !== undefined && lon !== undefined ? { lat, lon } : {}),
+        limit: 6,
+        signal: ctl.signal,
+      }).then((r) => {
+        if (!ctl.signal.aborted) setWeb(r.filter((o) => o.kind === 'poi' || o.kind === 'park'))
+      })
+    }, 300)
+    return () => {
+      clearTimeout(timer)
+      ctl.abort()
+    }
+  }, [q, lat, lon, on])
+  return [web, setWeb] as const
+}
+
+function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' }> }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
+  const dest = doc.destinations.find((d) => d.id === spec.destId)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<PlaceKind>('sight')
-  const dest = doc.destinations.find((d) => d.id === destId)
+  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(
+    spec.lat !== undefined && spec.lon !== undefined ? { lat: spec.lat, lon: spec.lon } : null,
+  )
+  const t = name.trim()
+  const [web, setWeb] = useNearby(t, dest?.lat, dest?.lon, !picked)
+  const states = placeStates(doc.itinerary, doc.places)
+  const loose = doc.places.filter((p) => p.destinationId === spec.destId && !states.get(p.id)?.days.length)
+
   const create = (rarity: Rarity) => {
-    if (!name.trim()) return
-    act({
-      type: 'addPlace',
-      place: { id: uid('p'), destinationId: destId, name: name.trim(), rarity, lat, lon, kind },
-    })
+    if (!t) return
+    const id = uid('p')
+    const add = {
+      type: 'addPlace' as const,
+      place: { id, destinationId: spec.destId, name: t, rarity, kind, ...(picked ?? {}) },
+    }
+    act(
+      spec.day
+        ? {
+            type: 'batch',
+            actions: [
+              add,
+              {
+                type: 'engine',
+                command: { type: 'scheduleVisit', visitId: uid('v'), placeId: id, day: spec.day },
+              },
+            ],
+          }
+        : add,
+    )
   }
   return (
     <>
-      <h2>Lugar novo em {dest?.name ?? 'destino'}</h2>
-      <p className="sub">Já marcado no mapa. Dê o nome, o tipo e a prioridade.</p>
+      <h2>Nova atividade em {dest?.name ?? 'destino'}</h2>
+      <p className="sub">
+        {spec.day
+          ? `Entra em ${spec.dayLabel ?? 'o dia'}.`
+          : picked
+            ? 'Já marcada no mapa. Depois você escolhe o dia.'
+            : 'Sem dia por enquanto; dá para pôr num dia depois.'}
+      </p>
       <input
         className="input"
-        id="novo-lugar"
+        id="nova-atividade"
         value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Nome do lugar"
-        aria-label="Nome do lugar"
+        onChange={(e) => {
+          setName(e.target.value)
+          if (spec.lat === undefined) setPicked(null)
+        }}
+        placeholder="O que vocês querem fazer? Ex.: Fushimi Inari"
+        aria-label="Nome da atividade"
         autoComplete="off"
       />
-      <div className="kind-row" role="group" aria-label="Tipo do lugar">
+      {web.length ? (
+        <div className="suggest">
+          {web.map((o) => (
+            <button
+              key={`${o.name}-${o.lat}`}
+              type="button"
+              onClick={() => {
+                setName(o.name)
+                setPicked({ lat: o.lat, lon: o.lon })
+                setKind(o.placeKind ?? 'sight')
+                setWeb([])
+              }}
+            >
+              <span>{o.name}</span>
+              <small>{o.detail}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {picked ? <small className="note">📍 com lugar no mapa da cidade</small> : null}
+      <div className="kind-row" role="group" aria-label="Tipo de lugar">
         {PLACE_KIND_ORDER.map((k) => (
           <button
             key={k}
@@ -703,19 +696,264 @@ function NewPlace({ destId, lat, lon }: { destId: ID; lat: number; lon: number }
           </button>
         ))}
       </div>
+      <div className="group-t">CRIAR COM A PRIORIDADE</div>
       <div className="rarity-row" role="group" aria-label="Criar com a prioridade">
         {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
-          <button
-            key={r}
-            type="button"
-            className={`rar r-${r}`}
-            disabled={!name.trim()}
-            onClick={() => create(r)}
-          >
+          <button key={r} type="button" className={`rar r-${r}`} disabled={!t} onClick={() => create(r)}>
             {RARITY[r].gems} {RARITY[r].label}
           </button>
         ))}
       </div>
+      {spec.day && loose.length ? (
+        <>
+          <div className="group-t">JÁ NA LISTA, SEM DIA</div>
+          <div className="pills">
+            {loose.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`pill r-${p.rarity}`}
+                onClick={() =>
+                  act({
+                    type: 'engine',
+                    command: { type: 'scheduleVisit', visitId: uid('v'), placeId: p.id, day: spec.day! },
+                  })
+                }
+              >
+                {RARITY[p.rarity].gems} {p.name}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Hospedagem: onde vocês dormem, com nome e "já reservei"
+// ---------------------------------------------------------------------------
+
+function LodgingSheet({ stopId }: { stopId: ID }) {
+  const doc = useApp((s) => s.doc)!
+  const act = useApp((s) => s.act)
+  const it = doc.itinerary
+  const stop = it.stops.find((s) => s.id === stopId)
+  const dest = doc.destinations.find((d) => d.id === stop?.destinationId)
+  const w = stopWindows(it).find((x) => x.stopId === stopId)
+  const mine = doc.bookings.filter(
+    (b): b is Extract<Booking, { kind: 'lodging' }> =>
+      b.kind === 'lodging' && !b.archived && bookingStatus(b, it).stopId === stopId,
+  )
+  const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === stopId)
+  const [name, setName] = useState('')
+  const [booked, setBooked] = useState(true)
+  const t = name.trim()
+  const [web, setWeb] = useNearby(t, dest?.lat, dest?.lon, true)
+  const hotels = web.filter((o) => o.placeKind === 'lodging')
+  if (!stop || !dest) return <h2>Esse destino saiu do roteiro.</h2>
+  const missing = gap?.missing ?? []
+  return (
+    <>
+      <h2>Onde vocês dormem em {dest.name}?</h2>
+      <p className="sub">
+        {w?.start && w.end ? `${dayLabel(w.start)} → ${dayLabel(w.end)} · ` : ''}
+        {plural(stop.days.length, 'noite', 'noites')}
+      </p>
+      {mine.map((b) => (
+        <div key={b.id} className="card" style={{ padding: 10 }}>
+          <b>
+            宿 {b.title} {b.status === 'booked' ? '済' : '· ainda não reservada'}
+          </b>
+          <div className="row">
+            {b.status === 'booked' ? (
+              <button
+                type="button"
+                className="btn small ghost"
+                onClick={() => act({ type: 'setBooking', id: b.id, patch: { status: 'planned' } })}
+              >
+                Ainda não reservei
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn small"
+                onClick={() =>
+                  act({ type: 'setBooking', id: b.id, patch: { status: 'booked' } }, { stamp: true })
+                }
+              >
+                Já reservei 済
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => act({ type: 'removeBooking', id: b.id })}
+            >
+              Tirar
+            </button>
+          </div>
+        </div>
+      ))}
+      {missing.length ? (
+        <>
+          <div className="group-t">
+            {mine.length
+              ? `FALTAM ${missing
+                  .map((m) => m.label)
+                  .join(', ')
+                  .toUpperCase()}`
+              : 'HOSPEDAGEM'}
+          </div>
+          <input
+            className="input"
+            id="hospedagem"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={`Hotel, pousada, casa… (ou deixe "Hospedagem em ${dest.name}")`}
+            aria-label="Nome da hospedagem"
+            autoComplete="off"
+          />
+          {hotels.length ? (
+            <div className="suggest">
+              {hotels.map((o) => (
+                <button
+                  key={`${o.name}-${o.lat}`}
+                  type="button"
+                  onClick={() => {
+                    setName(o.name)
+                    setWeb([])
+                  }}
+                >
+                  <span>{o.name}</span>
+                  <small>{o.detail}</small>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <label className="row" style={{ gap: 10 }}>
+            <input type="checkbox" checked={booked} onChange={(e) => setBooked(e.target.checked)} />
+            <span>Já reservei (ganha o carimbo 済)</span>
+          </label>
+          <button
+            type="button"
+            className="btn main"
+            onClick={() => markLodging(stopId, name, booked ? 'booked' : 'planned')}
+          >
+            {booked ? 'Marcar reservada 済' : 'Anotar hospedagem'}
+          </button>
+        </>
+      ) : mine.length ? (
+        <p className="note">Todas as noites têm hospedagem.</p>
+      ) : (
+        <p className="note">Sem datas ainda: escolha a data de ida para anotar a hospedagem.</p>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sua viagem: nome, quem vai, de onde saem e as datas
+// ---------------------------------------------------------------------------
+
+function TripSheet() {
+  const doc = useApp((s) => s.doc)!
+  const act = useApp((s) => s.act)
+  const it = doc.itinerary
+  const [name, setName] = useState(doc.meta.name)
+  const [people, setPeople] = useState(it.travelers.map((t) => t.name))
+  const saveName = () => {
+    const n = name.trim()
+    if (n && n !== doc.meta.name) act({ type: 'rename', name: n }, { keep: true })
+  }
+  const savePeople = (list: string[]) => {
+    const names = list.map((n) => n.trim()).filter(Boolean)
+    if (!names.length) return
+    const travelers = names.map((n, i) => ({ ...(it.travelers[i] ?? { id: `t${i + 1}` }), name: n }))
+    if (JSON.stringify(travelers) !== JSON.stringify(it.travelers))
+      act({ type: 'engine', command: { type: 'setTravelers', travelers } }, { keep: true })
+  }
+  const setHome = (p: PlacePick | null) =>
+    act(
+      {
+        type: 'engine',
+        command: {
+          type: 'setHome',
+          home:
+            p && p.kind === 'city'
+              ? {
+                  name: p.name,
+                  ...(p.lat !== undefined && p.lon !== undefined ? { lat: p.lat, lon: p.lon } : {}),
+                  ...(p.tz ? { tz: p.tz } : {}),
+                }
+              : null,
+        },
+      },
+      { keep: true },
+    )
+  return (
+    <>
+      <h2>Sua viagem</h2>
+      <label className="field" htmlFor="nome-viagem">
+        <span>Nome</span>
+        <input
+          className="input"
+          id="nome-viagem"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={saveName}
+          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        />
+      </label>
+      <div className="field">
+        <span>Quem vai</span>
+        {people.map((n, i) => (
+          <div key={i} className="row">
+            <input
+              className="input"
+              style={{ flex: 1 }}
+              value={n}
+              aria-label={`Viajante ${i + 1}`}
+              onChange={(e) => setPeople(people.map((x, k) => (k === i ? e.target.value : x)))}
+              onBlur={() => savePeople(people)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            />
+            {people.length > 1 ? (
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`Tirar ${n || 'viajante'}`}
+                onClick={() => {
+                  const next = people.filter((_, k) => k !== i)
+                  setPeople(next)
+                  savePeople(next)
+                }}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ))}
+        <button
+          type="button"
+          className="btn small ghost"
+          style={{ alignSelf: 'flex-start' }}
+          onClick={() => setPeople([...people, `Viajante ${people.length + 1}`])}
+        >
+          + Mais uma pessoa
+        </button>
+      </div>
+      <div className="field">
+        <span>De onde saem (e para onde voltam)</span>
+        {it.home ? (
+          <button type="button" className="pill" onClick={() => setHome(null)}>
+            ✈ {it.home.name} ×
+          </button>
+        ) : (
+          <PlaceSearch id="casa" placeholder="Sua cidade" kinds={['city']} onPick={setHome} free={false} />
+        )}
+      </div>
+      <Dates />
     </>
   )
 }
@@ -807,7 +1045,7 @@ function Dates() {
   const fixed = it.lock === 'fixed'
   return (
     <>
-      <h2>Datas da viagem</h2>
+      <div className="group-t">DATAS</div>
       <label className="field" htmlFor="ida">
         <span>Ida (primeira noite)</span>
         <input
@@ -816,7 +1054,8 @@ function Dates() {
           id="ida"
           value={it.start ?? ''}
           onChange={(e) =>
-            e.target.value && act({ type: 'engine', command: { type: 'setTripStart', date: e.target.value } })
+            e.target.value &&
+            act({ type: 'engine', command: { type: 'setTripStart', date: e.target.value } }, { keep: true })
           }
         />
       </label>
@@ -825,7 +1064,9 @@ function Dates() {
           type="button"
           className="btn small ghost"
           style={{ alignSelf: 'flex-start' }}
-          onClick={() => act({ type: 'engine', command: { type: 'setTripStart', date: null } })}
+          onClick={() =>
+            act({ type: 'engine', command: { type: 'setTripStart', date: null } }, { keep: true })
+          }
         >
           Ainda não sei a data
         </button>
@@ -833,7 +1074,7 @@ function Dates() {
       <div className="row">
         <span className="note" style={{ flex: 1 }}>
           {fixed
-            ? 'Volta marcada 🔒: ao mudar noites, outra cidade cede.'
+            ? 'Volta marcada 🔒: ao mudar noites, outro destino cede.'
             : 'Volta livre: mudar noites muda a volta.'}
         </span>
         <button
@@ -841,7 +1082,10 @@ function Dates() {
           className={`btn small${fixed ? ' main' : ''}`}
           aria-pressed={fixed}
           onClick={() =>
-            act({ type: 'engine', command: { type: 'setLock', lock: fixed ? 'free' : 'fixed' } })
+            act(
+              { type: 'engine', command: { type: 'setLock', lock: fixed ? 'free' : 'fixed' } },
+              { keep: true },
+            )
           }
         >
           {fixed ? '🔒 Volta marcada' : 'Marcar a volta'}

@@ -50,7 +50,11 @@ export type DocAction =
   | { type: 'removePlace'; id: ID }
   | { type: 'addDestination'; destination: Destination }
   | { type: 'addBooking'; booking: Booking }
-  | { type: 'setBooking'; id: ID; patch: { archived?: boolean; status?: 'planned' | 'booked' } }
+  | {
+      type: 'setBooking'
+      id: ID
+      patch: { archived?: boolean; status?: 'planned' | 'booked'; title?: string }
+    }
   | { type: 'removeBooking'; id: ID }
   | { type: 'rename'; name: string }
   | { type: 'batch'; actions: DocAction[] }
@@ -107,7 +111,7 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
       case 'removePlace': {
         if (!draft.places.some((p) => p.id === a.id))
           throw new DocFail({ code: 'NOT_FOUND', data: { placeId: a.id } })
-        // Tirar do álbum tira a figurinha de todos os dias (com Desfazer).
+        // Apagar a atividade tira a visita de todos os dias (com Desfazer).
         for (const v of allVisits(draft.itinerary).filter((x) => x.visit.placeId === a.id)) {
           const legId = v.where.startsWith('w:') ? v.where.slice(2) : null
           apply({

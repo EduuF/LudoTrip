@@ -14,15 +14,13 @@ const say = (t: BuiltTrip, cmd: Command, it = t.itinerary) => {
 const sayError = (t: BuiltTrip, cmd: Command, it = t.itinerary) => describeError(refuse(it, cmd), it, t)
 
 describe('o que aconteceu', () => {
-  it('itens que voltam para a mochila', () => {
+  it('itens que ficam sem dia', () => {
     const t = japao()
-    expect(say(t, { type: 'removeStop', stopId: 's2' })).toBe('Vila de Ginzan voltou para a mochila.')
+    expect(say(t, { type: 'removeStop', stopId: 's2' })).toBe('Vila de Ginzan ficou sem dia.')
     expect(say(t, { type: 'removeStop', stopId: 's4' })).toBe(
-      'Pagode Chureito e Lago Kawaguchi voltaram para a mochila.',
+      'Pagode Chureito e Lago Kawaguchi ficaram sem dia.',
     )
-    expect(say(t, { type: 'moveBoundary', index: 6, k: -2 })).toBe(
-      'Parque de Nara e mais 3 voltaram para a mochila.',
-    )
+    expect(say(t, { type: 'moveBoundary', index: 6, k: -2 })).toBe('Parque de Nara e mais 3 ficaram sem dia.')
   })
 
   it('volta e ida que mudam', () => {
@@ -146,11 +144,11 @@ describe('prévia (antes de escolher)', () => {
     const t = japao()
     const r = run(t.itinerary, { type: 'moveBoundary', index: 6, k: -2 })
     expect(describeEffects(r.effects, t.itinerary, r.state, t, 'preview')).toBe(
-      'Parque de Nara e mais 3 voltam para a mochila.',
+      'Parque de Nara e mais 3 ficam sem dia.',
     )
     const v = run(t.itinerary, { type: 'setNights', stopId: 's8', nights: 6, via: { kind: 'return' } })
     expect(describeEffects(v.effects, t.itinerary, v.state, t, 'preview')).toBe(
-      'Caminho do Filósofo volta para a mochila. Volta vai para ter 23/04.',
+      'Caminho do Filósofo fica sem dia. Volta vai para ter 23/04.',
     )
     const a = run(t.itinerary, { type: 'removeStop', stopId: 's2' }).state
     const j = run(a, { type: 'stretchInto', stopId: 's2', side: 'before' })

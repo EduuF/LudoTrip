@@ -19,7 +19,6 @@ export function Tarefas() {
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const focusOn = useApp((s) => s.focusOn)
-  const setOpenStop = useApp((s) => s.setOpenStop)
   const it = doc.itinerary
   const issues = health(it, doc)
   const p = progress(it, doc)
@@ -29,11 +28,10 @@ export function Tarefas() {
   const goTo = (i: Issue) => {
     const d = i.data ?? {}
     if (i.target.kind === 'stop') {
-      setOpenStop(i.target.id)
       return focusOn(`c-${i.target.id}`, 'mapa')
     }
     if (i.target.kind === 'leg') return focusOn(`l-${i.target.id}`, 'mapa')
-    if (i.target.kind === 'place') return focusOn(`p-${i.target.id}`, 'mochila')
+    if (i.target.kind === 'place') return focusOn(`p-${i.target.id}`, 'atividades')
     if (i.target.kind === 'booking') {
       if (d.stopId) return focusOn(`c-${String(d.stopId)}`, 'mapa')
       if (d.legId) return focusOn(`l-${String(d.legId)}`, 'mapa')
@@ -76,11 +74,11 @@ export function Tarefas() {
       const place = doc.places.find((x) => x.id === i.target.id)
       if (!place) return null
       return {
-        label: 'Colar num dia',
+        label: 'Pôr num dia',
         run: () =>
           openSheet({
             kind: 'days',
-            title: `Colar ${place.name} em qual dia?`,
+            title: `Pôr ${place.name} em qual dia?`,
             prefer: place.destinationId,
             pick: (ref) =>
               act({

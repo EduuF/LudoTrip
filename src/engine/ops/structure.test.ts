@@ -105,7 +105,7 @@ describe('splitStopWith (encaixar no meio)', () => {
     expect(tripRange(r.state).end).toBe('2030-04-24')
   })
 
-  it('volta livre: a viagem cresce e nada volta para a mochila', () => {
+  it('volta livre: a viagem cresce e nada fica sem dia', () => {
     const t = japao()
     const r = run(t.itinerary, {
       type: 'splitStopWith',

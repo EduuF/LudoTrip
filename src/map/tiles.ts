@@ -40,6 +40,7 @@ export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAd
     import('maplibre-gl/dist/maplibre-gl.css'),
   ])
   if (workerUrl) maplibregl.setWorkerUrl(workerUrl)
+  let cur = theme
   const map = new maplibregl.Map({
     container: el,
     style: washiStyle(theme),
@@ -55,7 +56,7 @@ export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAd
   // O crédito (OpenFreeMap © OpenMapTiles, dados © OpenStreetMap) é desenhado pelo MapCanvas.
   map.on('styleimagemissing', (e: { id: string }) => {
     if (e.id !== 'seigaiha' || map.hasImage('seigaiha')) return
-    const img = seigaihaImage(theme)
+    const img = seigaihaImage(cur)
     if (img) map.addImage('seigaiha', img, { pixelRatio: 2 })
   })
   await new Promise<void>((resolve) => (map.loaded() ? resolve() : map.once('load', () => resolve())))
@@ -95,6 +96,12 @@ export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAd
     },
     resize() {
       map.resize()
+    },
+    setTheme(t) {
+      if (t === cur) return
+      cur = t
+      // Estilo inteiro de novo (sem diff): a imagem do seigaiha é pedida outra vez, já no tema novo.
+      map.setStyle(washiStyle(t), { diff: false })
     },
     destroy() {
       subs.clear()

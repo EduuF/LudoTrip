@@ -1,19 +1,19 @@
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { bookingStatus, days as allDays, legName, lodgingGaps, tripPhase } from '../engine'
-import type { Booking } from '../engine'
+import type { Booking, ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
-import { markLodging } from '../app/choices'
 import { colorOf } from './colors'
 import { DayRow } from './Roteiro'
 
 // O cartão do dia (spec §17.2, como a "barra de dias" da v1): o dia escolhido na trilha,
-// onde se está, onde se dorme e as figurinhas do dia. Antes da viagem começa no dia 1; durante, em hoje.
+// onde se está, onde se dorme e as atividades do dia. Antes da viagem começa no dia 1; durante, em hoje.
 
 export function DayCard() {
   const doc = useApp((s) => s.doc)!
   const cursor = useApp((s) => s.cursorDay)
   const setCursorDay = useApp((s) => s.setCursorDay)
+  const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
   const ds = useMemo(() => allDays(it, doc.places), [it, doc.places])
   if (!ds.length) return null
@@ -24,26 +24,35 @@ export function DayCard() {
   const names = { destinations: doc.destinations, places: doc.places }
   const destName = (id: string | null) => doc.destinations.find((x) => x.id === id)?.name ?? ''
   const leg = d.travelLegId ? it.legs.find((l) => l.id === d.travelLegId) : undefined
+  const stop = d.stopId ? it.stops.find((s) => s.id === d.stopId) : undefined
+  const lastDest = [...it.stops].reverse().find((s) => s.destinationId)?.destinationId ?? null
+  const legTo = (l: typeof leg): ID | null =>
+    l && l.to !== 'home' ? (it.stops.find((s) => s.id === l.to)?.destinationId ?? null) : null
 
   let where: string
-  if (d.kind === 'departure') where = leg ? `volta: ${legName(it, leg, names)}` : 'dia da volta'
-  else if (d.kind === 'aboard') where = leg ? `a bordo: ${legName(it, leg, names)}` : 'noite a bordo'
-  else if (d.kind === 'open') where = 'noite em aberto'
+  let actDest: ID | null = d.destinationId
+  if (d.kind === 'departure') {
+    where = leg ? `volta: ${legName(it, leg, names)}` : 'dia da volta'
+    actDest = lastDest
+  } else if (d.kind === 'aboard') {
+    where = leg ? `a bordo: ${legName(it, leg, names)}` : 'noite a bordo'
+    actDest = legTo(leg)
+  } else if (d.kind === 'open') where = 'noite em aberto'
   else if (leg) where = `chega em ${destName(d.destinationId)}`
   else where = `em ${destName(d.destinationId)}`
 
   // Onde se dorme nesta noite.
-  const stop = d.stopId ? it.stops.find((s) => s.id === d.stopId) : undefined
   let night: JSX.Element | null = null
   if (d.kind === 'stop' && stop?.destinationId) {
+    const openLodging = () => openSheet({ kind: 'lodging', stopId: stop.id })
     if (stop.lodging === 'friends') night = <span className="pill">宿 casa de amigos</span>
     else if (stop.lodging === 'onboard') night = <span className="pill">宿 a bordo</span>
     else {
       const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === stop.id)
       if (gap?.missing.some((m) => m.ordinal === d.ordinal))
         night = (
-          <button type="button" className="pill warn" onClick={() => markLodging(stop.id)}>
-            宿 sem hospedagem · marcar reservada
+          <button type="button" className="pill warn" onClick={openLodging}>
+            宿 onde vocês dormem?
           </button>
         )
       else {
@@ -56,9 +65,13 @@ export function DayCard() {
             (!d.date || (x.checkin <= d.date && d.date < x.checkout)),
         )
         night = b ? (
-          <span className="pill ok">宿 {b.title} 済</span>
+          <button type="button" className={`pill${b.status === 'booked' ? ' ok' : ''}`} onClick={openLodging}>
+            宿 {b.title} {b.status === 'booked' ? '済' : '· ainda não reservada'}
+          </button>
         ) : (
-          <span className="pill">宿 hospedagem em {destName(stop.destinationId)}</span>
+          <button type="button" className="pill" onClick={openLodging}>
+            宿 hospedagem em {destName(stop.destinationId)}
+          </button>
         )
       }
     }
@@ -98,7 +111,7 @@ export function DayCard() {
         </button>
       </div>
       {night ? <div className="pills">{night}</div> : null}
-      <DayRow day={d} compact />
+      <DayRow day={d} destId={actDest} compact />
     </section>
   )
 }
