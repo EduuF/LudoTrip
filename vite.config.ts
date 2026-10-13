@@ -8,6 +8,10 @@ export default defineConfig({
     // O motor roda em Node puro; testes de interface pedem jsdom no próprio arquivo.
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
-    coverage: { include: ['src/engine/**'], exclude: ['src/engine/fixtures/**', 'src/engine/**/*.test.ts'] },
+    coverage: {
+      include: ['src/engine/**'],
+      exclude: ['src/engine/fixtures/**', 'src/engine/**/*.test.ts', 'src/engine/index.ts'],
+      thresholds: { lines: 90 },
+    },
   },
 })
