@@ -13,6 +13,7 @@ import type {
   Place,
   Rarity,
   Resource,
+  Scope,
 } from '../types'
 
 /** Gerador de ids previsível para testes e exemplos. */
@@ -27,6 +28,8 @@ export interface TripSpec {
   lock: Lock
   defaultMode: LegMode
   home?: { name: string; lat?: number; lon?: number; tz?: string }
+  /** Para onde é a viagem (país, região ou cidade). */
+  scope?: Scope
   destinations: Record<string, Omit<Destination, 'id' | 'kind'> & { kind?: Destination['kind'] }>
   /** [chave do destino, noites, planos por dia (nomes de itens), pouso?] */
   stops: [string | null, number, string[][]?, Lodging?][]
@@ -44,6 +47,7 @@ export interface TripSpec {
 export interface BuiltTrip {
   name: string
   itinerary: Itinerary
+  scope?: Scope
   destinations: Destination[]
   places: Place[]
   bookings: Booking[]
@@ -149,5 +153,14 @@ export function buildTrip(spec: TripSpec): BuiltTrip {
           status: 'booked',
         },
   )
-  return { name: spec.name, itinerary: it, destinations, places, bookings, destId, placeId }
+  return {
+    name: spec.name,
+    itinerary: it,
+    ...(spec.scope ? { scope: spec.scope } : {}),
+    destinations,
+    places,
+    bookings,
+    destId,
+    placeId,
+  }
 }

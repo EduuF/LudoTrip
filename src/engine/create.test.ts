@@ -37,6 +37,24 @@ describe('criar viagem', () => {
     expect(none.stops[0]!.days).toHaveLength(5)
   })
 
+  it('"decido depois": null vira noites em aberto, sozinho ou junto com destinos', () => {
+    const only = createItinerary(
+      { destinationIds: [null], nights: 10, start: null, defaultMode: 'car', travelers: [] },
+      counterIds('n'),
+    )
+    expect(only.stops).toEqual([expect.objectContaining({ destinationId: null })])
+    expect(only.stops[0]!.days).toHaveLength(10)
+    const mixed = createItinerary(
+      { destinationIds: ['a', null], nights: 6, start: '2030-05-01', defaultMode: 'train', travelers: [] },
+      counterIds('n'),
+    )
+    expect(mixed.stops.map((s) => [s.destinationId, s.days.length])).toEqual([
+      ['a', 3],
+      [null, 3],
+    ])
+    expect(timeline(mixed).total).toBe(6)
+  })
+
   it('pelo menos 1 noite por cidade', () => {
     const it_ = createItinerary(
       { destinationIds: ['a', 'b', 'c'], nights: 1, start: null, defaultMode: 'bus', travelers: [] },

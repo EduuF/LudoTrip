@@ -29,7 +29,7 @@ export interface Traveler {
   sprite?: SpriteSpec
 }
 
-/** Um lugar (cidade, região, parque, navio) com a sua Mochila. Fica fora do itinerário. */
+/** Um lugar (cidade, região, parque, navio, país) com a sua Mochila. Fica fora do itinerário. */
 export interface Destination {
   id: ID
   name: string
@@ -38,7 +38,20 @@ export interface Destination {
   lat?: number
   lon?: number
   tz?: string
-  kind: 'city' | 'region' | 'park' | 'vessel'
+  kind: 'city' | 'region' | 'park' | 'vessel' | 'country'
+}
+
+/** Para onde é a viagem (país, região ou cidade): enquadra o mapa e dá o tema, mesmo sem parada decidida. */
+export interface Scope {
+  name: string
+  localName?: string
+  kind: 'country' | 'region' | 'city'
+  /** ISO 3166-1 alpha-2. */
+  country?: string
+  lat?: number
+  lon?: number
+  /** [oeste, sul, leste, norte] em graus. */
+  bbox?: [number, number, number, number]
 }
 
 /** Item da Mochila. Fica fora do itinerário. */

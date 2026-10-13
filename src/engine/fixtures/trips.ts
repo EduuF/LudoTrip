@@ -12,6 +12,7 @@ export const japao = (): BuiltTrip =>
     lock: 'fixed',
     defaultMode: 'train',
     home: SAO_PAULO,
+    scope: { name: 'Japão', localName: '日本', kind: 'country', country: 'JP' },
     destinations: {
       tokyo: { name: 'Tóquio', localName: '東京', country: 'JP', lat: 35.68, lon: 139.77, tz: 'Asia/Tokyo' },
       ginzan: {
@@ -140,6 +141,7 @@ export const rio = (): BuiltTrip =>
     lock: 'free',
     defaultMode: 'flight',
     home: { name: 'Belo Horizonte', lat: -19.92, lon: -43.94, tz: 'America/Sao_Paulo' },
+    scope: { name: 'Rio de Janeiro', kind: 'city', country: 'BR', lat: -22.91, lon: -43.17 },
     destinations: {
       rio: { name: 'Rio de Janeiro', country: 'BR', lat: -22.91, lon: -43.17 },
       petropolis: { name: 'Petrópolis', country: 'BR', lat: -22.51, lon: -43.18 },
@@ -171,6 +173,7 @@ export const portugal = (): BuiltTrip =>
     lock: 'free',
     defaultMode: 'car',
     home: SAO_PAULO,
+    scope: { name: 'Portugal', kind: 'country', country: 'PT' },
     destinations: {
       lisboa: { name: 'Lisboa', country: 'PT', lat: 38.72, lon: -9.14 },
       nazare: { name: 'Nazaré', country: 'PT', lat: 39.6, lon: -9.07 },
@@ -231,6 +234,7 @@ export const europa = (): BuiltTrip =>
     lock: 'fixed',
     defaultMode: 'flight',
     home: SAO_PAULO,
+    scope: { name: 'Europa', kind: 'region' },
     destinations: {
       lisboa: { name: 'Lisboa', country: 'PT', lat: 38.72, lon: -9.14 },
       paris: { name: 'Paris', country: 'FR', lat: 48.86, lon: 2.35 },
@@ -294,6 +298,7 @@ export const cruzeiro = (): BuiltTrip =>
     lock: 'fixed',
     defaultMode: 'boat',
     home: SAO_PAULO,
+    scope: { name: 'Mediterrâneo', kind: 'region' },
     destinations: {
       barcelona: { name: 'Barcelona', country: 'ES', lat: 41.39, lon: 2.17 },
       navio: { name: 'Navio', country: 'ES', lat: 41.35, lon: 2.16, kind: 'vessel' },
@@ -345,6 +350,7 @@ export const caminho = (): BuiltTrip =>
     lock: 'fixed',
     defaultMode: 'walk',
     home: SAO_PAULO,
+    scope: { name: 'Galícia', localName: 'Galicia', kind: 'region', country: 'ES' },
     destinations: {
       sarria: { name: 'Sarria', country: 'ES', lat: 42.78, lon: -7.41 },
       portomarin: { name: 'Portomarín', country: 'ES', lat: 42.81, lon: -7.62 },

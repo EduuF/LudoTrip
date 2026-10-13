@@ -88,6 +88,7 @@ export function exampleDoc(key: ExampleKey, now = Date.now()): TripDoc {
   return {
     meta: { id: `ex-${key}-${now.toString(36)}`, name: t.name, example: key, createdAt: now, updatedAt: now },
     itinerary: t.itinerary,
+    ...(t.scope ? { scope: t.scope } : {}),
     destinations: t.destinations,
     places: t.places,
     bookings: t.bookings,

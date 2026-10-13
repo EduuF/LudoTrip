@@ -3,8 +3,8 @@ import type { OpContext } from './core'
 import type { ID, ISODate, Itinerary, LegMode, Lock, Traveler } from './types'
 
 export interface NewTripSpec {
-  /** Destinos na ordem da viagem (podem repetir). */
-  destinationIds: ID[]
+  /** Destinos na ordem da viagem (podem repetir); `null` = noites em aberto ("decido depois"). */
+  destinationIds: (ID | null)[]
   nights: number
   start: ISODate | null
   defaultMode: LegMode

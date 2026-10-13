@@ -22,10 +22,11 @@ import {
   shiftCity,
   splitOptions,
 } from '../app/choices'
-import { searchCities } from '../providers/cities'
 import { RARITY } from './rarity'
 import { colorOf, sealOf } from './colors'
 import { OptButton, SheetFrame, Stepper, Vehicle } from './kit'
+import { PlaceSearch } from './PlaceSearch'
+import type { PlacePick } from './PlaceSearch'
 import type { SheetSpec } from './sheetTypes'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta).
@@ -763,18 +764,19 @@ function Dates() {
 function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
-  const [q, setQ] = useState('')
-  const found = searchCities(q).filter((c) => !doc.destinations.some((d) => d.name === c.name))
-  const add = (dest: {
-    name: string
-    localName?: string
-    country?: string
-    lat?: number
-    lon?: number
-    tz?: string
-  }) => {
+  const add = (p: PlacePick) => {
+    if (p.kind !== 'city') return
     const id = uid('d-')
-    if (act({ type: 'addDestination', destination: { id, kind: 'city', ...dest } })) pick(id)
+    const dest = {
+      id,
+      kind: 'city' as const,
+      name: p.name,
+      ...(p.localName ? { localName: p.localName } : {}),
+      ...(p.country ? { country: p.country } : {}),
+      ...(p.lat !== undefined && p.lon !== undefined ? { lat: p.lat, lon: p.lon } : {}),
+      ...(p.tz ? { tz: p.tz } : {}),
+    }
+    if (act({ type: 'addDestination', destination: dest })) pick(id)
   }
   return (
     <>
@@ -797,29 +799,15 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
       </div>
       <label className="field" htmlFor="busca-destino">
         <span>Outro destino</span>
-        <input
-          className="input"
+        <PlaceSearch
           id="busca-destino"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
           placeholder="Busque: Lisboa, Cusco, Seul…"
-          autoComplete="off"
+          kinds={['city']}
+          within={doc.scope?.country}
+          exclude={doc.destinations.map((d) => d.name)}
+          onPick={add}
         />
       </label>
-      {q.trim().length >= 2 ? (
-        <div className="suggest">
-          {found.map((c) => (
-            <button key={c.name} type="button" onClick={() => add(c)}>
-              <span>{c.name}</span>
-              <small>{c.localName && c.localName !== c.name ? c.localName : c.country}</small>
-            </button>
-          ))}
-          <button type="button" onClick={() => add({ name: q.trim() })}>
-            <span>Usar "{q.trim()}"</span>
-            <small>sem mapa</small>
-          </button>
-        </div>
-      ) : null}
     </>
   )
 }
