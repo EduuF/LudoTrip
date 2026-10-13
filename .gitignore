@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 coverage
-dist-lab
+dist-preview
 *.local
 
 # Editor directories and files

@@ -84,16 +84,19 @@ export function describeEffects(
     )
   }
 
+  // A ida e a volta continuam existindo (só mudam de cidade e herdam o meio): não vale aviso.
+  const homeLeg = (l: Leg) => l.from === 'home' || l.to === 'home'
   for (const id of eff.legsArchived) {
     const leg = after.archivedLegs.find((l) => l.id === id)
-    if (leg)
+    if (leg && !homeLeg(leg))
       parts.push(
         `${legName(before, leg, names)} ${done ? 'saiu' : 'sai'} do roteiro; os dados ficam guardados.`,
       )
   }
   for (const id of eff.legsRestored) {
     const leg = after.legs.find((l) => l.id === id)
-    if (leg) parts.push(`${legName(after, leg, names)} ${done ? 'voltou' : 'volta'} com os dados.`)
+    if (leg && !homeLeg(leg))
+      parts.push(`${legName(after, leg, names)} ${done ? 'voltou' : 'volta'} com os dados.`)
   }
 
   const a = tripRange(before)

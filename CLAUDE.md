@@ -56,4 +56,4 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - **Toda ação de quem usa tem Desfazer**, inclusive mochila e reservas (que ficam fora do itinerário): elas também passam por comandos com inverso. Toda marcação (passagem comprada, hospedagem, visitado) desmarca no mesmo lugar.
 - **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
 - **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (a partir do M4).
-- **Laboratório do motor:** `npm run lab` abre `lab.html` (tela simples que usa o motor de verdade); `npm run lab:build` gera `dist-lab/laboratorio.html`, um HTML único que pode ser publicado como artifact para o mantenedor testar no celular.
+- **Prévia para o mantenedor:** `npm run preview:artifact` gera `dist-preview/ludotrip.html`, um HTML único (React 18 por CDN, o resto embutido) que se publica como artifact para testar no celular. O laboratório do motor foi aposentado: o que vai para o mantenedor é sempre o app de verdade.

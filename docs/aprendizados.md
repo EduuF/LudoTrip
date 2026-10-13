@@ -5,6 +5,17 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M2: o app de verdade
+
+- **Desmarcar não é arquivar.** Tocar de novo na passagem apaga a marcação (com Desfazer). "Arquivar" fica para a reserva real que saiu do roteiro.
+- **Enquadrar o mapa por pontos, não por polígono.** No `d3-geo`, um retângulo na orientação errada vira "o mundo todo menos o retângulo", e o tabuleiro mostrava o planeta inteiro. **Regra:** `fitExtent` com `MultiPoint` dos cantos.
+- **Sair da viagem não pode soltar o documento na mesma hora.** Uma tela ainda viva tentou desenhar sem viagem. **Regra:** primeiro troca a tela, depois libera os dados.
+- **Testar o arquivo final, não só o servidor de desenvolvimento.** A prévia publicável tem outro empacotamento (React 18 por CDN, JSX próprio); testar o HTML gerado pega o que o modo dev esconde.
+- **Gestos se testam com eventos de ponteiro com pausa real** (segurar ~400 ms antes de mover). Soltar cedo demais parece defeito do app e não é.
+- **Busca de cidades:** nome exato e nomes curtos primeiro ("Porto" antes de "Porto Seguro").
+- **A ida e a volta não geram aviso ao mudar de cidade:** elas continuam existindo e herdam o meio; avisar "saiu do roteiro" assusta sem motivo.
+- **Heredoc longo no Bash falhou de novo** mesmo com a regra registrada. **Regra reforçada:** script com mais de ~20 linhas sempre vai para um arquivo antes de rodar.
+
 ## 2026-10-13 — Retorno do laboratório do motor (causas-raiz)
 
 O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, mochila longe dos dias, faixa sem datas e sem arrastar, item sem prioridade ao criar, mochila sem graça, mapa ausente, rótulos confusos ("Lixeira", "Encaixar cidade", setas), falta de diversão, arte e contagem regressiva. Os pontos são sintomas de cinco causas:

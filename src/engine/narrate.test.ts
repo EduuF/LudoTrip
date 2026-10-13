@@ -50,10 +50,10 @@ describe('o que aconteceu', () => {
     const a = run(t.itinerary, { type: 'setLegTimes', legId: 'L:kyoto>tokyo', dep: '06:12' }).state
     const b = run(a, { type: 'reorderStop', stopId: 's8', toIndex: 0 }).state
     expect(say(t, { type: 'reorderStop', stopId: 's8', toIndex: 0 }, a)).toBe(
-      'São Paulo → Tóquio saiu do roteiro; os dados ficam guardados. Kyoto → Tóquio saiu do roteiro; os dados ficam guardados.',
+      'Kyoto → Tóquio saiu do roteiro; os dados ficam guardados.',
     )
     expect(say(t, { type: 'reorderStop', stopId: 's8', toIndex: 7 }, b)).toBe(
-      'São Paulo → Tóquio voltou com os dados. Kyoto → Tóquio voltou com os dados.',
+      'Kyoto → Tóquio voltou com os dados.',
     )
   })
 

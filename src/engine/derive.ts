@@ -1,4 +1,4 @@
-import { addDays, dayLabel } from './dates'
+import { addDays, dayLabel, diffDays } from './dates'
 import { dateAt, getStop, isOpen, labelAt, legBetween, nightsOf, stopIndex, timeline } from './core'
 import type { Effects, EngineError, ReturnedVisit } from './core'
 import { dispatch } from './commands'
@@ -611,22 +611,137 @@ export function health(
       issues.push({ kind: 'transport-missing', severity: 'info', target: { kind: 'leg', id: leg.id } })
   }
 
-  const scheduled = new Set<ID>()
-  for (const d of allDays) for (const v of d.visits) scheduled.add(v.placeId)
-  for (const l of it.legs) for (const v of l.waypoints) scheduled.add(v.placeId)
-  const placeDest = new Map(data.places.map((p) => [p.id, p.destinationId]))
-  const inTrip = new Set<ID>()
-  for (const s of it.stops) if (s.destinationId) inTrip.add(s.destinationId)
-  for (const id of scheduled) {
-    const d = placeDest.get(id)
-    if (d) inTrip.add(d)
-  }
+  const { scheduled, inTrip } = scheduleInfo(it, data.places)
   for (const p of data.places) {
     if (p.rarity === 'must' && inTrip.has(p.destinationId) && !scheduled.has(p.id))
       issues.push({ kind: 'must-unscheduled', severity: 'info', target: { kind: 'place', id: p.id } })
   }
 
   return issues.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
+}
+
+/** Itens com dia e destinos que a viagem usa (com noites ou com algum item agendado, como um bate-volta). */
+function scheduleInfo(it: Itinerary, places: Place[]): { scheduled: Set<ID>; inTrip: Set<ID> } {
+  const scheduled = new Set<ID>()
+  for (const d of days(it)) for (const v of d.visits) scheduled.add(v.placeId)
+  for (const l of it.legs) for (const v of l.waypoints) scheduled.add(v.placeId)
+  const placeDest = new Map(places.map((p) => [p.id, p.destinationId]))
+  const inTrip = new Set<ID>()
+  for (const s of it.stops) if (s.destinationId) inTrip.add(s.destinationId)
+  for (const id of scheduled) {
+    const d = placeDest.get(id)
+    if (d) inTrip.add(d)
+  }
+  return { scheduled, inTrip }
+}
+
+// ---------------------------------------------------------------------------
+// A viagem no tempo: antes, durante e depois
+// ---------------------------------------------------------------------------
+
+export type TripPhase =
+  | { kind: 'undated' }
+  | { kind: 'before'; daysLeft: number; start: ISODate }
+  | { kind: 'during'; day: number; totalDays: number; stopId: ID | null; destinationId: ID | null }
+  | { kind: 'after'; totalDays: number }
+
+/** `today` vem de fora (o motor não lê o relógio). */
+export function tripPhase(it: Itinerary, today: ISODate): TripPhase {
+  if (!it.start) return { kind: 'undated' }
+  const { total } = timeline(it)
+  const offset = diffDays(it.start, today)
+  if (offset < 0) return { kind: 'before', daysLeft: -offset, start: it.start }
+  if (offset > total) return { kind: 'after', totalDays: total + 1 }
+  const day = days(it).find((d) => d.index === offset)
+  return {
+    kind: 'during',
+    day: offset + 1,
+    totalDays: total + 1,
+    stopId: day?.stopId ?? null,
+    destinationId: day?.destinationId ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Preparo da viagem: XP e nível (calculados do estado, nunca de cliques)
+// ---------------------------------------------------------------------------
+
+export const LEVELS = [
+  { level: 1, name: 'Sonhando', from: 0 },
+  { level: 2, name: 'Rascunho', from: 0.2 },
+  { level: 3, name: 'Roteiro firme', from: 0.45 },
+  { level: 4, name: 'Quase lá', from: 0.7 },
+  { level: 5, name: 'Pronto pra partir', from: 1 },
+] as const
+
+export const XP = { ticket: 30, lodging: 30, must: 15, scheduled: 5 } as const
+
+export interface PrepTask {
+  kind: 'ticket' | 'lodging' | 'must'
+  done: number
+  total: number
+}
+
+export interface Progress {
+  xp: number
+  level: number
+  levelName: string
+  /** 0..1: quanto do preparo essencial (passagens, hospedagens, imperdíveis) já está feito. */
+  ratio: number
+  /** 0..1 dentro do nível atual (para a barra). */
+  inLevel: number
+  tasks: PrepTask[]
+}
+
+export function progress(it: Itinerary, data: { places: Place[]; bookings: Booking[] }): Progress {
+  const bookings = data.bookings.filter((b) => !b.archived)
+  const okTickets = new Set(
+    bookings
+      .filter((b) => b.kind === 'transport')
+      .map((b) => bookingStatus(b, it))
+      .filter((s) => s.state === 'ok')
+      .map((s) => s.legId),
+  )
+  const ticketLegs = it.legs.filter(
+    (l) => NEEDS_TICKET.has(l.mode) && endpointDest(it, l.from) && endpointDest(it, l.to),
+  )
+  const tickets = {
+    kind: 'ticket' as const,
+    done: ticketLegs.filter((l) => okTickets.has(l.id)).length,
+    total: ticketLegs.length,
+  }
+
+  const gaps = new Set(lodgingGaps(it, bookings).map((g) => g.stopId))
+  const sleeps = it.stops.filter((s) => s.destinationId && !NO_LODGING_NEEDED.has(s.lodging))
+  const lodging = {
+    kind: 'lodging' as const,
+    done: sleeps.filter((s) => !gaps.has(s.id)).length,
+    total: sleeps.length,
+  }
+
+  const { scheduled, inTrip } = scheduleInfo(it, data.places)
+  const musts = data.places.filter((p) => p.rarity === 'must' && inTrip.has(p.destinationId))
+  const must = {
+    kind: 'must' as const,
+    done: musts.filter((p) => scheduled.has(p.id)).length,
+    total: musts.length,
+  }
+  const others = data.places.filter((p) => p.rarity !== 'must' && scheduled.has(p.id)).length
+
+  const done = tickets.done * XP.ticket + lodging.done * XP.lodging + must.done * XP.must
+  const total = tickets.total * XP.ticket + lodging.total * XP.lodging + must.total * XP.must
+  const ratio = total ? done / total : 0
+  const current = [...LEVELS].reverse().find((l) => ratio >= l.from) ?? LEVELS[0]
+  const next = LEVELS.find((l) => l.level === current.level + 1)
+  const inLevel = next ? (ratio - current.from) / (next.from - current.from) : 1
+  return {
+    xp: done + others * XP.scheduled,
+    level: current.level,
+    levelName: current.name,
+    ratio,
+    inLevel: Math.max(0, Math.min(1, inLevel)),
+    tasks: [tickets, lodging, must],
+  }
 }
 
 // ---------------------------------------------------------------------------
