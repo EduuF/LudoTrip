@@ -5,6 +5,21 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — Retorno do laboratório do motor (causas-raiz)
+
+O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, mochila longe dos dias, faixa sem datas e sem arrastar, item sem prioridade ao criar, mochila sem graça, mapa ausente, rótulos confusos ("Lixeira", "Encaixar cidade", setas), falta de diversão, arte e contagem regressiva. Os pontos são sintomas de cinco causas:
+
+1. **A tela nasceu do motor, não da intenção de quem viaja.** Cada botão espelhava um comando (↑↓ = `reorderStop`, ‹› = `shiftStop`, "Encaixar cidade" = `splitStopWith`, "Lixeira" = `removeStop`).
+   - **Regra:** desenhar cada elemento a partir da frase de quem viaja ("quero chegar em Kyoto um dia antes", "não vou mais a Ginzan", "quero 2 dias de Tóquio no meio de Kyoto"): intenção → gesto → retorno visual → o que mais se sincroniza → só então o comando. Teste do leigo: a pessoa adivinha o que o controle faz sem ler nada?
+2. **Algo "só para testar" foi julgado como o produto** — e é assim que tem de ser. Cortei mapa, contagem, XP e arrastar porque "era o M2".
+   - **Regra:** o que vai para o mantenedor é sempre a melhor versão atual da experiência. Se uma parte falta, ela aparece como lugar reservado e explicado, nunca some calada.
+3. **Reconstruí do zero em vez de partir do que já estava validado.** O protótipo tinha datas na faixa, arrastar com prévia e a mochila dentro da cidade; a v1 tinha contagem regressiva, tabuleiro e XP. Tudo regrediu.
+   - **Regra:** `docs/inventario-de-experiencia.md` lista o que já foi validado; toda versão confere a lista antes de ser mostrada.
+4. **Ações fora do sistema de Desfazer.** Passagem e itens da mochila mudavam fora dos comandos do motor, então não tinham volta.
+   - **Regra:** toda ação de quem usa (roteiro, mochila, reservas) é um comando com Desfazer, e toda marcação desmarca no mesmo lugar.
+5. **Funcional primeiro, emoção "depois".** Diversão e arte foram tratadas como camada final. Na v1 elas sustentavam o produto (contagem, pétalas, carimbos).
+   - **Regra:** a spec de cada tela diz a emoção e a mecânica de jogo que ela carrega, com critério de aceite. A espera pela viagem é a maior fonte de alegria ([Nawijn et al., 2010](https://repub.eur.nl/pub/19281/)); planejar faz parte da viagem.
+
 ## 2026-10-13 — M1: motor do roteiro
 
 ### Motor

@@ -12,6 +12,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 | `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md` | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox) |
 | `docs/guia-de-vibe.md` | Identidade visual e de movimento que precisa ser mantida |
 | `docs/aprendizados.md` | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.** |
+| `docs/inventario-de-experiencia.md` | Tudo o que já foi validado com o mantenedor. **Confira antes de mostrar qualquer tela:** nada da lista pode sumir sem decisão registrada. |
 
 ## Regras de ouro (vencem qualquer outra coisa)
 
@@ -21,6 +22,8 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 4. **O app se adapta ao conteúdo da viagem.** Ninguém escolhe "tipo de viagem"; as funções acendem pelo que a viagem contém.
 5. **Celular primeiro (375 px).** Alvos de toque ≥ 44 px, texto ≥ 12 px, contraste 4.5:1. Arrastar é atalho, nunca o único caminho.
 6. **Pense em todas as jornadas.** Antes de fechar uma função, liste os cenários de uso, incluindo os estranhos, e garanta o comportamento certo em cada um.
+7. **Desenhe pela intenção, nunca pelo motor.** Para cada elemento: a frase de quem viaja → o gesto → o retorno visual → o que mais se sincroniza → só então o comando. Um botão por comando do motor é sinal de erro.
+8. **Diversão e arte são requisito, não acabamento.** A spec de cada tela diz a emoção e a mecânica de jogo que ela carrega. O que vai para o mantenedor é sempre a melhor versão atual da experiência, construída sobre a última validada.
 
 ## Como escrever textos da interface
 
@@ -28,7 +31,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - Palavras de quem viaja (cidade, noite, volta, passagem, mochila), nunca termos internos (parada, trava, vizinha, trecho órfão, entidade).
 - Nunca deixe a pessoa num beco sem saída: em vez de erro, mostre as saídas como botões.
   - Exemplo: "Ginzan Onsen tem só 1 noite." [Tirar de Osaka] [Adiar a volta]
-- Ações dizem o que fazem ("Encaixar", "Desfazer"), e os avisos confirmam o que aconteceu ("Sensō-ji voltou para a mochila").
+- Ações dizem a intenção de quem viaja ("Tirar do roteiro", "Chegar 1 dia antes", "Desfazer"), nunca o nome da operação; ícone ou seta sozinha não basta. Os avisos confirmam o que aconteceu ("Sensō-ji voltou para a mochila").
 - Português do Brasil; o vocabulário de jogo é bem-vindo (Fase, Mundo, Quest, LV).
 
 ## Como trabalhar
@@ -50,6 +53,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
   - Toda operação devolve novo estado, inverso (remendo) e efeitos.
   - **Toda mudança no motor vem com testes, incluindo as invariantes com sequências aleatórias (fast-check).**
 - **A interface só despacha comandos serializáveis** (`dispatch(itinerary, command)`). Isso serve a fila offline e às transações.
+- **Toda ação de quem usa tem Desfazer**, inclusive mochila e reservas (que ficam fora do itinerário): elas também passam por comandos com inverso. Toda marcação (passagem comprada, hospedagem, visitado) desmarca no mesmo lugar.
 - **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
 - **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (a partir do M4).
 - **Laboratório do motor:** `npm run lab` abre `lab.html` (tela simples que usa o motor de verdade); `npm run lab:build` gera `dist-lab/laboratorio.html`, um HTML único que pode ser publicado como artifact para o mantenedor testar no celular.
