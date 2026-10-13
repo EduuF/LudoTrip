@@ -1343,10 +1343,78 @@ button.pill {
   position: absolute;
   inset: 0;
 }
-.board svg {
+.map-tiles {
+  position: absolute;
+  inset: 0;
+}
+.board.paper .map-tiles {
+  visibility: hidden;
+}
+.map-overlay {
+  position: absolute;
+  inset: 0;
   display: block;
-  width: 100%;
-  height: 100%;
+  pointer-events: none;
+}
+.map-overlay .node {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.map-overlay .node:focus-visible {
+  outline: none;
+}
+.map-overlay .node:focus-visible circle,
+.map-overlay .node:focus-visible path {
+  stroke: var(--ai);
+  stroke-width: 3;
+}
+.map-credit {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  z-index: 2;
+  font: 9.5px var(--f-body);
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+  border-radius: 4px;
+  padding: 1px 5px;
+  text-decoration: none;
+}
+.city-head {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 60px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--hud);
+  color: var(--hud-fg);
+  border-radius: 10px;
+  padding: 6px 10px 6px 6px;
+  box-shadow: 3px 3px 0 var(--sakura);
+}
+.city-head .btn {
+  color: var(--ink);
+}
+.city-t {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.city-t b {
+  font: 800 16px/1.15 var(--f-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.city-t .local {
+  color: var(--sakura);
+}
+.city-t span {
+  font: 11px var(--f-pixel);
+  opacity: 0.85;
 }
 .board .note-box {
   position: absolute;
@@ -1360,7 +1428,7 @@ button.pill {
   cursor: pointer;
 }
 .board .pillbox {
-  font: 700 15px var(--f-body);
+  font: 700 12px var(--f-body);
 }
 .board .bob {
   animation: bob 1.4s ease-in-out infinite;
@@ -1396,6 +1464,8 @@ button.pill {
 }
 .map-head .btn {
   pointer-events: auto;
+  color: var(--ink);
+  margin-top: 6px;
 }
 .map-head .lbl {
   font: 11px var(--f-pixel);

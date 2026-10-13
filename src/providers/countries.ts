@@ -256,17 +256,12 @@ const ALIASES: Record<string, string> = {
   birmania: 'MM',
   suazilandia: 'SZ',
   macedonia: 'MK',
-  'coreia': 'KR',
+  coreia: 'KR',
   turquia: 'TR',
-  'vietnam': 'VN',
+  vietnam: 'VN',
 }
 
-export const fold = (s: string): string =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
+export const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
 const byIso = new Map(COUNTRIES.map((x) => [x.iso2, x]))
 
@@ -308,9 +303,9 @@ export async function countryBounds(id: string): Promise<[number, number, number
     countries: import('topojson-specification').GeometryCollection
   }>
   const topo = world as unknown as Topo
-  const feats = (feature(topo, topo.objects.countries) as import('geojson').FeatureCollection).features.filter(
-    (f) => String(f.id) === id,
-  )
+  const feats = (
+    feature(topo, topo.objects.countries) as import('geojson').FeatureCollection
+  ).features.filter((f) => String(f.id) === id)
   if (!feats.length) return null
   let w = Infinity
   let s = Infinity

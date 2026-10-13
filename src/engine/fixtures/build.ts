@@ -11,6 +11,7 @@ import type {
   Lock,
   Lodging,
   Place,
+  PlaceKind,
   Rarity,
   Resource,
   Scope,
@@ -33,8 +34,8 @@ export interface TripSpec {
   destinations: Record<string, Omit<Destination, 'id' | 'kind'> & { kind?: Destination['kind'] }>
   /** [chave do destino, noites, planos por dia (nomes de itens), pouso?] */
   stops: [string | null, number, string[][]?, Lodging?][]
-  /** Itens da mochila por destino: [nome, raridade]. */
-  places: Record<string, [string, Rarity][]>
+  /** Itens da mochila por destino: [nome, raridade, lat?, lon?, tipo?]. */
+  places: Record<string, [string, Rarity, number?, number?, PlaceKind?][]>
   /** Modo de trechos específicos: [de, para, modo] usando chaves de destino ou "home". */
   legModes?: [string, string, LegMode][]
   bookings?: (
@@ -70,8 +71,15 @@ export function buildTrip(spec: TripSpec): BuiltTrip {
   }
   const places: Place[] = []
   for (const [key, list] of Object.entries(spec.places)) {
-    list.forEach(([name, rarity], i) =>
-      places.push({ id: `p-${key}-${i + 1}`, destinationId: destId(key), name, rarity }),
+    list.forEach(([name, rarity, lat, lon, kind], i) =>
+      places.push({
+        id: `p-${key}-${i + 1}`,
+        destinationId: destId(key),
+        name,
+        rarity,
+        ...(lat !== undefined && lon !== undefined ? { lat, lon } : {}),
+        ...(kind ? { kind } : {}),
+      }),
     )
   }
   const placeId = (name: string): ID => {

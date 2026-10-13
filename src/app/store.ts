@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { describeError, describeUndoRefusal, placeStates, progress } from '../engine'
+import { days as allDays, describeError, describeUndoRefusal, placeStates, progress } from '../engine'
 import type { ID } from '../engine'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { runDoc, undoDoc } from './doc'
@@ -12,6 +12,8 @@ import { sfx, setSound } from '../ui/sound'
 
 export type Tab = 'mapa' | 'mochila' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
+/** O mapa mostra a viagem inteira ou uma cidade (com os lugares de cada dia). */
+export type MapView = { kind: 'trip' } | { kind: 'city'; destId: ID }
 export type ExampleKey = keyof typeof ALL_TRIPS
 
 export interface ToastState {
@@ -50,6 +52,7 @@ export interface AppState {
   openStop: ID | null
   /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
   cursorDay: number | null
+  mapView: MapView
   focus: string | null
   sound: boolean
   init(): Promise<void>
@@ -65,6 +68,9 @@ export interface AppState {
   closeSheet(): void
   setOpenStop(id: ID | null): void
   setCursorDay(index: number | null): void
+  /** Entra no mapa da cidade; o cursor de dias vai para o primeiro dia dela, como na v1. */
+  enterCity(destId: ID): void
+  exitCity(): void
   focusOn(elementId: string, tab?: Tab): void
   clearFocus(): void
   addExample(key: ExampleKey): Promise<void>
@@ -134,6 +140,7 @@ export const useApp = create<AppState>((set, get) => {
     sheet: null,
     openStop: null,
     cursorDay: null,
+    mapView: { kind: 'trip' },
     focus: null,
     sound: false,
 
@@ -153,6 +160,7 @@ export const useApp = create<AppState>((set, get) => {
         sheet: null,
         openStop: null,
         cursorDay: null,
+        mapView: { kind: 'trip' },
         toast: null,
       })
     },
@@ -249,6 +257,21 @@ export const useApp = create<AppState>((set, get) => {
     },
     setCursorDay(index) {
       set({ cursorDay: index })
+    },
+    enterCity(destId) {
+      const { doc, cursorDay } = get()
+      if (!doc) return
+      const mine = allDays(doc.itinerary, doc.places).filter((d) => d.destinationId === destId)
+      const inCity = mine.some((d) => d.index === cursorDay)
+      set({
+        mapView: { kind: 'city', destId },
+        sheet: null,
+        ...(mine.length && !inCity ? { cursorDay: mine[0]!.index } : {}),
+      })
+      sfx.enter()
+    },
+    exitCity() {
+      set({ mapView: { kind: 'trip' } })
     },
 
     focusOn(elementId, tab) {

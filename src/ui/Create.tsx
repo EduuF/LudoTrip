@@ -78,7 +78,8 @@ export function Create() {
             ...(scope.country ? { country: scope.country } : {}),
             ...(scope.lat !== undefined && scope.lon !== undefined ? { lat: scope.lat, lon: scope.lon } : {}),
           }
-    const first = destinations.find((d) => d.lat !== undefined) ?? (tripScope.lat !== undefined ? tripScope : null)
+    const first =
+      destinations.find((d) => d.lat !== undefined) ?? (tripScope.lat !== undefined ? tripScope : null)
     const far =
       home?.kind === 'city' && home.lat !== undefined && home.lon !== undefined && first?.lat !== undefined
         ? haversineKm({ lat: home.lat, lon: home.lon }, { lat: first.lat, lon: first.lon! }) > 700
@@ -345,8 +346,12 @@ export function Create() {
             />
           </div>
           <p className="note">
-            {scope?.name} · {picks.length ? `${picks.length} ${picks.length === 1 ? 'lugar' : 'lugares'}` : 'lugares a decidir'}{' '}
-            · {nights} noites · {people === 6 ? 'uma galera' : `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`}.{' '}
+            {scope?.name} ·{' '}
+            {picks.length
+              ? `${picks.length} ${picks.length === 1 ? 'lugar' : 'lugares'}`
+              : 'lugares a decidir'}{' '}
+            · {nights} noites ·{' '}
+            {people === 6 ? 'uma galera' : `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`}.{' '}
             {picks.length > 1 ? 'As noites se dividem igualmente; depois é só arrastar na trilha.' : ''}
           </p>
         </>

@@ -11,7 +11,10 @@ const globals = {
       path: args.path,
       namespace: 'g',
     }))
+    // O artifact não tem rede: o mapa fica no papel, e o worker do MapLibre não precisa existir.
+    b.onResolve({ filter: /\?worker&url$/ }, (args) => ({ path: args.path, namespace: 'g' }))
     b.onLoad({ filter: /.*/, namespace: 'g' }, (args) => {
+      if (args.path.endsWith('?worker&url')) return { contents: 'export default ""', loader: 'js' }
       if (args.path === 'react/jsx-runtime')
         return {
           contents: `const R = window.React

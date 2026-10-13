@@ -54,6 +54,9 @@ export interface Scope {
   bbox?: [number, number, number, number]
 }
 
+/** Tipo de lugar: dá o selo no mapa da cidade. */
+export type PlaceKind = 'sight' | 'food' | 'shop' | 'nature' | 'transit' | 'lodging' | 'other'
+
 /** Item da Mochila. Fica fora do itinerário. */
 export interface Place {
   id: ID
@@ -61,6 +64,7 @@ export interface Place {
   name: string
   lat?: number
   lon?: number
+  kind?: PlaceKind
   rarity: Rarity
   estMinutes?: number
   note?: string

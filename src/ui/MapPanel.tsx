@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { plural, timeline, tripPhase, worlds } from '../engine'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { days as allDays, placeStates, plural, timeline, tripPhase, worlds } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
-import { Board } from './Board'
 
-// O painel do mapa (spec §17.2): o mapa da viagem com a contagem regressiva e o resumo por cima,
-// mais "+ Destino". Entrar na cidade, "▶ Ver a viagem" e o mapa detalhado entram nas fases B e C.
+// O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
+// resumo por cima, mais "+ Destino". O mapa em si carrega sob demanda (d3, contornos e MapLibre).
+
+const MapCanvas = lazy(() => import('./MapCanvas').then((m) => ({ default: m.MapCanvas })))
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
@@ -73,9 +74,39 @@ function Countdown() {
   )
 }
 
+/** Cabeçalho dentro da cidade: voltar, nome, dias e lugares. */
+function CityHead({ destId }: { destId: string }) {
+  const doc = useApp((s) => s.doc)!
+  const exitCity = useApp((s) => s.exitCity)
+  const it = doc.itinerary
+  const d = doc.destinations.find((x) => x.id === destId)
+  const nDays = allDays(it, doc.places).filter((x) => x.destinationId === destId).length
+  const states = placeStates(it, doc.places)
+  const mine = doc.places.filter((p) => p.destinationId === destId)
+  const placed = mine.filter((p) => states.get(p.id)?.days.length).length
+  return (
+    <div className="city-head">
+      <button type="button" className="btn small" onClick={exitCity}>
+        ◀ Mapa
+      </button>
+      <div className="city-t">
+        <b>
+          {d?.name}
+          {d?.localName && d.localName !== d.name ? <span className="local"> {d.localName}</span> : null}
+        </b>
+        <span>
+          {nDays ? `${plural(nDays, 'dia', 'dias')} · ` : 'bate-volta · '}
+          {placed}/{mine.length} lugares com dia
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function MapPanel() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
+  const mapView = useApp((s) => s.mapView)
   const it = doc.itinerary
   const nights = timeline(it).total
   const places = new Set(it.stops.map((s) => s.destinationId).filter(Boolean)).size
@@ -93,13 +124,21 @@ export function MapPanel() {
 
   return (
     <section className="mappanel" aria-label="Mapa da viagem">
-      <Board />
-      <div className="map-head">
-        <Countdown />
-        <div className="map-line">{line}</div>
-      </div>
+      <Suspense fallback={<div className="board" />}>
+        <MapCanvas />
+      </Suspense>
+      {mapView.kind === 'city' ? (
+        <CityHead destId={mapView.destId} />
+      ) : (
+        <div className="map-head">
+          <Countdown />
+          <div className="map-line">{line}</div>
+        </div>
+      )}
       <span className="map-wm" aria-hidden="true">
-        {wm}
+        {mapView.kind === 'city'
+          ? (doc.destinations.find((d) => d.id === mapView.destId)?.localName ?? '')
+          : wm}
       </span>
       <div className="map-acts">
         <button
