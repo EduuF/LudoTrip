@@ -10,4 +10,4 @@ Para quem planeja:
 
 A V2 nasce da v1 "Sakura Quest", feita para uma viagem ao Japão.
 
-**Estado atual:** em design. Veja a [spec da V2](docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md).
+**Estado atual:** em construção (marco M3: mapa vivo e roteiro numa tela só). Teste em https://eduuf.github.io/LudoTrip/ (atualizado a cada push). Veja a [spec da V2](docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md).
