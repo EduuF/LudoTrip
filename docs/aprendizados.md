@@ -5,6 +5,27 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M3.2: mouse × toque, criar atividade, micro-detalhes
+
+### Bugs
+
+- **Um setter que apaga outro estado.** `setPlacing(null)` também fazia `sheet: null`; chamado logo depois de `openSheet`, fechava o painel que acabara de abrir ("clicar no mapa não cria a atividade", só segurar funcionava, porque esse caminho não passava por ele). **Regra:** sair de um modo não mexe em outro estado; e a ordem "limpar o modo, depois abrir o painel" fica explícita no código.
+- **Clique dentro do mapa que não é clique no mapa.** A faixa "Marque no mapa…" fica dentro do `.board`; o clique em "Não adicionar" borbulhava até o clique do mapa e abria o painel. **Regra:** toda sobreposição dentro de uma área clicável faz `stopPropagation` do clique e do ponteiro.
+- **Campo com fonte < 16 px no iOS dá zoom ao focar** e o campo "pula" (o "Quando?" mal posicionado no celular). **Regra:** `.input { font-size: 16px }`; `input[type=date]` em flex.
+- **Capturar o ponteiro no `pointerdown` engole o clique dos filhos.** Com `setPointerCapture` na régua desde o início, o `click` vai para a régua e não para o dia. **Regra:** capturar só quando o gesto vira arraste de verdade (depois do limiar).
+- **Aviso fixo no pé da tela cobre o que está embaixo** (no Playwright, o `page.mouse` batia no aviso e não na régua). **Regra:** com painel aberto o aviso vai para o topo; nos testes, rolar a página antes de gestos perto do pé.
+
+### Normas de arraste (pesquisa)
+
+- **dnd-kit** recomenda escolher a regra pelo tipo de ponteiro: mouse/caneta por distância (~5 px), sem espera; toque com espera (~250 ms) e tolerância, para não roubar a rolagem ([PointerSensor](https://docs.dndkit.com/api-documentation/sensors/pointer), [sensores](https://dndkit.com/react/guides/sensors)). **SortableJS** tem `delayOnTouchOnly` pelo mesmo motivo ([opções](https://classic.yarnpkg.com/en/package/sortablejs)). iOS/Material: segurar 400–500 ms é padrão de toque; no desktop, itens arrastam na hora e a faixa rola pela roda, trackpad, barra ou arrastando a área vazia (Trello).
+- **Regra da casa:** `pointer.ts` decide pelo `pointerType`: mouse levanta ao mover 6 px; dedo segura 450 ms (trilha) ou 300 ms (atividades). A régua rola com o mouse e passa os dias com o dedo. Textos dizem "clique/arraste" ou "toque/segure" pela entrada principal (`pointer: coarse`).
+
+### Micro-detalhes
+
+- **Cada toque tem de mudar algo visível.** Um botão de tema com três estados (auto · claro · escuro) repete um dos modos e parece quebrado. **Regra:** botões de alternar são binários; o "automático" só existe antes do primeiro toque.
+- **"Clicar na prioridade cria" não é intuitivo:** a pessoa procura um botão para concluir. **Regra:** escolher tudo e concluir com um botão principal; nada de ação escondida numa escolha.
+- **Palavras genéricas enganam no caso especial:** "Lugares" ao criar uma viagem para o Rio lê-se como Cristo e Pão de Açúcar. **Regra:** perguntar com a frase de quem viaja ("Vão dormir em outra cidade?") e dizer onde entra o resto ("bate-voltas e passeios entram depois, no roteiro").
+
 ## 2026-10-13 — M3.1: revisão de uso (bugs, a jornada das atividades, clareza)
 
 ### Bugs

@@ -67,7 +67,7 @@ export function MapCanvas() {
     })
   }, [adapter])
 
-  // Modo dia/noite: o mapa de tiles troca o estilo junto com o app (e com o aparelho, no "auto").
+  // Modo dia/noite: o mapa de tiles troca o estilo junto com o app (e com o aparelho, antes do primeiro toque).
   const theme = useApp((s) => s.theme)
   useEffect(() => {
     if (!adapter) return
@@ -93,7 +93,8 @@ export function MapCanvas() {
     prev.current = { adapter, key }
   }, [adapter, target])
 
-  // Toque no mapa: marcar uma atividade ("placing") ou criar uma nova. Segurar: "+ Atividade aqui".
+  // Modo "marcar no mapa" (placing): um clique marca o lugar de uma atividade ou abre "Nova atividade"
+  // já com o lugar. Fora do modo, segurar no mapa também abre "Nova atividade".
   const lonLatAt = (clientX: number, clientY: number) => {
     const r = box.current?.getBoundingClientRect()
     if (!r || !adapter) return null
@@ -104,9 +105,11 @@ export function MapCanvas() {
     if (!placing || !cityId) return
     const ll = lonLatAt(e.clientX, e.clientY)
     if (!ll) return
-    if (placing === 'new') openSheet({ kind: 'newActivity', destId: cityId, lon: ll[0], lat: ll[1] })
-    else act({ type: 'setPlace', id: placing, patch: { lon: ll[0], lat: ll[1] } })
+    const what = placing
+    // Sai do modo antes de abrir o painel (sair do modo não mexe no painel).
     setPlacing(null)
+    if (what === 'new') openSheet({ kind: 'newActivity', destId: cityId, lon: ll[0], lat: ll[1] })
+    else act({ type: 'setPlace', id: what, patch: { lon: ll[0], lat: ll[1] } })
   }
   const hold = useRef<{ x: number; y: number; t: number } | null>(null)
   const onPointerDown = (e: RPointerEvent<HTMLDivElement>) => {
@@ -171,10 +174,15 @@ export function MapCanvas() {
         </svg>
       ) : null}
       {placing && cityId ? (
-        <div className="map-hint">
-          Toque no mapa onde fica {placingName}.
+        <div
+          className="map-hint"
+          // A faixa fica dentro do mapa: o clique nela não é um clique no mapa.
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          Marque no mapa onde fica {placingName}.
           <button type="button" onClick={() => setPlacing(null)}>
-            Cancelar
+            {placing === 'new' ? 'Não adicionar' : 'Cancelar'}
           </button>
         </div>
       ) : null}

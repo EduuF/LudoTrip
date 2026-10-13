@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 async function abrirJapao(page: Page) {
   await page.getByRole('button', { name: /Japão de trem/ }).click()
-  await expect(page.getByText('PARTIDA · FALTAM')).toBeVisible()
+  await expect(page.locator('.map-head')).toContainText('FALTAM')
 }
 
 test('abrir um exemplo: mapa, trilha e cartão do dia numa tela; entrar na cidade e voltar', async ({
@@ -60,7 +60,7 @@ test('criar viagem com um país e "decido no mapa": nasce com noites em aberto e
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
-  await expect(page.getByText(/Romênia · 7 noites/)).toBeVisible()
+  await expect(page.locator('.tr-month')).toContainText('7 noites')
   // As abas ficam montadas (escondidas): getByRole respeita o `hidden`, getByText não.
   await expect(page.getByRole('heading', { name: '7 noites em aberto' })).toBeVisible()
 })
@@ -119,9 +119,78 @@ test('"+ Atividade" num dia do roteiro cria a atividade já naquele dia', async 
   await expect(dialog).toContainText('Nova atividade em Kyoto')
   await expect(dialog).toContainText('Entra em sáb 13/04')
   await dialog.getByLabel('Nome da atividade').fill('Ginkaku-ji')
-  await dialog.getByRole('button', { name: /Quero/ }).click()
+  await dialog.getByRole('button', { name: /Imperdível/ }).click()
+  await dialog.getByRole('button', { name: 'Criar atividade' }).click()
   await expect(page.getByText('Atividade nova: Ginkaku-ji.')).toBeVisible()
   await expect(card.getByRole('button', { name: /Ginkaku-ji/ })).toBeVisible()
+})
+
+test('no mouse: arrastar um destino muda a data sem segurar; arrastar a régua rola a faixa', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Ver tudo' }).click()
+  const kyoto = page.getByRole('button', { name: /^Kyoto, 7 noites/ })
+  await expect(kyoto).toBeInViewport()
+  await page.waitForTimeout(300)
+  const b = (await kyoto.boundingBox())!
+  const dw = (b.width + 3) / 7
+  const x = b.x + b.width / 2
+  const y = b.y + b.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + dw * 1.1, y, { steps: 6 })
+  await expect(kyoto).toHaveClass(/lifted/)
+  await page.mouse.up()
+  await expect(page.getByText('Kyoto chega 1 dia depois.')).toBeVisible()
+
+  // Em "Dias" a faixa transborda: arrastar a régua com o mouse rola a faixa (e não passa os dias).
+  await page.getByRole('button', { name: 'Dias', exact: true }).click()
+  await page.waitForTimeout(300)
+  // O aviso "Kyoto chega 1 dia depois." fica fixo no pé da tela, em cima da régua: rola a página antes.
+  await page.evaluate(() => scrollTo(0, 220))
+  const scroll = page.locator('.tr-scroll')
+  const before = await scroll.evaluate((el) => el.scrollLeft)
+  const r = (await page.locator('.tr-ruler').boundingBox())!
+  await page.mouse.move(r.x + 300, r.y + r.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(r.x + 100, r.y + r.height / 2, { steps: 8 })
+  await page.mouse.up()
+  expect(await scroll.evaluate((el) => el.scrollLeft)).toBeGreaterThan(before + 100)
+})
+
+test('"+ Atividade aqui": um clique no mapa da cidade abre "Nova atividade"; "Criar atividade" conclui', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: entrar no mapa da cidade' }).click()
+  await page.getByRole('button', { name: '+ Atividade aqui' }).click()
+  const board = page.locator('.board')
+  await expect(board).toHaveClass(/placing/)
+  const b = (await board.boundingBox())!
+  // Longe do cabeçalho da cidade (em cima) e da faixa "Marque no mapa" (embaixo).
+  await page.mouse.click(b.x + b.width * 0.5, b.y + b.height * 0.45)
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Nova atividade em Kyoto')
+  await expect(board).not.toHaveClass(/placing/)
+  await dialog.getByLabel('Nome da atividade').fill('Ginkaku-ji')
+  await dialog.getByRole('button', { name: 'Criar atividade' }).click()
+  await expect(page.getByText('Atividade nova: Ginkaku-ji.')).toBeVisible()
+})
+
+test('criar viagem com uma cidade: o passo 2 pergunta por outra cidade, não por "lugares"', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'Criar viagem' }).click()
+  await page.getByPlaceholder(/Busque: Japão/).fill('Rio de')
+  await page.getByRole('button', { name: /^Rio de Janeiro/ }).click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await expect(page.getByRole('heading', { name: /Vão dormir em outra cidade\?/ })).toBeVisible()
+  await expect(page.getByText(/Bate-voltas e passeios/)).toBeVisible()
+  await expect(page.getByText('Outra cidade', { exact: true })).toBeVisible()
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Criar viagem' }).click()
+  await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
 })
 
 test('passagem: marcar, desmarcar e desfazer, com carimbo e XP', async ({ page }) => {

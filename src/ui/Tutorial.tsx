@@ -1,3 +1,4 @@
+import { isCoarse } from './pointer'
 import { useEffect, useState } from 'react'
 import { useApp } from '../app/store'
 import { markTutorialSeen } from '../app/tutorial'
@@ -14,7 +15,9 @@ const STEPS = [
   {
     target: '.trilha',
     title: 'A trilha dos dias',
-    text: 'Arraste ◆ para passar noites entre destinos. Segure um destino (meio segundo) para arrastar: muda a data, a ordem, ou vai para a lixeira. Arraste pelos dias e o grupo viaja.',
+    text: isCoarse()
+      ? 'Os pegadores ◂▸ passam noites entre destinos. Segure um destino (meio segundo) e arraste: muda a data, a ordem, ou vai para a lixeira. Arraste pelos dias e o grupo viaja.'
+      : 'Os pegadores ◂▸ passam noites entre destinos. Arraste um destino: muda a data, a ordem, ou vai para a lixeira. Clique num dia e o grupo viaja; a régua e a roda do mouse rolam a trilha.',
   },
   {
     target: '.daycard',

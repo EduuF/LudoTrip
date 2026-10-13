@@ -17,6 +17,7 @@
   - npm como gerenciador de pacotes
 
 **Convenções para todas as tarefas:**
+
 - **TDD:** escrever o teste, ver falhar, implementar, ver passar e fazer o commit.
 - Commits pequenos, em português, terminando com `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Push só com autorização do mantenedor.
@@ -24,6 +25,7 @@
 - Alvos de toque ≥ 44 px, texto ≥ 12 px, contraste 4.5:1.
 
 **Marcos e pontos de revisão:**
+
 - Ao fim de cada marco (M0–M4), o mantenedor revisa o que foi entregue antes de seguir.
 - **Ao fim do M2, o app já pode ser usado no celular sem login**, com dados locais.
 
@@ -82,6 +84,7 @@ firestore.rules, firebase.json, .github/workflows/ci.yml
 ## M0 — Base do projeto
 
 ### Tarefa 1: criar o projeto
+
 - [x] `npm create vite@latest . -- --template react-ts` dentro do repositório; manter o README e a pasta `docs/`.
 - [x] Instalar `zustand react-router-dom idb-keyval`. Para desenvolvimento: `vitest @vitest/coverage-v8 fast-check @testing-library/react @testing-library/user-event jsdom eslint prettier @playwright/test`.
 - [x] `tsconfig`: `"strict": true`, `"noUncheckedIndexedAccess": true`.
@@ -90,6 +93,7 @@ firestore.rules, firebase.json, .github/workflows/ci.yml
 - [x] Commit: `chore: projeto Vite + React + TS com Vitest`.
 
 ### Tarefa 2: integração contínua
+
 - [x] `.github/workflows/ci.yml`: Node LTS, `npm ci`, `typecheck`, `lint`, `test`.
 - [x] Commit: `ci: typecheck, lint e testes`.
 
@@ -100,29 +104,32 @@ firestore.rules, firebase.json, .github/workflows/ci.yml
 **Regra de ouro do M1:** nenhuma operação muta a entrada. Todas devolvem:
 
 ```ts
-type OpResult = { ok: true; state: Itinerary; inverse: Patch; effects: Effects }
-              | { ok: false; error: { code: ErrorCode; message: string; suggestions?: Suggestion[] } };
+type OpResult =
+  | { ok: true; state: Itinerary; inverse: Patch; effects: Effects }
+  | { ok: false; error: { code: ErrorCode; message: string; suggestions?: Suggestion[] } }
 ```
 
 As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Osaka ficaria sem noites. Destrave a duração ou remova Osaka.").
 
 ### Tarefa 3: tipos
+
 - [x] `src/engine/types.ts` com os tipos da spec §13, mais:
 
   ```ts
   type Effects = {
-    returnedToBag: { placeId: ID; visitId: ID; from: DayRef }[];
-    merged: { keptStopId: ID; removedStopId: ID }[];
-    legsCreated: ID[];
-    legsArchived: ID[];
-    legsRestored: ID[];
-    message: string;
-  };
+    returnedToBag: { placeId: ID; visitId: ID; from: DayRef }[]
+    merged: { keptStopId: ID; removedStopId: ID }[]
+    legsCreated: ID[]
+    legsArchived: ID[]
+    legsRestored: ID[]
+    message: string
+  }
   ```
 
 - [x] Commit: `feat(engine): tipos da gramática`.
 
 ### Tarefa 4: datas
+
 - [x] Testes em `dates.test.ts`:
   - `addDays("2030-04-01", 23) === "2030-04-24"`;
   - virada de mês e de ano;
@@ -135,6 +142,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 5: planos dos dias
+
 - [x] `plans.ts`:
   - `planKey`;
   - `growAt(it, stopId, edge, k)` e `shrinkAt(it, stopId, edge, k)` aplicam a **regra da ponta**: dias vazios entram, ou dias saem, no começo (`start`) ou no fim (`end`), com as visitas que saem indo para `returnedToBag` e `itinerary.returned`;
@@ -146,6 +154,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 6: reconciliação de trechos
+
 - [x] `legs.ts` com `reconcileLegs(it, newId)`:
   - pares vizinhos = `home → s0`, `si → si+1`, `sN → home`;
   - um trecho existente com o mesmo par é **mantido**;
@@ -156,6 +165,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 7: remendo inverso e Desfazer seguro
+
 - [x] `patch.ts`:
   - `makePatch(before, after)` registra só as partes tocadas: `stops`, `legs`, `archivedLegs`, chaves de `plans`, `start`, `lock`, `departurePlan`, `resources`, `anchors`, `travelers`;
   - `applyPatch(current, patch)` devolve `{ ok:false, code:"CHANGED_SINCE" }` se alguma parte tocada estiver diferente de `patch.after`.
@@ -166,6 +176,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 8: noites
+
 - [x] Testes primeiro, depois a implementação de `ops/nights.ts`:
   - `setNights(Kyoto, 8, {kind:"return"})`: a volta vai para 25/04 e o novo dia vazio entra no fim de Kyoto.
   - `setNights(Kyoto, 8, {kind:"stop", stopId: Tóquio final})`: Tóquio final de 4 → 3 perdendo o **primeiro** dia; a volta continua em 24/04.
@@ -186,6 +197,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 9: estrutura
+
 - [x] Testes, depois `ops/structure.ts`:
   - `reorderStop(Kyoto, 0)` (começar por Kyoto): datas e trechos se refazem; as Tóquio que ficarem vizinhas se fundem e o efeito `merged` é registrado.
   - `insertStop` 🔒 cede noites da parada de referência; 🔓 estende a viagem.
@@ -201,6 +213,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 10: dias e viagem
+
 - [x] Testes, depois `ops/days.ts`:
   - `removeDay(dia 2 de Tóquio final, {kind:"open"})`: as visitas do dia 2 voltam à mochila; os dias 3 e 4 antecipam um dia; aparece 1 noite em aberto logo depois de Tóquio; as cidades seguintes e a volta não mudam.
   - `removeDay(…, {kind:"return"})`: a volta antecipa 1 dia.
@@ -212,6 +225,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 11: trechos
+
 - [x] Testes, depois `ops/legs.ts`:
   - modo, horários (`arrDayOffset`) e pontas;
   - `setLegNightsAboard(1)` 🔒: a vizinha cede 1 noite e aparece um dia do tipo `leg`;
@@ -219,6 +233,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 12: visitas e ajustes
+
 - [x] Testes, depois `ops/visits.ts` e `ops/misc.ts`:
   - agendar o mesmo lugar em dois dias é permitido;
   - desagendar, mover visita, editar metadados;
@@ -227,6 +242,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 13: comandos
+
 - [x] `commands.ts`:
   - `type Command = { type: "setNights"; stopId; nights } | …` (um por operação, todos serializáveis);
   - `dispatch(itinerary, command, ids: () => ID)`: os ids novos vêm de fora, para manter o motor determinístico.
@@ -234,6 +250,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 14: derivações
+
 - [x] Testes com as fixtures, depois `derive/*`:
   - `days()`: 24 dias no Japão; o dia 11/04 é bate-volta a Nara; o dia 24/04 é o dia de volta.
   - `worlds()`: Europa tem 3 mundos.
@@ -245,6 +262,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [x] Commit.
 
 ### Tarefa 15: fixtures e invariantes
+
 - [x] `fixtures/`: Japão, Rio, Portugal de carro, Europa com voos, cruzeiro, Caminho de Santiago (spec §19).
 - [x] `invariants.test.ts` com fast-check:
   - gerar sequências de 1 a 30 comandos aleatórios válidos e inválidos sobre cada fixture;
@@ -257,6 +275,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 **Ponto de revisão M1:** mostrar ao mantenedor o relatório de testes e uma demonstração no terminal dos cenários da spec §5.3.
 
 **Andamento (2026-10-13):** M1 entregue.
+
 - 121 testes; as invariantes rodam 1.000 sequências aleatórias por viagem (6.000 por execução); cobertura de linhas do motor ≈ 99%.
 - Desvios do plano: os planos dos dias ficaram em `Stop.days` e `Leg.aboard` (sem `plans.ts`); `core.ts` reúne linha do tempo, regra da ponta, fusão e reconciliação de trechos; as mensagens ficaram em `narrate.ts` (`describeEffects` com prévia, `describeError`, `describeIssue`).
 - Para a revisão, em vez da demonstração no terminal: o **laboratório do motor** (`npm run lab`, ou `npm run lab:build` para um HTML único), uma tela simples que usa o motor de verdade.
@@ -265,58 +284,69 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ## M2 — App local (sem login), usável no celular
 
-*Reescrito em 2026-10-13 depois do retorno ao laboratório (spec §17 revisada). O laboratório do motor sai de cena: o M2 é o app de verdade.*
+_Reescrito em 2026-10-13 depois do retorno ao laboratório (spec §17 revisada). O laboratório do motor sai de cena: o M2 é o app de verdade._
 
 **Decisões técnicas do M2:**
+
 - **React 18.3** (não 19): a prévia para o mantenedor é um artifact, que carrega bibliotecas grandes por CDN em versão UMD, e o React 19 não tem UMD. Nada do código depende do 19.
 - Navegação pelo estado do app (abas e telas); rotas com URL entram junto com o PWA no M4.
 - Estado em Zustand; persistência em IndexedDB (idb-keyval) atrás de `TripRepo`, com memória como plano B.
 - Arrastar com pointer events próprios (sem biblioteca): a Trilha tem regras que nenhuma biblioteca cobre.
 
 ### Tarefa 16: base visual e componentes
+
 - [ ] `ui/tokens.css` (guia de vibe, claro e escuro), fontes, botões de tinta, selos, carimbo 済, pétalas com vento.
 - [ ] Componentes: `Sheet` (painel que sobe; Esc e fundo fecham), `Stepper`, `Toast` (com Desfazer), `Seal`, `XpFloat`, `LevelUp`.
 
 ### Tarefa 17: documento da viagem e Desfazer em tudo
+
 - [ ] `app/doc.ts` (puro): `TripDoc = { meta, itinerary, destinations, places, bookings }` e `runDoc(doc, action)` para comandos do motor e da mochila/reservas, devolvendo o inverso. Ações compostas viram uma entrada só de Desfazer.
 - [ ] `engine/derive`: `tripPhase(it, today)` e `progress(it, data)` (XP, nível, tarefas).
 - [ ] Testes: cada ação de mochila e reserva desfaz exatamente; XP sobe e volta com Desfazer.
 
 ### Tarefa 18: repositório local e store
+
 - [ ] `TripRepo` com IndexedDB e memória; `store.ts` com viagens, viagem aberta, pilha de Desfazer, aviso e comemorações.
 
 ### Tarefa 19: Trilha
+
 - [ ] Régua de dias, blocos, ícones de transporte, bandeiras, zoom "Dias"/"Ver tudo".
 - [ ] `trilha/intent.ts` (puro, testado): pegador → noites; bloco → empurrar, reordenar ou lixeira; prateleira → dividir, inserir ou preencher.
 - [ ] Gestos com prévia ao vivo pelo `preview()` do motor; lixeira com "puf"; menu da cidade com as ações em palavras.
 
 ### Tarefa 20: cidades, trechos e dias
+
 - [ ] Cartões de cidade, noites em aberto e trecho (interruptor de passagem, horários, meio, noites a bordo, "+ Cidade aqui").
 - [ ] Dias com figurinhas por turno, remover dia, trocar dias; bandeja de figurinhas com arrastar e tocar.
 
 ### Tarefa 21: Mochila (álbum)
+
 - [ ] Páginas por destino com progresso, figurinhas com moldura de raridade, nova figurinha com a raridade no ato, painel da figurinha, destinos guardados, página completa.
 
 ### Tarefa 22: Quests
+
 - [ ] Textos do `describeIssue`, "Ver", resoluções num toque, lista vazia comemorativa.
 
 ### Tarefa 23: Mundo (tabuleiro) e HUD
+
 - [ ] Tabuleiro com `world-atlas` + `d3-geo`, trilha, fases, pílulas, sprites; contagem grande; HUD com contagem e nível.
 
 ### Tarefa 24: Minhas viagens, exemplos e criar viagem
+
 - [ ] Lista local, exemplos copiáveis, criação em passos com lista offline de cidades e "Mundo criado!".
 
 ### Tarefa 25: prévia para o mantenedor
+
 - [ ] `npm run preview:artifact` gera um HTML único (React 18 e d3 por CDN; o resto embutido) para publicar como artifact.
 - [ ] Conferir o inventário da experiência antes de mostrar.
 
-**Ponto de revisão M2:** o mantenedor testa a prévia no celular. *(Feito: 16 pontos de retorno; ver `docs/aprendizados.md`.)*
+**Ponto de revisão M2:** o mantenedor testa a prévia no celular. _(Feito: 16 pontos de retorno; ver `docs/aprendizados.md`.)_
 
 ---
 
 ## M3 — Mapa vivo e roteiro numa tela só
 
-*Plano de ação do retorno do M2 (2026-10-13). Entregue: fases A, B e C.*
+_Plano de ação do retorno do M2 (2026-10-13). Entregue: fases A, B e C._
 
 - [x] **A1** GitHub Pages (`https://eduuf.github.io/LudoTrip/`), manifest e ícones em pixel art; `BASE_PATH` no Vite.
 - [x] **A2** Glossário (Mapa, Mochila, Tarefas, NÍVEL, "destino") e prioridades de ouro no `CLAUDE.md`.
@@ -345,7 +375,7 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ## M3.1 — Revisão de uso: bugs, a jornada das atividades e clareza
 
-*Resposta aos 9 pontos do retorno do M3 (plano aprovado em `~/.claude/plans/magical-weaving-waffle.md`).*
+_Resposta aos 9 pontos do retorno do M3 (plano aprovado em `~/.claude/plans/magical-weaving-waffle.md`)._
 
 - [x] **A1** Mapa que sumia em produção: especificidade sobre o CSS do MapLibre, adaptador sem tamanho é descartado, abas montadas e escondidas; e2e com tiles simulados mede o canvas.
 - [x] **A2** Arrastar na trilha no toque: levantado síncrono, 450 ms com o bloco inflando, alça ⋮⋮, continuação por eventos de toque; e2e de toque via CDP.
@@ -362,9 +392,24 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 **Ponto de revisão M3.1:** o mantenedor testa no celular em `https://eduuf.github.io/LudoTrip/`.
 
+## M3.2 — Mouse × toque, criar atividade e micro-detalhes
+
+_Resposta aos 13 pontos do retorno do M3.1 (plano em `~/.claude/plans/magical-weaving-waffle.md`)._
+
+- [x] **A1** Criar atividade pelo mapa: `setPlacing(null)` não fecha mais o painel; faixa "Marque no mapa…" com "Não adicionar" (e sem borbulhar o clique).
+- [x] **A2** Campos com 16 px e date/time em flex (iOS). **A3** Comemoração: "todas as atividades já têm dia marcado".
+- [x] **B1** Trilha por entrada: mouse levanta ao mover 6 px e rola pela régua/roda; dedo segura 450 ms; textos por `pointer: coarse`.
+- [x] **B2** Atividades dos dias arrastam entre dias e para "sem dia" (`chipDrag`), inclusive do cartão do dia.
+- [x] **B3** Pegadores: pílulas com setas ◂▸, cursor ⟷, aceno ao abrir.
+- [x] **C1** "Nova atividade" com prioridade selecionável e "Criar atividade". **C2** Cidade segue o dia (`setCursorDay`). **C3** Criar viagem: "Vão dormir em outra cidade?" / "Em quais cidades vão dormir?".
+- [x] **D1** Aviso no topo com painel aberto. **D2** Contagem compacta; resumo na trilha. **D3** Tema binário. **D4** Docs e memória.
+
+**Ponto de revisão M3.2:** o mantenedor testa no PC e no celular em `https://eduuf.github.io/LudoTrip/`.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**
+
 - criar o projeto no console do Firebase (plano Spark gratuito);
 - ativar Authentication com Google e link por e-mail;
 - criar o Firestore em `southamerica-east1`;
@@ -373,18 +418,21 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 
 ### Tarefa 26: Firebase e emuladores
+
 - [ ] `firebase.json` com emuladores de auth, firestore e hosting.
 - [ ] `src/firebase.ts` com `initializeFirestore` e `persistentLocalCache`.
 - [ ] `firebaseRepo.ts` implementando `TripRepo`.
 - [ ] Commit.
 
 ### Tarefa 27: login
+
 - [ ] Tela de entrada com Google e link por e-mail, no visual da v1.
 - [ ] Rotas protegidas.
 - [ ] Ao entrar pela primeira vez, as viagens locais podem ser levadas para a conta ("Levar minhas viagens para a nuvem").
 - [ ] Commit.
 
 ### Tarefa 28: operações em transação
+
 - [ ] `run(id, cmd)` dentro de `runTransaction`:
   - ler `trips/{id}`;
   - `dispatch`;
@@ -395,6 +443,7 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Commit.
 
 ### Tarefa 29: fila offline
+
 - [ ] Sem rede, os comandos vão para a fila no IndexedDB e são aplicados otimisticamente.
 - [ ] Na reconexão, são reaplicados em ordem, cada um em transação.
 - [ ] Uma falha vira aviso com o motivo do motor.
@@ -402,6 +451,7 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Commit.
 
 ### Tarefa 30: regras de segurança
+
 - [ ] `firestore.rules` conforme a spec §18.
 - [ ] `tests/rules.test.ts` com `@firebase/rules-unit-testing`:
   - não membro não lê;
@@ -413,6 +463,7 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Commit.
 
 ### Tarefa 31: compartilhar
+
 - [ ] `ShareSheet`:
   - criar link com papel e validade;
   - botão "Enviar" usando o compartilhamento do celular (Web Share API, com "Copiar link" como alternativa);
@@ -422,6 +473,7 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Commit.
 
 ### Tarefa 32: histórico
+
 - [ ] Tela "Histórico" simples a partir de `feed` (quem e o quê).
 - [ ] Commit.
 
@@ -431,14 +483,16 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 
 ## M5 — PWA completo, testes ponta a ponta e publicação definitiva
 
-*O manifest, os ícones e a fumaça ponta a ponta já existem desde o M3; aqui entram o cache offline (app, contornos e tiles da viagem), mais jornadas e a publicação com conta própria.*
+_O manifest, os ícones e a fumaça ponta a ponta já existem desde o M3; aqui entram o cache offline (app, contornos e tiles da viagem), mais jornadas e a publicação com conta própria._
 
 ### Tarefa 33: PWA
+
 - [ ] `vite-plugin-pwa`: manifest "LudoTrip" com ícones e cor do tema, e cache do app e dos dados do `world-atlas`.
 - [ ] Dica discreta de "Adicionar à tela inicial".
 - [ ] Commit.
 
 ### Tarefa 34: jornadas ponta a ponta
+
 - [ ] Playwright em 375×812, contra os emuladores. Um teste por linha da spec §5.3, sobre as fixtures:
   - deslocar Kyoto;
   - começar por Kyoto (passagem órfã);
@@ -455,11 +509,13 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Commit.
 
 ### Tarefa 35: acessibilidade e desempenho
+
 - [ ] `@axe-core/playwright` sem violações graves nas 4 telas.
 - [ ] Orçamento de tamanho: carga inicial < 250 KB gzip, sem o mapa.
 - [ ] Commit.
 
 ### Tarefa 36: publicação e LGPD
+
 - [ ] Páginas "Privacidade" e "Excluir minha conta" (a exclusão remove as viagens das quais a pessoa é Dona e a tira das demais).
 - [ ] `docs/deploy.md`: `firebase deploy` (hosting + rules) e configuração de **alerta de orçamento**.
 - [ ] O mantenedor executa a publicação com a conta dele.

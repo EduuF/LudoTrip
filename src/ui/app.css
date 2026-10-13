@@ -585,23 +585,64 @@ h3 {
 .tr-handle {
   position: absolute;
   top: 100px;
-  width: 34px;
+  width: 36px;
   height: 30px;
-  margin-left: -17px;
+  margin-left: -18px;
   border: 0;
   background: none;
   display: grid;
   place-items: center;
   touch-action: none;
   z-index: 4;
+  cursor: ew-resize;
 }
+/* Pílula com setas ◂▸: diz "isto se arrasta para os lados" sem legenda */
 .tr-handle i {
-  width: 14px;
-  height: 14px;
-  transform: rotate(45deg);
+  position: relative;
+  width: 28px;
+  height: 18px;
+  border-radius: 9px;
   background: var(--paper);
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--sakura);
+}
+.tr-handle i::before,
+.tr-handle i::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  border: 4px solid transparent;
+}
+.tr-handle i::before {
+  left: 3px;
+  border-left: 0;
+  border-right-color: var(--ink);
+}
+.tr-handle i::after {
+  right: 3px;
+  border-right: 0;
+  border-left-color: var(--ink);
+}
+.tr-handle.nudge i {
+  animation: nudge 0.6s ease-in-out 2;
+}
+@keyframes nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -4px 0;
+  }
+  75% {
+    translate: 4px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tr-handle.nudge i {
+    animation: none;
+  }
 }
 .tr-handle.active i,
 .tr-handle:active i {
@@ -1055,6 +1096,10 @@ button.pill {
   display: inline-flex;
   gap: 5px;
   align-items: center;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .mini.r-must {
   --fr: var(--gold);
@@ -1591,7 +1636,7 @@ a.opt {
   background: var(--hud);
   color: var(--hud-fg);
   border-radius: 10px;
-  padding: 6px 10px 7px;
+  padding: 5px 9px 6px;
   box-shadow: 3px 3px 0 var(--sakura);
   pointer-events: none;
 }
@@ -1605,15 +1650,6 @@ a.opt {
   letter-spacing: 0.12em;
   opacity: 0.8;
 }
-.map-head .big {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.map-head .big b {
-  font: 400 28px/1 var(--f-pixel);
-  color: var(--sakura);
-}
 .map-head .cd-open {
   pointer-events: auto;
   display: block;
@@ -1625,21 +1661,22 @@ a.opt {
   font: inherit;
   cursor: pointer;
 }
-.map-head .cd-open .lbl,
-.map-head .cd-open .clock {
-  display: block;
+.map-head .cd-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
 }
-.map-head .big span {
-  font: 13px var(--f-pixel);
+.map-head .cd-row b {
+  font: 400 24px/1 var(--f-pixel);
+  color: var(--sakura);
+}
+.map-head .cd-row span:last-child {
+  font: 12px var(--f-pixel);
 }
 .map-head .clock {
-  font: 11.5px var(--f-pixel);
+  display: block;
+  font: 11px var(--f-pixel);
   opacity: 0.85;
-}
-.map-line {
-  font-size: 12.5px;
-  margin-top: 3px;
-  opacity: 0.92;
 }
 .map-wm {
   position: absolute;
@@ -2006,6 +2043,20 @@ a.opt {
   padding: 0 12px;
   width: 100%;
   max-width: 100%;
+  /* 16 px: abaixo disso o iOS dá zoom ao focar e o campo "pula" para fora do lugar */
+  font-size: 16px;
+}
+input[type='date'].input,
+input[type='time'].input {
+  display: flex;
+  align-items: center;
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  text-align: left;
 }
 .suggest {
   display: flex;
@@ -2197,6 +2248,17 @@ a.opt {
   box-shadow: 4px 4px 0 var(--sakura);
   animation: rise 0.25s ease-out;
 }
+.toast.top {
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  animation: drop 0.25s ease-out;
+}
+@keyframes drop {
+  from {
+    transform: translate(-50%, -16px);
+    opacity: 0;
+  }
+}
 .toast.warn {
   box-shadow: 4px 4px 0 var(--gold);
 }
@@ -2343,4 +2405,45 @@ a.opt {
     animation-iteration-count: 1 !important;
     transition: none !important;
   }
+}
+
+/* Mouse: cursor de "pegar" onde se arrasta; a régua rola a faixa */
+@media (hover: hover) and (pointer: fine) {
+  .tr-blk,
+  .chip-dest,
+  .mini:not(.add) {
+    cursor: grab;
+  }
+  .tr-blk.lifted,
+  .mini.lifted {
+    cursor: grabbing;
+  }
+  .tr-ruler {
+    cursor: grab;
+  }
+  .tr-ruler.panning {
+    cursor: grabbing;
+  }
+}
+.tr-month {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tr-month small {
+  font: inherit;
+  color: var(--ink-soft);
+}
+.loose-row.drop {
+  background: color-mix(in srgb, var(--sakura) 22%, transparent);
+  outline: 2px dashed var(--sakura);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.loose-row .note {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 6px 0;
 }

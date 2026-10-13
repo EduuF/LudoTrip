@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { health, progress, tripPhase } from './engine'
 import { countdownTo, todayISO, useApp } from './app/store'
 import type { Tab } from './app/store'
-import { nextChoice, THEME_GLYPH, THEME_LABEL } from './app/theme'
+import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
@@ -22,8 +22,9 @@ function Hud() {
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const sound = useApp((s) => s.sound)
   const toggleSound = useApp((s) => s.toggleSound)
-  const theme = useApp((s) => s.theme)
+  useApp((s) => s.theme) // redesenha ao trocar o tema
   const setTheme = useApp((s) => s.setTheme)
+  const mode = currentTheme()
   const setTutorial = useApp((s) => s.setTutorial)
   const setTab = useApp((s) => s.setTab)
   const openSheet = useApp((s) => s.openSheet)
@@ -67,11 +68,11 @@ function Hud() {
           <button
             type="button"
             className="hud-btn"
-            aria-label={THEME_LABEL[theme]}
-            title={THEME_LABEL[theme]}
-            onClick={() => setTheme(nextChoice(theme))}
+            aria-label={THEME_ACTION[mode]}
+            title={THEME_ACTION[mode]}
+            onClick={() => setTheme(toggledTheme())}
           >
-            {THEME_GLYPH[theme]}
+            {THEME_GLYPH[mode]}
           </button>
           <button
             type="button"

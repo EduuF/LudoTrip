@@ -12,6 +12,7 @@ import {
   timeline,
   tripPhase,
   weekday,
+  worlds,
 } from '../engine'
 import type { Command, ID, Itinerary } from '../engine'
 import { useApp, todayISO } from '../app/store'
@@ -20,11 +21,15 @@ import type { BlockIntent, ShelfIntent } from '../app/trilha/intent'
 import { cityName, previewLines } from '../app/choices'
 import { colorOf, sealOf } from './colors'
 import { PixelTrash, Vehicle } from './kit'
+import { isCoarse, MOUSE_DISTANCE } from './pointer'
 
 // A Trilha (spec §17.3): régua de datas, blocos por cidade, pegadores, levantar e arrastar.
+// Mouse e dedo seguem normas diferentes (ver pointer.ts): o mouse levanta um bloco ao mover 6 px e rola
+// a faixa pela régua ou pela roda; o dedo segura 450 ms para levantar, rola a faixa pelos blocos e passa
+// os dias pela régua (a barra de dias da v1).
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
-// Segurar ~450 ms (iOS e Material levantam entre 400 e 500 ms); o bloco "infla" enquanto espera.
+// Segurar ~450 ms no toque (iOS e Material levantam entre 400 e 500 ms); o bloco "infla" enquanto espera.
 const LIFT_MS = 450
 const MOVE_TOLERANCE = 9
 
@@ -52,7 +57,11 @@ interface Pending {
   y: number
   timer: number
   el: HTMLElement
+  /** Mouse ou caneta: levanta ao mover, sem esperar. */
+  mouse: boolean
 }
+
+type Scrub = { mode: 'scrub' } | { mode: 'pan'; x: number; left: number; moved: boolean }
 
 export function Trilha() {
   const doc = useApp((s) => s.doc)!
@@ -64,6 +73,7 @@ export function Trilha() {
   const setCursorDay = useApp((s) => s.setCursorDay)
   const it = doc.itinerary
   const total = timeline(it).total
+  const coarse = isCoarse()
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -73,6 +83,8 @@ export function Trilha() {
   const [drag, setDrag] = useState<Drag | null>(null)
   const [shake, setShake] = useState<ID | null>(null)
   const [charging, setCharging] = useState<ID | null>(null)
+  const [panning, setPanning] = useState(false)
+  const [nudge, setNudge] = useState(true)
   const dragRef = useRef<Drag | null>(null)
   const pending = useRef<Pending | null>(null)
   dragRef.current = drag
@@ -91,10 +103,30 @@ export function Trilha() {
   // Enquanto algo está levantado, o dedo não rola a página nem a trilha.
   useEffect(() => {
     const block = (e: TouchEvent) => {
-      if (dragRef.current) e.preventDefault()
+      if (dragRef.current && e.cancelable) e.preventDefault()
     }
     addEventListener('touchmove', block, { passive: false })
     return () => removeEventListener('touchmove', block)
+  }, [])
+
+  // A roda do mouse sobre a trilha rola a faixa (só quando ela transborda e o gesto é mais vertical
+  // que horizontal, para não brigar com o trackpad).
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // Os pegadores acenam ao abrir a viagem: "isto se arrasta".
+  useEffect(() => {
+    const t = setTimeout(() => setNudge(false), 1400)
+    return () => clearTimeout(t)
   }, [])
 
   // O dia escolhido fica à vista (ao tocar, arrastar a régua ou "ver a viagem").
@@ -137,25 +169,48 @@ export function Trilha() {
     return r ? (clientX - r.left) / dw : 0
   }
 
-  // Arrastar pela régua passa os dias (o grupo anda no mapa), como a barra de dias da v1.
-  const scrubbing = useRef(false)
+  // Régua: com o dedo, arrastar passa os dias (o grupo anda no mapa, como a barra de dias da v1);
+  // com o mouse, arrastar rola a faixa e o clique escolhe o dia.
+  const scrub = useRef<Scrub | null>(null)
+  const panned = useRef(false)
   const scrubTo = (clientX: number) =>
     setCursorDay(Math.max(0, Math.min(timeline(it).total, Math.floor(dayAt(clientX)))))
-  const onScrubDown = (e: RPointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    scrubbing.current = true
+  const capture = (e: RPointerEvent<HTMLDivElement>) => {
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
       /* ponteiro sintético (testes) */
     }
-    scrubTo(e.clientX)
+  }
+  const onScrubDown = (e: RPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    if (e.pointerType === 'touch') {
+      capture(e)
+      scrub.current = { mode: 'scrub' }
+      scrubTo(e.clientX)
+    } else
+      scrub.current = { mode: 'pan', x: e.clientX, left: scrollRef.current?.scrollLeft ?? 0, moved: false }
   }
   const onScrubMove = (e: RPointerEvent<HTMLDivElement>) => {
-    if (scrubbing.current) scrubTo(e.clientX)
+    const s = scrub.current
+    if (!s) return
+    if (s.mode === 'scrub') return scrubTo(e.clientX)
+    const dx = e.clientX - s.x
+    if (!s.moved && Math.abs(dx) > 4) {
+      // Só captura o ponteiro quando rola de verdade: um clique parado continua chegando ao dia.
+      s.moved = true
+      capture(e)
+      setPanning(true)
+    }
+    if (s.moved && scrollRef.current) scrollRef.current.scrollLeft = s.left - dx
   }
   const onScrubEnd = () => {
-    scrubbing.current = false
+    const s = scrub.current
+    scrub.current = null
+    setPanning(false)
+    // Depois de rolar, o clique que o navegador dispara em cima do dia não vale.
+    panned.current = s?.mode === 'pan' && s.moved
+    if (panned.current) setTimeout(() => (panned.current = false), 0)
   }
 
   // O que desenhar: durante "empurrar" ou pegadores, a prévia; senão, o roteiro atual.
@@ -196,6 +251,19 @@ export function Trilha() {
     }
     return out
   }, [it, doc.bookings])
+
+  // Resumo da viagem no cabeçalho ("23 noites · 6 lugares · 2 países"); o nome do lugar é a marca-d'água do mapa.
+  const summary = useMemo(() => {
+    const places = new Set(it.stops.map((s) => s.destinationId).filter(Boolean)).size
+    const countries = worlds(it, doc.destinations).length
+    return [
+      plural(total, 'noite', 'noites'),
+      places ? plural(places, 'lugar', 'lugares') : null,
+      countries > 1 ? plural(countries, 'país', 'países') : null,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }, [it, doc.destinations, total])
 
   // ---------------------------------------------------------------------------
   // Textos do balão
@@ -330,41 +398,57 @@ export function Trilha() {
     setCharging(null)
   }
 
+  /** Levanta de verdade: captura o ponteiro, vibra (no toque) e marca o levantado na hora, antes de o
+   *  React desenhar, para o primeiro movimento do dedo já não rolar a página. */
+  const lift = (p: Pending) => {
+    try {
+      p.el.setPointerCapture(p.pointerId)
+    } catch {
+      /* o dedo já saiu */
+    }
+    if (!p.mouse) navigator.vibrate?.(12)
+    let d: Drag
+    if (p.kind === 'block') {
+      const grabDay = dayAt(p.x)
+      const intent = blockIntent(it, p.id, 0, grabDay)
+      d = {
+        kind: 'block',
+        stopId: p.id,
+        startX: p.x,
+        grabDay,
+        dx: 0,
+        intent,
+        trash: false,
+        ...blockText(p.id, intent, false),
+      }
+    } else d = { kind: 'shelf', destId: p.id, x: p.x, y: p.y, intent: null, text: shelfText(p.id, null) }
+    dragRef.current = d
+    setDrag(d)
+  }
+
   const onLiftDown = (e: RPointerEvent<HTMLElement>, kind: 'block' | 'shelf', id: ID) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return
     cancelPending()
-    const el = e.currentTarget
-    const pointerId = e.pointerId
-    const x = e.clientX
-    const y = e.clientY
-    const timer = window.setTimeout(() => {
-      try {
-        el.setPointerCapture(pointerId)
-      } catch {
-        /* o dedo já saiu */
-      }
-      navigator.vibrate?.(12)
+    const mouse = e.pointerType !== 'touch'
+    const p: Pending = {
+      kind,
+      id,
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      timer: 0,
+      el: e.currentTarget,
+      mouse,
+    }
+    pending.current = p
+    // Mouse e caneta levantam ao mover (ver liftMove); o dedo segura, com o bloco inflando.
+    if (mouse) return
+    p.timer = window.setTimeout(() => {
+      if (pending.current !== p) return
+      pending.current = null
       setCharging(null)
-      let d: Drag
-      if (kind === 'block') {
-        const grabDay = dayAt(x)
-        const intent = blockIntent(it, id, 0, grabDay)
-        d = {
-          kind: 'block',
-          stopId: id,
-          startX: x,
-          grabDay,
-          dx: 0,
-          intent,
-          trash: false,
-          ...blockText(id, intent, false),
-        }
-      } else d = { kind: 'shelf', destId: id, x, y, intent: null, text: shelfText(id, null) }
-      // Levantado na hora, antes de o React desenhar: o primeiro movimento do dedo já não rola a página.
-      dragRef.current = d
-      setDrag(d)
+      lift(p)
     }, LIFT_MS)
-    pending.current = { kind, id, pointerId, x, y, timer, el }
     setCharging(id)
   }
 
@@ -380,8 +464,18 @@ export function Trilha() {
 
   const liftMove = (x: number, y: number) => {
     const p = pending.current
+    if (p && !dragRef.current) {
+      const dist = Math.hypot(x - p.x, y - p.y)
+      if (p.mouse) {
+        if (dist <= MOUSE_DISTANCE) return
+        pending.current = null
+        lift(p)
+      } else {
+        if (dist > MOVE_TOLERANCE) cancelPending()
+        return
+      }
+    }
     const d = dragRef.current
-    if (p && !d && Math.hypot(x - p.x, y - p.y) > MOVE_TOLERANCE) cancelPending()
     if (!d) return
     edgeX.current = x
     if (d.kind === 'block') {
@@ -402,7 +496,7 @@ export function Trilha() {
     cancelPending()
     edgeX.current = null
     if (!d) {
-      // Toque simples.
+      // Toque (ou clique) simples.
       if (p && Math.hypot(x - p.x, y - p.y) <= MOVE_TOLERANCE) {
         if (kind === 'block') {
           // Como na v1: o cursor vai ao primeiro dia do destino, e o roteiro rola até o cartão dele.
@@ -518,11 +612,20 @@ export function Trilha() {
   const shelf = [...doc.destinations].sort(
     (a, b) => Number(destsInTrip.has(b.id)) - Number(destsInTrip.has(a.id)),
   )
+  const blockHint = coarse
+    ? 'Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.'
+    : 'Clique para ver os dias no roteiro; arraste para mudar a data ou a ordem.'
+  const chipHint = coarse
+    ? 'toque para escolher onde entra, ou segure e arraste para a trilha'
+    : 'clique para escolher onde entra, ou arraste para a trilha'
 
   return (
     <section className="trilha" aria-label="Trilha da viagem">
       <div className="tr-head">
-        <span className="tr-month">{startLabel}</span>
+        <span className="tr-month">
+          {startLabel}
+          {summary ? <small> · {summary}</small> : null}
+        </span>
         <div className="seg" role="group" aria-label="Zoom da trilha">
           <button
             type="button"
@@ -622,7 +725,7 @@ export function Trilha() {
                 type="button"
                 className={cls}
                 style={style}
-                aria-label={`${label}. Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.`}
+                aria-label={`${label}. ${blockHint}`}
                 onPointerDown={(e) => onLiftDown(e, 'block', stop.id)}
                 onPointerMove={onLiftMove}
                 onPointerUp={(e) => onLiftUp(e, 'block', stop.id)}
@@ -655,7 +758,7 @@ export function Trilha() {
             )
           })}
 
-          {/* Pegadores das divisas e da volta */}
+          {/* Pegadores das divisas e da volta: pílulas com setas, que acenam ao abrir a viagem */}
           {view.stops.slice(0, -1).map((s, i) => {
             const next = view.stops[i + 1]!
             const x = stopStart(next.id) * dw
@@ -664,9 +767,10 @@ export function Trilha() {
               <button
                 key={`h-${s.id}`}
                 type="button"
-                className={`tr-handle${active ? ' active' : ''}`}
+                className={`tr-handle${active ? ' active' : ''}${nudge ? ' nudge' : ''}`}
                 style={{ left: x }}
                 aria-label={`Divisa entre ${cityName(s.id)} e ${cityName(next.id)}: arraste para passar noites`}
+                title={`Arraste: noites de ${cityName(s.id)} ⇄ ${cityName(next.id)}`}
                 onPointerDown={(e) => onHandleDown(e, i)}
                 onPointerMove={onHandleMove}
                 onPointerUp={onHandleUp}
@@ -678,9 +782,10 @@ export function Trilha() {
           })}
           <button
             type="button"
-            className={`tr-handle${it.lock === 'fixed' ? ' locked' : ''}${drag?.kind === 'end' ? ' active' : ''}`}
+            className={`tr-handle${it.lock === 'fixed' ? ' locked' : ''}${drag?.kind === 'end' ? ' active' : ''}${nudge ? ' nudge' : ''}`}
             style={{ left: tl.departureIndex * dw }}
             aria-label={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste para mudar a volta'}
+            title={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste: a volta'}
             onPointerDown={(e) => onHandleDown(e, 'end')}
             onPointerMove={onHandleMove}
             onPointerUp={onHandleUp}
@@ -725,9 +830,13 @@ export function Trilha() {
           ) : null}
 
           <div
-            className="tr-ruler"
+            className={`tr-ruler${panning ? ' panning' : ''}`}
             role="group"
-            aria-label="Dias da viagem: toque ou arraste para ver cada dia"
+            aria-label={
+              coarse
+                ? 'Dias da viagem: toque ou arraste para ver cada dia'
+                : 'Dias da viagem: clique para ver o dia; arraste para rolar a trilha'
+            }
             onPointerDown={onScrubDown}
             onPointerMove={onScrubMove}
             onPointerUp={onScrubEnd}
@@ -761,7 +870,9 @@ export function Trilha() {
                   style={{ width: dw }}
                   aria-label={`${date ? `${wd} ${ddmm(date)}` : `dia ${i + 1}`}${tripNames ? `, bate-volta: ${tripNames}` : ''}`}
                   aria-pressed={cursor === i}
-                  onClick={() => setCursorDay(i)}
+                  onClick={() => {
+                    if (!panned.current) setCursorDay(i)
+                  }}
                 >
                   <i>
                     {date
@@ -791,7 +902,7 @@ export function Trilha() {
         </div>
       </div>
 
-      <div className="shelf" aria-label="Destinos: segure e arraste para a trilha">
+      <div className="shelf" aria-label="Destinos: arraste para a trilha">
         <span className="shelf-t">ARRASTE UM DESTINO PARA A TRILHA</span>
         {shelf.map((d) => (
           <button
@@ -804,7 +915,7 @@ export function Trilha() {
             onPointerUp={(e) => onLiftUp(e, 'shelf', d.id)}
             onPointerCancel={onLiftCancel}
             onContextMenu={(e) => e.preventDefault()}
-            aria-label={`${d.name}: toque para escolher onde entra, ou segure e arraste para a trilha`}
+            aria-label={`${d.name}: ${chipHint}`}
           >
             <span className="seal sm" style={{ ['--c' as string]: colorOf(doc.destinations, d.id) }}>
               {sealOf(d)}
@@ -826,7 +937,11 @@ export function Trilha() {
           + Adicionar destino
         </button>
       </div>
-      <p className="tr-hint">Segure um destino para arrastar · toque para ver os dias · ◆ muda as noites.</p>
+      <p className="tr-hint">
+        {coarse
+          ? 'Segure um destino para arrastar · toque para ver os dias · ◂▸ muda as noites.'
+          : 'Arraste um destino para mudar a data ou a ordem · clique para ver os dias · ◂▸ muda as noites · arraste a régua para rolar.'}
+      </p>
 
       {lifted ? (
         <div className={`trash${lifted.trash ? ' hot' : ''}`} ref={trashRef} aria-hidden="true">

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { days as allDays, placeStates, plural, timeline, tripPhase, worlds } from '../engine'
+import { days as allDays, placeStates, plural, tripPhase } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
 import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
@@ -40,6 +40,8 @@ function Countdown() {
         </button>
       </>
     )
+  // Compacta (cobre pouco do mapa no celular): rótulo, número e unidade numa linha; relógio e data embaixo.
+  const open = () => openSheet({ kind: 'trip' })
   if (phase.kind === 'before') {
     const [y, m, d] = phase.start.split('-').map(Number) as [number, number, number]
     const { days, hh, mm, ss } = countdownTo(phase.start, now)
@@ -47,11 +49,11 @@ function Countdown() {
       <button
         type="button"
         className="cd-open"
-        onClick={() => openSheet({ kind: 'trip' })}
+        onClick={open}
         aria-label={`Faltam ${days} dias para a viagem. Toque para mudar as datas`}
       >
-        <span className="lbl">PARTIDA · FALTAM</span>
-        <span className="big">
+        <span className="cd-row">
+          <span className="lbl">FALTAM</span>
           <b>{days}</b>
           <span>{days === 1 ? 'dia' : 'dias'}</span>
         </span>
@@ -64,24 +66,34 @@ function Countdown() {
   if (phase.kind === 'during') {
     const city = doc.destinations.find((d) => d.id === phase.destinationId)?.name
     return (
-      <>
-        <div className="lbl">EM VIAGEM · 旅行中</div>
-        <div className="big">
+      <button
+        type="button"
+        className="cd-open"
+        onClick={open}
+        aria-label="Em viagem. Toque para ver as datas"
+      >
+        <span className="cd-row">
+          <span className="lbl">EM VIAGEM</span>
           <b>{phase.day}</b>
           <span>/ {phase.totalDays}</span>
-        </div>
-        <div className="clock">{city ? `hoje em ${city}` : 'aproveitem cada dia'}</div>
-      </>
+        </span>
+        <span className="clock">{city ? `hoje em ${city}` : 'aproveitem cada dia'}</span>
+      </button>
     )
   }
   return (
-    <>
-      <div className="lbl">VIAGEM COMPLETA</div>
-      <div className="big">
+    <button
+      type="button"
+      className="cd-open"
+      onClick={open}
+      aria-label="Viagem completa. Toque para ver as datas"
+    >
+      <span className="cd-row">
+        <span className="lbl">VIAGEM COMPLETA</span>
         <b>{phase.totalDays}</b>
         <span>dias vividos</span>
-      </div>
-    </>
+      </span>
+    </button>
   )
 }
 
@@ -166,7 +178,7 @@ function CityHead({ destId }: { destId: string }) {
                   detail: ['Marcar no mapa'],
                   run: () => {
                     setPlacing(p.id)
-                    say(`Toque no mapa onde fica ${p.name}.`)
+                    say(`Marque no mapa onde fica ${p.name}.`)
                   },
                 })),
               })
@@ -239,21 +251,9 @@ export function MapPanel() {
   const openSheet = useApp((s) => s.openSheet)
   const mapView = useApp((s) => s.mapView)
   const setPlacing = useApp((s) => s.setPlacing)
-  const say = useApp((s) => s.say)
   const it = doc.itinerary
-  const nights = timeline(it).total
-  const places = new Set(it.stops.map((s) => s.destinationId).filter(Boolean)).size
-  const countries = worlds(it, doc.destinations).length
   const first = doc.destinations.find((d) => d.id === it.stops.find((s) => s.destinationId)?.destinationId)
   const wm = doc.scope?.localName ?? first?.localName ?? doc.scope?.name ?? first?.name ?? ''
-  const line = [
-    doc.scope?.name,
-    plural(nights, 'noite', 'noites'),
-    plural(places, 'lugar', 'lugares'),
-    countries > 1 ? plural(countries, 'país', 'países') : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
   const { playing, toggle } = usePlay()
   const shoji = useShoji(mapView.kind === 'city' ? mapView.destId : 'trip')
   const canPlay = allDays(it, doc.places).length > 1
@@ -268,7 +268,6 @@ export function MapPanel() {
       ) : (
         <div className="map-head">
           <Countdown />
-          <div className="map-line">{line}</div>
         </div>
       )}
       <span className="map-wm" aria-hidden="true">
@@ -285,14 +284,7 @@ export function MapPanel() {
       ) : null}
       <div className="map-acts">
         {mapView.kind === 'city' ? (
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => {
-              setPlacing('new')
-              say('Toque no mapa onde fica a atividade nova. Ou segure no mapa a qualquer hora.')
-            }}
-          >
+          <button type="button" className="btn small" onClick={() => setPlacing('new')}>
             + Atividade aqui
           </button>
         ) : (

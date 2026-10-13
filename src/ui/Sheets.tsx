@@ -473,7 +473,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 run: () => {
                   enterCity(p.destinationId)
                   setPlacing(p.id)
-                  say(`Toque no mapa onde fica ${p.name}.`)
+                  say(`Marque no mapa onde fica ${p.name}.`)
                 },
               }}
             />
@@ -611,6 +611,7 @@ function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' 
   const dest = doc.destinations.find((d) => d.id === spec.destId)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<PlaceKind>('sight')
+  const [rarity, setRarity] = useState<Rarity>('want')
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(
     spec.lat !== undefined && spec.lon !== undefined ? { lat: spec.lat, lon: spec.lon } : null,
   )
@@ -619,7 +620,7 @@ function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' 
   const states = placeStates(doc.itinerary, doc.places)
   const loose = doc.places.filter((p) => p.destinationId === spec.destId && !states.get(p.id)?.days.length)
 
-  const create = (rarity: Rarity) => {
+  const create = () => {
     if (!t) return
     const id = uid('p')
     const add = {
@@ -696,14 +697,23 @@ function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' 
           </button>
         ))}
       </div>
-      <div className="group-t">CRIAR COM A PRIORIDADE</div>
-      <div className="rarity-row" role="group" aria-label="Criar com a prioridade">
+      <div className="group-t">PRIORIDADE</div>
+      <div className="rarity-row" role="group" aria-label="Prioridade">
         {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
-          <button key={r} type="button" className={`rar r-${r}`} disabled={!t} onClick={() => create(r)}>
+          <button
+            key={r}
+            type="button"
+            className={`rar r-${r}${rarity === r ? ' on' : ''}`}
+            aria-pressed={rarity === r}
+            onClick={() => setRarity(r)}
+          >
             {RARITY[r].gems} {RARITY[r].label}
           </button>
         ))}
       </div>
+      <button type="button" className="btn main" disabled={!t} onClick={create}>
+        Criar atividade
+      </button>
       {spec.day && loose.length ? (
         <>
           <div className="group-t">JÁ NA LISTA, SEM DIA</div>

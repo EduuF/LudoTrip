@@ -1,6 +1,7 @@
 import { DayCard } from './DayCard'
 import { MapPanel } from './MapPanel'
 import { addDestinationAtEnd } from '../app/choices'
+import { ChipDragProvider } from './chipDrag'
 import { RoteiroList } from './Roteiro'
 import { Trilha } from './Trilha'
 
@@ -9,22 +10,24 @@ import { Trilha } from './Trilha'
 
 export function Mapa() {
   return (
-    <div className="mapa-grid">
-      <div className="mapa-left">
-        <MapPanel />
-        <Trilha />
-        <DayCard />
+    <ChipDragProvider>
+      <div className="mapa-grid">
+        <div className="mapa-left">
+          <MapPanel />
+          <Trilha />
+          <DayCard />
+        </div>
+        <div className="mapa-right">
+          <h2 className="sec">
+            Roteiro <small>NA ORDEM DA VIAGEM</small>
+            <span className="spacer" />
+            <button type="button" className="btn small" onClick={addDestinationAtEnd}>
+              + Adicionar destino
+            </button>
+          </h2>
+          <RoteiroList />
+        </div>
       </div>
-      <div className="mapa-right">
-        <h2 className="sec">
-          Roteiro <small>NA ORDEM DA VIAGEM</small>
-          <span className="spacer" />
-          <button type="button" className="btn small" onClick={addDestinationAtEnd}>
-            + Adicionar destino
-          </button>
-        </h2>
-        <RoteiroList />
-      </div>
-    </div>
+    </ChipDragProvider>
   )
 }

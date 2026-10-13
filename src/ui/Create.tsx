@@ -175,18 +175,18 @@ export function Create() {
           <h1 className="title">
             {isCountry ? (
               <>
-                Por onde <em>vamos passar?</em>
+                Em quais cidades <em>vão dormir?</em>
               </>
             ) : (
               <>
-                Mais algum <em>lugar?</em>
+                Vão dormir em <em>outra cidade?</em>
               </>
             )}
           </h1>
           <p className="note">
             {isCountry
-              ? `Cidades e lugares de ${scope!.name}, na ordem que vocês imaginam. Ou deixe para decidir no mapa.`
-              : 'Outra cidade ou um bate-volta. Pode pular.'}
+              ? `As cidades de ${scope!.name} onde vocês dormem, na ordem que imaginam. Ou deixe para decidir no mapa.`
+              : `${scope!.name} já está. Bate-voltas e passeios (o que fazer lá) entram depois, no roteiro. Pode pular.`}
           </p>
           {picks.length ? (
             <div className="pills" style={{ marginTop: 10 }}>
@@ -204,7 +204,7 @@ export function Create() {
             </div>
           ) : null}
           <div className="field" style={{ marginTop: 12 }}>
-            <span>Lugares</span>
+            <span>{isCountry ? 'Cidades' : 'Outra cidade'}</span>
             <PlaceSearch
               id="lugar"
               placeholder="Busque: Kyoto, Lisboa, Bucareste…"
@@ -348,8 +348,8 @@ export function Create() {
           <p className="note">
             {scope?.name} ·{' '}
             {picks.length
-              ? `${picks.length} ${picks.length === 1 ? 'lugar' : 'lugares'}`
-              : 'lugares a decidir'}{' '}
+              ? `${picks.length} ${picks.length === 1 ? 'cidade' : 'cidades'}`
+              : 'cidades a decidir'}{' '}
             · {nights} noites ·{' '}
             {people === 6 ? 'uma galera' : `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`}.{' '}
             {picks.length > 1 ? 'As noites se dividem igualmente; depois é só arrastar na trilha.' : ''}

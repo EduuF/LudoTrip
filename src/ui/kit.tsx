@@ -345,11 +345,17 @@ export function SheetFrame({ children, onClose }: { children: ReactNode; onClose
 
 export function Toast() {
   const toast = useApp((s) => s.toast)
+  // Com um painel aberto, o aviso vai para o topo: nunca por cima do painel (nem do "Desfazer" por engano).
+  const sheetOpen = useApp((s) => !!s.sheet)
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const undo = useApp((s) => s.undo)
   if (!toast) return null
   return (
-    <div className={`toast${toast.warn ? ' warn' : ''}`} role="status" key={toast.id}>
+    <div
+      className={`toast${toast.warn ? ' warn' : ''}${sheetOpen ? ' top' : ''}`}
+      role="status"
+      key={toast.id}
+    >
       <p>{toast.text}</p>
       {toast.action || (toast.undo && canUndo) ? (
         <button type="button" onClick={toast.action ?? undo}>
@@ -406,7 +412,7 @@ export function Celebrations() {
               <button key={c.id} type="button" className="levelup" onClick={() => dismiss(c.id)}>
                 <span className="box" role="status">
                   <b>TUDO COM DIA!</b>
-                  <span>{c.name}: todas as atividades marcadas num dia</span>
+                  <span>{c.name}: todas as atividades já têm dia marcado</span>
                 </span>
               </button>
             )

@@ -37,12 +37,12 @@ export function currentTheme(): Theme {
     : 'light'
 }
 
-export const nextChoice = (c: ThemeChoice): ThemeChoice =>
-  c === 'auto' ? 'dark' : c === 'dark' ? 'light' : 'auto'
+/** O botão alterna entre claro e escuro a partir do que está na tela; o "auto" só existe antes do
+ *  primeiro toque (três estados fariam um dos modos repetir e o botão parecer quebrado). */
+export const toggledTheme = (): ThemeChoice => (currentTheme() === 'dark' ? 'light' : 'dark')
 
-export const THEME_LABEL: Record<ThemeChoice, string> = {
-  auto: 'Tema: automático',
-  light: 'Tema: claro',
-  dark: 'Tema: escuro',
+export const THEME_GLYPH: Record<Theme, string> = { light: '☀', dark: '☾' }
+export const THEME_ACTION: Record<Theme, string> = {
+  light: 'Mudar para o modo escuro',
+  dark: 'Mudar para o modo claro',
 }
-export const THEME_GLYPH: Record<ThemeChoice, string> = { auto: '◐', light: '☀', dark: '☾' }

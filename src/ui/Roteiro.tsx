@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent as RPointerEvent } from 'react'
+import { useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import {
   addDays,
   bookingStatus,
@@ -27,7 +27,10 @@ import {
   shiftCity,
   swapDayChoice,
 } from '../app/choices'
+import { chipHandlers, useChipDrag } from './chipDragCtx'
+import type { ChipItem } from './chipDragCtx'
 import { colorOf, sealOf } from './colors'
+import { isCoarse } from './pointer'
 import { RARITY } from './rarity'
 import { Seal, Stepper, Vehicle } from './kit'
 
@@ -228,7 +231,7 @@ function CityCard({ stop, index, days }: { stop: Stop; index: number; days: Day[
   }
 }
 
-/** Um dia: as atividades por turno e "+ Atividade". */
+/** Um dia: as atividades por turno e "+ Atividade". As atividades arrastam para outro dia (ou para "sem dia"). */
 export function DayRow({
   day,
   destId,
@@ -246,6 +249,7 @@ export function DayRow({
 }) {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
+  const drag = useChipDrag()
   const trips = day.dayTrips.map((x) => doc.destinations.find((d) => d.id === x)?.name).filter(Boolean)
   const visits = [...day.visits].sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot])
   return (
@@ -263,12 +267,14 @@ export function DayRow({
       <div className="slots">
         {visits.map((v) => {
           const p = doc.places.find((x) => x.id === v.placeId)
+          const item: ChipItem = { kind: 'visit', visitId: v.id, placeId: v.placeId, from: day.ref ?? null }
+          const lifted = drag?.lifted?.kind === 'visit' && drag.lifted.visitId === v.id
           return (
             <button
               key={v.id}
               type="button"
-              className={`mini r-${p?.rarity ?? 'want'}${v.visited ? ' visited' : ''}`}
-              onClick={() => openSheet({ kind: 'visit', visitId: v.id })}
+              className={`mini r-${p?.rarity ?? 'want'}${v.visited ? ' visited' : ''}${lifted ? ' lifted' : ''}`}
+              {...chipHandlers(drag, item, () => openSheet({ kind: 'visit', visitId: v.id }))}
             >
               {SLOT_LABEL[v.slot] ? <span className="slot">{SLOT_LABEL[v.slot]}</span> : null}
               {p?.name ?? 'Atividade'}
@@ -300,138 +306,44 @@ export function DayRow({
 }
 
 // ---------------------------------------------------------------------------
-// Atividades ainda sem dia, dentro do cartão (arrastar até o dia, ou tocar e escolher o dia)
+// Atividades ainda sem dia, dentro do cartão (arrastar até o dia, ou tocar e escolher o dia).
+// Também é onde se solta uma atividade para tirá-la do dia.
 // ---------------------------------------------------------------------------
 
 function LooseRow({ destId }: { destId: ID }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
+  const drag = useChipDrag()
   const it = doc.itinerary
   const states = placeStates(it, doc.places)
   const inTrip = new Set(it.stops.map((s) => s.destinationId))
   const loose = (id: ID) => doc.places.filter((p) => p.destinationId === id && !states.get(p.id)?.days.length)
   const mine = loose(destId)
   const nearby = doc.destinations.filter((d) => !inTrip.has(d.id)).flatMap((d) => loose(d.id))
+  const dropZone = drag?.lifted?.kind === 'visit'
+  if (!mine.length && !nearby.length && !dropZone) return null
+  const coarse = isCoarse()
 
-  const [lift, setLift] = useState<{ placeId: ID; x: number; y: number } | null>(null)
-  const liftRef = useRef(lift)
-  liftRef.current = lift
-  const pend = useRef<{ placeId: ID; x: number; y: number; t: number; el: HTMLElement; pid: number } | null>(
-    null,
-  )
-  const hover = useRef<HTMLElement | null>(null)
-  const edgeY = useRef<number | null>(null)
-
-  useEffect(() => {
-    const block = (e: TouchEvent) => {
-      if (liftRef.current) e.preventDefault()
-    }
-    addEventListener('touchmove', block, { passive: false })
-    let raf = 0
-    const loop = () => {
-      const y = edgeY.current
-      if (y !== null && liftRef.current) {
-        if (y < 120) scrollBy(0, -10)
-        else if (y > innerHeight - 160) scrollBy(0, 10)
-      }
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => {
-      removeEventListener('touchmove', block)
-      cancelAnimationFrame(raf)
-    }
-  }, [])
-
-  const setHover = (el: HTMLElement | null) => {
-    if (hover.current === el) return
-    hover.current?.classList.remove('drop')
-    el?.classList.add('drop')
-    hover.current = el
-  }
-  const down = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
-    const el = e.currentTarget
-    const pid = e.pointerId
-    const x = e.clientX
-    const y = e.clientY
-    const t = window.setTimeout(() => {
-      try {
-        el.setPointerCapture(pid)
-      } catch {
-        /* o dedo já saiu */
-      }
-      navigator.vibrate?.(12)
-      liftRef.current = { placeId, x, y }
-      setLift({ placeId, x, y })
-    }, 260)
-    pend.current = { placeId, x, y, t, el, pid }
-  }
-  const move = (e: RPointerEvent<HTMLElement>) => {
-    const p = pend.current
-    if (p && !liftRef.current && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 9) {
-      clearTimeout(p.t)
-      pend.current = null
-    }
-    if (!liftRef.current) return
-    edgeY.current = e.clientY
-    setLift({ ...liftRef.current, x: e.clientX, y: e.clientY })
-    const under =
-      document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-dayref]') ?? null
-    setHover(under)
-  }
-  const up = (e: RPointerEvent<HTMLElement>, placeId: ID) => {
-    const p = pend.current
-    if (p) clearTimeout(p.t)
-    pend.current = null
-    edgeY.current = null
-    const l = liftRef.current
-    if (l) {
-      const target = hover.current?.dataset.dayref
-      setHover(null)
-      liftRef.current = null
-      setLift(null)
-      if (target)
-        act({
-          type: 'engine',
-          command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: JSON.parse(target) as DayRef },
-        })
-      return
-    }
-    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= 9) {
-      const name = doc.places.find((x) => x.id === placeId)?.name ?? 'atividade'
+  const chip = (placeId: ID, tag?: string) => {
+    const p = doc.places.find((x) => x.id === placeId)!
+    const item: ChipItem = { kind: 'loose', placeId }
+    const tap = () =>
       openSheet({
         kind: 'days',
-        title: `Pôr ${name} em qual dia?`,
+        title: `Pôr ${p.name} em qual dia?`,
         prefer: destId,
         pick: (ref) =>
           act({ type: 'engine', command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: ref } }),
       })
-    }
-  }
-  const cancel = () => {
-    if (pend.current) clearTimeout(pend.current.t)
-    pend.current = null
-    edgeY.current = null
-    setHover(null)
-    liftRef.current = null
-    setLift(null)
-  }
-
-  if (!mine.length && !nearby.length) return null
-  const chip = (placeId: ID, tag?: string) => {
-    const p = doc.places.find((x) => x.id === placeId)!
+    const lifted = drag?.lifted?.kind === 'loose' && drag.lifted.placeId === p.id
     return (
       <button
         key={p.id}
         type="button"
-        className={`mini r-${p.rarity} loose${lift?.placeId === p.id ? ' lifted' : ''}`}
-        onPointerDown={(e) => down(e, p.id)}
-        onPointerMove={move}
-        onPointerUp={(e) => up(e, p.id)}
-        onPointerCancel={cancel}
-        onContextMenu={(e) => e.preventDefault()}
-        aria-label={`${p.name}: toque para escolher o dia, ou segure e arraste até o dia`}
+        className={`mini r-${p.rarity} loose${lifted ? ' lifted' : ''}`}
+        aria-label={`${p.name}: ${coarse ? 'toque para escolher o dia, ou segure e arraste até o dia' : 'clique para escolher o dia, ou arraste até o dia'}`}
+        {...chipHandlers(drag, item, tap)}
       >
         <span className="gems">{RARITY[p.rarity].gems}</span>
         {p.name}
@@ -439,19 +351,16 @@ function LooseRow({ destId }: { destId: ID }) {
       </button>
     )
   }
-  const lifted = lift ? doc.places.find((p) => p.id === lift.placeId) : null
   return (
-    <div className="loose-row">
-      <span className="loose-t">SEM DIA AINDA · segure e arraste até o dia, ou toque</span>
+    <div className="loose-row" data-loose="">
+      <span className="loose-t">
+        SEM DIA AINDA · {coarse ? 'segure e arraste até o dia, ou toque' : 'arraste até o dia, ou clique'}
+      </span>
       <div className="slots">
         {mine.map((p) => chip(p.id))}
         {nearby.map((p) => chip(p.id, 'bate-volta'))}
+        {!mine.length && !nearby.length ? <span className="note">Solte aqui para tirar do dia.</span> : null}
       </div>
-      {lift && lifted ? (
-        <div className={`drag-ghost mini r-${lifted.rarity}`} style={{ left: lift.x, top: lift.y }}>
-          {lifted.name}
-        </div>
-      ) : null}
     </div>
   )
 }

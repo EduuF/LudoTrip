@@ -303,9 +303,16 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     setCursorDay(index) {
-      if (index === get().cursorDay) return
+      const { cursorDay, mapView, doc } = get()
+      if (index === cursorDay) return
       set({ cursorDay: index })
-      if (index !== null) sfx.step()
+      if (index === null) return
+      sfx.step()
+      // No mapa da cidade, mudar o dia muda a cidade (a mesma regra do "▶ Ver a viagem").
+      if (mapView.kind === 'city' && doc) {
+        const dest = allDays(doc.itinerary, doc.places)[index]?.destinationId
+        if (dest && dest !== mapView.destId) get().enterCity(dest)
+      }
     },
     enterCity(destId) {
       const { doc, cursorDay } = get()
@@ -323,7 +330,9 @@ export const useApp = create<AppState>((set, get) => {
       set({ mapView: { kind: 'trip' }, placing: null })
     },
     setPlacing(what) {
-      set({ placing: what, sheet: null })
+      // Entrar no modo "marcar no mapa" fecha o painel; sair dele não mexe no painel (o clique no mapa
+      // sai do modo e abre "Nova atividade").
+      set(what ? { placing: what, sheet: null } : { placing: null })
     },
     setPlaying(on) {
       set({ playing: on })

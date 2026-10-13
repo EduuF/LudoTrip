@@ -22,12 +22,14 @@ Ele mantém o que fez a v1 ser querida: um mapa-tabuleiro com fases, bonequinhos
 **Público:** produto aberto, divulgado localmente, de boca em boca. Português primeiro.
 
 **Restrições:**
+
 - Custo mínimo até haver uso; pagar conforme crescer.
 - Claude escreve o código; o mantenedor revisa e publica.
 - É um site (PWA). App de loja fica para o futuro.
 - 95% do uso será no celular.
 
 **Critérios de sucesso:**
+
 - Uma pessoa cria uma viagem com várias cidades em cerca de 60 segundos.
 - Deslocar, reordenar, encaixar ou remover cidades e dias **nunca** exige retrabalho manual e **nunca** perde conteúdo.
 - Os seis formatos de teste (§11) funcionam com a mesma gramática, sem casos especiais na interface.
@@ -36,11 +38,13 @@ Ele mantém o que fez a v1 ser querida: um mapa-tabuleiro com fases, bonequinhos
 ## 2. Por que mudar a abordagem
 
 **Por que sair do artifact:**
+
 - Os amigos precisariam de conta no Claude.
 - O artifact bloqueia serviços externos (busca de lugares, mapas do mundo inteiro, rotas).
 - As permissões precisam ser do próprio app.
 
 **O que o mercado mostra:**
+
 - Viajantes pedem que **as noites por destino definam as datas** ([Expedition Portal](https://forum.expeditionportal.com/goto/post?id=1230240)).
 - O Polarsteps apaga as datas quando as noites não cabem ([suporte](https://support.polarsteps.com/article/176-itinerary-planner)).
 - No Wanderlog, mudar as datas pode apagar conteúdo ([wanderlog-mcp](https://glama.ai/mcp/servers/shaikhspeare/wanderlog-mcp)).
@@ -60,21 +64,22 @@ Ele mantém o que fez a v1 ser querida: um mapa-tabuleiro com fases, bonequinhos
 
 ## 4. A gramática
 
-| Peça | O que é |
-|---|---|
-| **Parada** | N noites num destino, com tipo de pouso: hotel, hostel, apartamento, casa de amigos, camping, motorhome, a bordo |
-| **Trecho** | Ligação entre paradas vizinhas e de/para casa. Tem modo (avião, trem, ônibus, carro, barco, a pé, bike, moto), pontas (aeroporto, estação, porto), horários locais, conexões, paradas no caminho e noites a bordo (ônibus ou voo noturno) |
-| **Dia** | Derivado das paradas. Pertence à parada onde se dorme naquela noite, ou ao trecho, numa noite a bordo |
-| **Destino + Mochila** | Lugar (cidade, região, parque, navio) com o seu catálogo de lugares desejados |
-| **Visita** | Um lugar da Mochila agendado num dia ou como parada no caminho de um trecho, com turno, horário, nota e participantes |
-| **Recurso** | Algo com período: carro alugado, passe de trem, eSIM, seguro |
-| **Reserva** | Fato do mundo real, com datas e ligada a uma parada, trecho ou recurso. Nunca se move sozinha |
-| **Âncora** | Algo com data e hora que não se move: voo comprado, casamento, show |
-| **Mundo** | Agrupamento automático por país |
-| **Participantes** | Quem está em cada parada, trecho ou visita (padrão: todos) |
-| **Ritmo** | Tranquilo, normal ou intenso |
+| Peça                  | O que é                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Parada**            | N noites num destino, com tipo de pouso: hotel, hostel, apartamento, casa de amigos, camping, motorhome, a bordo                                                                                                                          |
+| **Trecho**            | Ligação entre paradas vizinhas e de/para casa. Tem modo (avião, trem, ônibus, carro, barco, a pé, bike, moto), pontas (aeroporto, estação, porto), horários locais, conexões, paradas no caminho e noites a bordo (ônibus ou voo noturno) |
+| **Dia**               | Derivado das paradas. Pertence à parada onde se dorme naquela noite, ou ao trecho, numa noite a bordo                                                                                                                                     |
+| **Destino + Mochila** | Lugar (cidade, região, parque, navio) com o seu catálogo de lugares desejados                                                                                                                                                             |
+| **Visita**            | Um lugar da Mochila agendado num dia ou como parada no caminho de um trecho, com turno, horário, nota e participantes                                                                                                                     |
+| **Recurso**           | Algo com período: carro alugado, passe de trem, eSIM, seguro                                                                                                                                                                              |
+| **Reserva**           | Fato do mundo real, com datas e ligada a uma parada, trecho ou recurso. Nunca se move sozinha                                                                                                                                             |
+| **Âncora**            | Algo com data e hora que não se move: voo comprado, casamento, show                                                                                                                                                                       |
+| **Mundo**             | Agrupamento automático por país                                                                                                                                                                                                           |
+| **Participantes**     | Quem está em cada parada, trecho ou visita (padrão: todos)                                                                                                                                                                                |
+| **Ritmo**             | Tranquilo, normal ou intenso                                                                                                                                                                                                              |
 
 **Regras centrais:**
+
 - **As datas são calculadas:** data de ida + noites. O conteúdo de um dia fica preso à **parada e à posição dentro dela** ("2º dia em Kyoto"), nunca à data.
 - **Trechos existem automaticamente entre paradas vizinhas.** Aeroportos e estações são **pontas de trecho, não paradas**.
 - **Bate-volta é conteúdo:** um dia de Osaka com visita da Mochila de Nara vira "bate-volta a Nara".
@@ -82,18 +87,18 @@ Ele mantém o que fez a v1 ser querida: um mapa-tabuleiro com fases, bonequinhos
 
 ### 4.1 O que acende sozinho
 
-| Quando a viagem tem… | Aparece |
-|---|---|
-| Um destino só | Tela de cidade; o tabuleiro é a cidade ou região; as fases são os dias |
-| Mais de um país | Mundos, moeda por país, documentos, fusos, idioma do cartão do taxista |
-| Trecho de avião | Aeroportos, conexões, bagagem, horários locais, linha de data |
-| Trechos de carro | Horas de direção por dia (aviso acima de ~6h), rota por estradas, combustível e pedágio, carro alugado como recurso, PID no exterior |
-| Pouso a bordo | Base que se move; escalas viram bate-voltas com horário de volta ao navio |
-| Trechos a pé ou de bike | Etapas com distância e desnível |
-| Noite a bordo de um trecho | Noite sem pedir hotel |
-| Recurso | Uma fita sob a Faixa; trechos fora do período são marcados |
-| Participantes diferentes | Bonequinhos que se separam no mapa |
-| Âncora | Uma bandeira na data e aviso se ela for ameaçada |
+| Quando a viagem tem…       | Aparece                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Um destino só              | Tela de cidade; o tabuleiro é a cidade ou região; as fases são os dias                                                               |
+| Mais de um país            | Mundos, moeda por país, documentos, fusos, idioma do cartão do taxista                                                               |
+| Trecho de avião            | Aeroportos, conexões, bagagem, horários locais, linha de data                                                                        |
+| Trechos de carro           | Horas de direção por dia (aviso acima de ~6h), rota por estradas, combustível e pedágio, carro alugado como recurso, PID no exterior |
+| Pouso a bordo              | Base que se move; escalas viram bate-voltas com horário de volta ao navio                                                            |
+| Trechos a pé ou de bike    | Etapas com distância e desnível                                                                                                      |
+| Noite a bordo de um trecho | Noite sem pedir hotel                                                                                                                |
+| Recurso                    | Uma fita sob a Faixa; trechos fora do período são marcados                                                                           |
+| Participantes diferentes   | Bonequinhos que se separam no mapa                                                                                                   |
+| Âncora                     | Uma bandeira na data e aviso se ela for ameaçada                                                                                     |
 
 ### 4.2 Catálogo de formatos
 
@@ -134,6 +139,7 @@ Todos os formatos usam a mesma gramática:
 ## 5. Edição
 
 ### 5.1 Volta marcada (🔒) ou livre (🔓)
+
 - **A palavra "trava" não aparece na interface.** O resumo da viagem mostra "Volta 24/04", com um toque para alternar entre **"🔒 marcada"** e **"livre"**. Nas tabelas abaixo, 🔒 e 🔓 são só abreviações.
 - **Volta livre:**
   - `+` adiciona a noite e empurra a volta;
@@ -147,6 +153,7 @@ Todos os formatos usam a mesma gramática:
 - A volta passa a ser marcada sozinha quando a passagem de volta é marcada como comprada. Um aviso conta o que mudou.
 
 ### 5.1.1 A regra da ponta (o que acontece com os dias planejados)
+
 - **Um dia entra ou sai sempre na ponta da cidade que se moveu. Todos os outros dias mantêm a data e o plano.**
   - Arrastar a divisa Osaka|Kyoto 2 dias para a esquerda: Kyoto ganha 2 dias vazios **no começo**; Gion continua em 13/04.
   - Tóquio de 4 para 3 noites com `–`: sai o último dia de Tóquio.
@@ -158,6 +165,7 @@ Todos os formatos usam a mesma gramática:
 - Para remover um dia do meio, existe "Remover este dia" no próprio dia.
 
 ### 5.1.2 Lixeira e noites em aberto
+
 - **Na Faixa**, ao segurar e arrastar um bloco aparece uma **lixeira** em pixel art. Soltar a cidade nela faz "puf" e deixa no lugar um **espaço tracejado com "+"**: são noites em aberto, com as mesmas datas.
 - Na lista, "Remover" faz o mesmo.
 - A cidade removida **continua guardada em "Destinos guardados"**, com a mochila dela intacta, para voltar quando quiser.
@@ -171,6 +179,7 @@ Todos os formatos usam a mesma gramática:
 - As noites em aberto viram a quest "2 noites em aberto (04–05/04)". Também servem para quem decide no caminho (mochilão).
 
 ### 5.1.3 Mensagens
+
 - **Curtas e exatas.** Cada palavra precisa de um motivo.
 - **Usam as palavras de quem viaja** (cidade, noite, volta, passagem), nunca termos internos (parada, trava, trecho órfão, vizinha).
 - **Toda situação sem saída vira uma escolha com botões.**
@@ -179,6 +188,7 @@ Todos os formatos usam a mesma gramática:
   - "Sensō-ji voltou para a mochila." + [Desfazer]
 
 ### 5.2 Duas visões que editam a mesma coisa
+
 - **Faixa da viagem:**
   - blocos proporcionais às noites, trechos como pontes, fitas de recursos e bandeiras de âncoras;
   - arrastar a divisa passa noites; arrastar o bloco reordena; arrastar para o lado desloca a janela;
@@ -187,21 +197,22 @@ Todos os formatos usam a mesma gramática:
 
 ### 5.3 Cenários (resumo)
 
-| Cenário | Comportamento |
-|---|---|
-| Deslocar Kyoto 12–15 para 13–16 | A anterior ganha 1 noite e a seguinte perde 1; o conteúdo vai junto; reservas fora da janela viram aviso |
-| Começar por Kyoto | Datas e trechos se refazem; passagens que ficaram sem trecho viram órfãs |
-| Encaixar Tóquio no meio de Kyoto | Kyoto I + Tóquio + Kyoto II, com a mesma Mochila; os dias sem lugar voltam à Mochila (🔒) ou a volta é empurrada (🔓) |
-| Mais ou menos noites; remover um dia | Os dias removidos devolvem as visitas à Mochila |
-| Trocar dois dias | Troca o conteúdo; as datas ficam |
-| Trocar o modo do trecho | Acende as funções do modo |
-| Parada no caminho | Visita dentro do trecho |
-| Alguém chega no dia 3 | Participantes da parada |
-| Voo remarcado | Tudo desloca; reservas viram avisos |
-| Encurtar a viagem | Escolher de qual parada tirar, com sugestão da mais longa |
-| Mesma cidade lado a lado | Junta as duas e avisa |
+| Cenário                              | Comportamento                                                                                                         |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Deslocar Kyoto 12–15 para 13–16      | A anterior ganha 1 noite e a seguinte perde 1; o conteúdo vai junto; reservas fora da janela viram aviso              |
+| Começar por Kyoto                    | Datas e trechos se refazem; passagens que ficaram sem trecho viram órfãs                                              |
+| Encaixar Tóquio no meio de Kyoto     | Kyoto I + Tóquio + Kyoto II, com a mesma Mochila; os dias sem lugar voltam à Mochila (🔒) ou a volta é empurrada (🔓) |
+| Mais ou menos noites; remover um dia | Os dias removidos devolvem as visitas à Mochila                                                                       |
+| Trocar dois dias                     | Troca o conteúdo; as datas ficam                                                                                      |
+| Trocar o modo do trecho              | Acende as funções do modo                                                                                             |
+| Parada no caminho                    | Visita dentro do trecho                                                                                               |
+| Alguém chega no dia 3                | Participantes da parada                                                                                               |
+| Voo remarcado                        | Tudo desloca; reservas viram avisos                                                                                   |
+| Encurtar a viagem                    | Escolher de qual parada tirar, com sugestão da mais longa                                                             |
+| Mesma cidade lado a lado             | Junta as duas e avisa                                                                                                 |
 
 ### 5.4 Desfazer e Saúde do roteiro
+
 - Cada edição tem um inverso; um aviso de Desfazer fica visível por ~6 s; um histórico de versões permite restaurar.
 - **Saúde do roteiro** é a lista única de pendências e **vira as quests**:
   - noite sem pouso;
@@ -223,11 +234,11 @@ Todos os formatos usam a mesma gramática:
 - **Uma mochila por destino.** Os dias podem usar itens da mochila de destinos próximos (o bate-volta acontece sozinho).
 - **Prioridade = raridade do item**, editável com um toque:
 
-  | Raridade | Significado | Moldura |
-  |---|---|---|
-  | **Se der** | talvez | moldura cinza |
-  | **Quero** | prioridade normal | azul |
-  | **Imperdível** | não pode faltar | **dourado com brilho suave** |
+  | Raridade       | Significado       | Moldura                      |
+  | -------------- | ----------------- | ---------------------------- |
+  | **Se der**     | talvez            | moldura cinza                |
+  | **Quero**      | prioridade normal | azul                         |
+  | **Imperdível** | não pode faltar   | **dourado com brilho suave** |
 
 - **Imperdível sem dia** brilha na mochila e vira quest. As outras raridades não incomodam.
 - **Estados do item:**
@@ -246,16 +257,16 @@ Todos os formatos usam a mesma gramática:
 - **Depois:** "Montar meus dias", caixa de entrada por link, votos da galera, itens perto da rota.
 
 ### 6.1 Trechos: passagem comprada e tempo de viagem
+
 - **No cartão do trecho**, um toque em **"🎫 Passagem"** alterna entre "falta comprar" e "comprada ✓". Isso cria a reserva de transporte daquele trecho (data e meio).
 - **Trocar o meio** (trem → ônibus) com passagem comprada mostra o aviso **"Você tem passagem de trem para este trecho."** A passagem continua guardada, porque reserva é fato.
 - **O tempo de viagem sempre mostra a fonte.** Em produção, vale a primeira que existir:
 
-  | # | Fonte | Rótulo |
-  |---|---|---|
-  | 1 | Horários da passagem ou digitados pela pessoa | "sua passagem" |
-  | 2 | Rota real: carro, a pé e bike pelo OpenRouteService (gratuito com chave, ~2.000 rotas/dia); transporte público por um roteador aberto baseado em GTFS (ex.: Transitous/MOTIS) onde houver dados; Google Routes quando valer pagar | "rota real" |
-  | 3 | Estimativa pela distância × fator do meio ÷ velocidade típica, com tabela por país (ex.: trem-bala no Japão) | "estimativa" |
-
+  | #   | Fonte                                                                                                                                                                                                                             | Rótulo         |
+  | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+  | 1   | Horários da passagem ou digitados pela pessoa                                                                                                                                                                                     | "sua passagem" |
+  | 2   | Rota real: carro, a pé e bike pelo OpenRouteService (gratuito com chave, ~2.000 rotas/dia); transporte público por um roteador aberto baseado em GTFS (ex.: Transitous/MOTIS) onde houver dados; Google Routes quando valer pagar | "rota real"    |
+  | 3   | Estimativa pela distância × fator do meio ÷ velocidade típica, com tabela por país (ex.: trem-bala no Japão)                                                                                                                      | "estimativa"   |
   - O resultado fica em cache por par de cidades e meio.
   - **Depois (fase 5):** tempos digitados pelos viajantes viram uma média anônima por rota ("medido por viajantes"), útil para lugares que nenhuma API cobre.
 
@@ -266,7 +277,7 @@ Todos os formatos usam a mesma gramática:
 
 ## 7. Criar uma viagem (~60 s)
 
-*Como implementado no M3.*
+_Como implementado no M3._
 
 1. **Pra onde?** Um país, uma região ou uma cidade: vira o **escopo** da viagem (`TripDoc.scope`), que enquadra o mapa e dá nome e marca-d'água mesmo sem nenhuma parada decidida. Busca na lista própria (sem rede) e no mundo todo (Photon). "De onde vocês saem?" é opcional.
 2. **Por onde?** Com um país: as cidades e lugares, na ordem imaginada (sugestões do país), ou **"Ainda não sei: decido no mapa"** (a viagem nasce com as noites em aberto). Com uma cidade: ela já é o primeiro lugar; dá para somar outra cidade ou um bate-volta.
@@ -279,7 +290,7 @@ Todos os passos têm um padrão razoável; nenhum trava.
 
 ## 8. Mapa, bonequinhos e temas
 
-*Como implementado no M3 (`src/map`, `src/ui/MapCanvas.tsx`, `BoardOverlay.tsx`, `CityOverlay.tsx`).*
+_Como implementado no M3 (`src/map`, `src/ui/MapCanvas.tsx`, `BoardOverlay.tsx`, `CityOverlay.tsx`)._
 
 - **Duas camadas.** Por baixo, o mapa de verdade: tiles vetoriais do OpenStreetMap (OpenFreeMap, esquema OpenMapTiles) desenhados pelo MapLibre GL com o estilo **washi** (`src/map/style/washi.ts`: papel, mar com seigaiha, contornos de tinta, parques matcha, rios, fronteiras tracejadas, ruas só de perto, nenhum rótulo). Por cima, a **nossa camada SVG** em pixels: fases numeradas (estrela quando o destino está pronto), trilha pontilhada sobre areia com a parte percorrida em vermelho, pílulas sem sobreposição (`relax` e `placeLabels` da v1), decoração pixel semeada por país, seta para casa e o grupo em pixel. A camada só conhece um **adaptador** (`project`, `unproject`, `fit`, `onMove`).
 - **Papel.** Sem WebGL, sem rede ou dentro do artifact, o adaptador "papel" (`d3-geo` + `world-atlas`) desenha os contornos. É também o primeiro quadro (antes dos tiles chegarem) e o dublê dos testes.
@@ -293,12 +304,12 @@ Todos os passos têm um padrão razoável; nenhum trava.
 
 ## 9. Compartilhar
 
-| Papel | Pode |
-|---|---|
-| Dono | Tudo, incluindo papéis, apagar e transferir a posse |
-| Editor | Editar a viagem |
-| Comentarista | Ver e sugerir |
-| Leitor | Ver |
+| Papel        | Pode                                                |
+| ------------ | --------------------------------------------------- |
+| Dono         | Tudo, incluindo papéis, apagar e transferir a posse |
+| Editor       | Editar a viagem                                     |
+| Comentarista | Ver e sugerir                                       |
+| Leitor       | Ver                                                 |
 
 - Convite por link com papel (revogável, com validade), enviado pelo WhatsApp ou outro app através do compartilhamento do celular.
 - Presença ao vivo e histórico.
@@ -307,6 +318,7 @@ Todos os passos têm um padrão razoável; nenhum trava.
 ## 10. Tecnologia
 
 **Stack:**
+
 - React + TypeScript + Vite
 - PWA (`vite-plugin-pwa`)
 - Zustand
@@ -321,11 +333,13 @@ Todos os passos têm um padrão razoável; nenhum trava.
 - Vitest + fast-check e Playwright
 
 **Por que Firebase:**
+
 - Funciona offline no navegador de forma madura.
 - Tempo real e regras de segurança por papel.
 - O plano gratuito não pausa projetos inativos; o Supabase gratuito pausa ([Bytebase](https://www.bytebase.com/blog/supabase-vs-firebase.md), [RxDB](https://rxdb.info/articles/alternatives/supabase-alternative.md)).
 
 **Atenção:**
+
 - As fotos exigem o plano Blaze (pago por uso, com cota gratuita); configurar alerta de orçamento.
 - O Nominatim proíbe autocompletar ([política](https://operations.osmfoundation.org/policies/nominatim/)), por isso a busca usa o Photon.
 
@@ -333,13 +347,13 @@ Todos os passos têm um padrão razoável; nenhum trava.
 
 ## 11. Subprojetos
 
-| # | Subprojeto | Entrega |
-|---|---|---|
-| 1 | Fundação + motor do roteiro | Detalhado na Parte II |
-| 2 | Mundo | Tabuleiros por formato, mundos, rotas reais, mapa local, bonequinhos, Kombi, veículos, temas |
-| 3 | Utilidade | Reservas com campos por tipo, recursos, âncoras, prazos, orçamento com divisão, Kit, XP e conquistas, importação de viagens da v1 |
-| 4 | Na viagem | Modo Hoje, offline completo, cartão do taxista, exportações, fotos e Memórias, participantes |
-| 5 | Crescimento | Usar como modelo, link público, votos, caixa de entrada, "Montar meus dias", IA opcional |
+| #   | Subprojeto                  | Entrega                                                                                                                           |
+| --- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fundação + motor do roteiro | Detalhado na Parte II                                                                                                             |
+| 2   | Mundo                       | Tabuleiros por formato, mundos, rotas reais, mapa local, bonequinhos, Kombi, veículos, temas                                      |
+| 3   | Utilidade                   | Reservas com campos por tipo, recursos, âncoras, prazos, orçamento com divisão, Kit, XP e conquistas, importação de viagens da v1 |
+| 4   | Na viagem                   | Modo Hoje, offline completo, cartão do taxista, exportações, fotos e Memórias, participantes                                      |
+| 5   | Crescimento                 | Usar como modelo, link público, votos, caixa de entrada, "Montar meus dias", IA opcional                                          |
 
 ---
 
@@ -348,6 +362,7 @@ Todos os passos têm um padrão razoável; nenhum trava.
 ## 12. Escopo
 
 **Dentro:**
+
 - Projeto e PWA instalável.
 - Login (Google e link por e-mail).
 - "Minhas viagens".
@@ -365,6 +380,7 @@ Todos os passos têm um padrão razoável; nenhum trava.
 - Persistência offline do Firestore e fila de operações.
 
 **Fora** (vai para os subprojetos 2–5):
+
 - Mapa local, rotas reais, bonequinhos animados, temas automáticos.
 - Campos detalhados de reservas, tela de recursos e âncoras.
 - Orçamento, XP, conquistas.
@@ -377,81 +393,147 @@ Todos os passos têm um padrão razoável; nenhum trava.
 
 ```ts
 // Fonte da verdade: src/engine/types.ts (este bloco resume).
-type ID = string;
-type ISODate = string;            // "2030-04-01" (data local do destino)
-type LocalTime = string;          // "06:12"
+type ID = string
+type ISODate = string // "2030-04-01" (data local do destino)
+type LocalTime = string // "06:12"
 
-type Lock = "free" | "fixed";     // volta livre ou marcada
-type Pace = "calm" | "normal" | "intense";
-type LegMode = "flight" | "train" | "bus" | "car" | "boat" | "walk" | "bike" | "moto";
-type Lodging = "hotel" | "hostel" | "apartment" | "friends" | "camping" | "motorhome" | "onboard";
-type Slot = "morning" | "afternoon" | "evening" | "any";
-type Rarity = "maybe" | "want" | "must";   // Se der · Quero · Imperdível
+type Lock = 'free' | 'fixed' // volta livre ou marcada
+type Pace = 'calm' | 'normal' | 'intense'
+type LegMode = 'flight' | 'train' | 'bus' | 'car' | 'boat' | 'walk' | 'bike' | 'moto'
+type Lodging = 'hotel' | 'hostel' | 'apartment' | 'friends' | 'camping' | 'motorhome' | 'onboard'
+type Slot = 'morning' | 'afternoon' | 'evening' | 'any'
+type Rarity = 'maybe' | 'want' | 'must' // Se der · Quero · Imperdível
 
-interface Traveler { id: ID; name: string; userId?: ID; sprite?: SpriteSpec }
-
-interface Destination {            // um lugar com Mochila; pode ter 0..n paradas
-  id: ID; name: string; localName?: string; country?: string /* ISO2 */;
-  lat?: number; lon?: number; tz?: string;
-  kind: "city" | "region" | "park" | "vessel";
+interface Traveler {
+  id: ID
+  name: string
+  userId?: ID
+  sprite?: SpriteSpec
 }
 
-interface Place {                  // item da Mochila (fora do itinerário)
-  id: ID; destinationId: ID; name: string; lat?: number; lon?: number;
-  rarity: Rarity; estMinutes?: number; note?: string;
+interface Destination {
+  // um lugar com Mochila; pode ter 0..n paradas
+  id: ID
+  name: string
+  localName?: string
+  country?: string /* ISO2 */
+  lat?: number
+  lon?: number
+  tz?: string
+  kind: 'city' | 'region' | 'park' | 'vessel'
 }
 
-interface Visit { id: ID; placeId: ID; slot: Slot; time?: LocalTime; note?: string;
-  participants?: ID[]; visited?: boolean }
-type DayPlan = Visit[];
+interface Place {
+  // item da Mochila (fora do itinerário)
+  id: ID
+  destinationId: ID
+  name: string
+  lat?: number
+  lon?: number
+  rarity: Rarity
+  estMinutes?: number
+  note?: string
+}
+
+interface Visit {
+  id: ID
+  placeId: ID
+  slot: Slot
+  time?: LocalTime
+  note?: string
+  participants?: ID[]
+  visited?: boolean
+}
+type DayPlan = Visit[]
 
 interface Stop {
-  id: ID; destinationId: ID | null;  // null = noites em aberto (sem visitas)
-  days: DayPlan[];                   // noites = days.length (>= 1); o plano de cada dia mora aqui
-  tentative?: boolean; lodging: Lodging; participants?: ID[];
+  id: ID
+  destinationId: ID | null // null = noites em aberto (sem visitas)
+  days: DayPlan[] // noites = days.length (>= 1); o plano de cada dia mora aqui
+  tentative?: boolean
+  lodging: Lodging
+  participants?: ID[]
 }
 
 interface Leg {
-  id: ID; from: ID | "home"; to: ID | "home";      // ids de Stop
-  mode: LegMode; dep?: LocalTime; arr?: LocalTime; arrDayOffset?: number; // +1 chega no dia seguinte
-  fromHub?: Hub; toHub?: Hub; via?: Hub[];
-  durationMin?: number;              // duração digitada (vence a estimativa)
-  aboard: DayPlan[];                 // noites a bordo (nunca no trecho de volta: lá vale arrDayOffset)
-  waypoints: Visit[];                // paradas no caminho
-  participants?: ID[];
-  touched?: boolean;                 // a pessoa mexeu: é arquivado (não descartado) se sair da rota
+  id: ID
+  from: ID | 'home'
+  to: ID | 'home' // ids de Stop
+  mode: LegMode
+  dep?: LocalTime
+  arr?: LocalTime
+  arrDayOffset?: number // +1 chega no dia seguinte
+  fromHub?: Hub
+  toHub?: Hub
+  via?: Hub[]
+  durationMin?: number // duração digitada (vence a estimativa)
+  aboard: DayPlan[] // noites a bordo (nunca no trecho de volta: lá vale arrDayOffset)
+  waypoints: Visit[] // paradas no caminho
+  participants?: ID[]
+  touched?: boolean // a pessoa mexeu: é arquivado (não descartado) se sair da rota
 }
 
-type DayRef = { kind: "stop"; stopId: ID; ordinal: number }
-            | { kind: "leg"; legId: ID; ordinal: number }
-            | { kind: "departure" };                       // dia da volta
+type DayRef =
+  | { kind: 'stop'; stopId: ID; ordinal: number }
+  | { kind: 'leg'; legId: ID; ordinal: number }
+  | { kind: 'departure' } // dia da volta
 
-interface Itinerary {              // vive inteiro no documento trips/{id}
-  version: number;                 // incrementa a cada operação
-  start: ISODate | null;           // null = datas desconhecidas ("dia 1, dia 2…")
-  lock: Lock; defaultMode: LegMode; pace: Pace;
-  travelers: Traveler[];
-  home?: { name: string; lat?: number; lon?: number; tz?: string };
-  stops: Stop[];                   // ordem = ordem da viagem
-  legs: Leg[];                     // ativos: ida, um por par vizinho, volta
-  archivedLegs: Leg[];             // trechos com conteúdo cujo par saiu da rota (voltam se o par voltar)
-  departurePlan: DayPlan;          // plano do dia da volta
-  resources: Resource[]; anchors: Anchor[];
-  returned: { placeId: ID; fromDate: ISODate | null; fromLabel: string }[]; // "voltou de qua 07" (até 50)
+interface Itinerary {
+  // vive inteiro no documento trips/{id}
+  version: number // incrementa a cada operação
+  start: ISODate | null // null = datas desconhecidas ("dia 1, dia 2…")
+  lock: Lock
+  defaultMode: LegMode
+  pace: Pace
+  travelers: Traveler[]
+  home?: { name: string; lat?: number; lon?: number; tz?: string }
+  stops: Stop[] // ordem = ordem da viagem
+  legs: Leg[] // ativos: ida, um por par vizinho, volta
+  archivedLegs: Leg[] // trechos com conteúdo cujo par saiu da rota (voltam se o par voltar)
+  departurePlan: DayPlan // plano do dia da volta
+  resources: Resource[]
+  anchors: Anchor[]
+  returned: { placeId: ID; fromDate: ISODate | null; fromLabel: string }[] // "voltou de qua 07" (até 50)
 }
 
-type Booking =                     // subcoleção bookings; NUNCA alterada pelo motor
-  | { id: ID; kind: "lodging"; title: string; destinationId: ID; checkin: ISODate; checkout: ISODate;
-      status: "planned" | "booked"; archived?: boolean }
-  | { id: ID; kind: "transport"; title: string; fromDestinationId: ID | "home"; toDestinationId: ID | "home";
-      date: ISODate; mode: LegMode; status: "planned" | "booked"; archived?: boolean }
-  | { id: ID; kind: "ticket" | "other"; title: string; date?: ISODate; destinationId?: ID;
-      status: "planned" | "booked"; archived?: boolean };
+type Booking =
+  // subcoleção bookings; NUNCA alterada pelo motor
+  | {
+      id: ID
+      kind: 'lodging'
+      title: string
+      destinationId: ID
+      checkin: ISODate
+      checkout: ISODate
+      status: 'planned' | 'booked'
+      archived?: boolean
+    }
+  | {
+      id: ID
+      kind: 'transport'
+      title: string
+      fromDestinationId: ID | 'home'
+      toDestinationId: ID | 'home'
+      date: ISODate
+      mode: LegMode
+      status: 'planned' | 'booked'
+      archived?: boolean
+    }
+  | {
+      id: ID
+      kind: 'ticket' | 'other'
+      title: string
+      date?: ISODate
+      destinationId?: ID
+      status: 'planned' | 'booked'
+      archived?: boolean
+    }
 ```
 
 **Destinos, lugares e reservas** ficam em subcoleções. O **itinerário** fica inteiro no documento da viagem: assim cada operação é uma transação num único documento. Mesmo uma viagem de um ano fica bem abaixo do limite de 1 MB.
 
 **Decisões tomadas na implementação (M1):**
+
 - Os planos dos dias moram dentro das paradas (`Stop.days`) e dos trechos (`Leg.aboard`), em vez de um mapa `plans` à parte: mover uma cidade leva os dias junto sem traduzir chaves.
 - As reservas apontam para **destinos e datas**, não para ids de parada: assim continuam fatos estáveis quando paradas se fundem, dividem ou somem. `bookingStatus` encontra a parada ou o trecho pela data.
 - Remover a única cidade deixa todas as noites em aberto (não há erro de "última cidade"); só `closeOpen` recusa encurtar até zero.
@@ -479,6 +561,7 @@ op(state, args) => { state, inverse, effects }
   - `legsCreated`, `legsArchived`.
 
 **Regras gerais:**
+
 - **Nenhuma operação decide sozinha quem cede noites quando há escolha.** A interface passa `source` / `target` explicitamente (a pergunta "De onde sai essa noite?"). O motor só sugere: `suggestDonors(stopId)` devolve as cidades com ≥ 2 noites, da mais próxima para a mais distante.
 - **Regra da ponta (§5.1.1):** dias entram e saem na ponta que se moveu. Todos os outros dias mantêm data e plano.
   - Quando a noite vem de, ou vai para, uma cidade **depois**, a ponta é o fim.
@@ -494,31 +577,31 @@ op(state, args) => { state, inverse, effects }
 - **Paradas vizinhas do mesmo destino se fundem:** as noites somam e os dias da segunda vêm depois dos da primeira. `effects.merged` registra a fusão, e o inverso desfaz.
 - **Nenhuma operação toca em `Booking`.**
 
-| Operação | Semântica |
-|---|---|
-| `setNights(stopId, n, via)` | `n ≥ 1`. `via` diz de onde vem ou para onde vai a diferença: `{ kind: "return" }` (move a volta), `{ kind: "stop", stopId }` (outra cidade cede ou recebe; as cidades do meio deslocam) ou `{ kind: "open" }` (ao encolher, deixa noites em aberto na ponta). A doadora precisa ficar com ≥ 1 noite, senão o erro `DONOR_TOO_SHORT` traz as sugestões de `suggestDonors`. |
-| `moveBoundary(index, k)` | Entre `stops[index]` e `stops[index+1]`: uma ganha `k` e a outra perde `k`, **nas pontas encostadas**. Ambas ≥ 1. O total é preservado. |
-| `shiftStop(stopId, ±1)` | Precisa de vizinha dos dois lados: a anterior ganha (ou perde) 1 e a seguinte o contrário. Na primeira ou última parada, a interface oferece mudar a ida ou a volta. |
-| `reorderStop(stopId, toIndex)` | Muda a ordem, recalcula trechos, funde vizinhas iguais. |
-| `insertStop(index, stopId, destinationId, nights)` | 🔓: estende a viagem. 🔒: a vizinha cede (erro se não puder). |
-| `splitStopWith(stopId, afterOrdinal, newStopId, destinationId, nights, tailStopId)` | Divide S em S1 (`afterOrdinal` dias) + Nova + S2 (o resto, com o mesmo destino de S). 🔒: as noites da Nova saem de S2 e, se faltar, de S1. Cada parte precisa de ≥ 1 noite, senão erro com sugestão de inserir antes ou depois. 🔓: a volta se move. |
-| `removeStop(stopId)` | **A parada vira noites em aberto** (lixeira). As visitas vão para a Mochila. O destino e a Mochila permanecem ("Destinos guardados"). |
-| `fillOpen(openStopId, destinationId, nights?, newStopId)` | Preenche o espaço todo ou parte dele (o resto continua em aberto). Funde com a vizinha se for a mesma cidade. |
-| `stretchInto(openStopId, side)` | A vizinha (`before` / `after`) ocupa o espaço, com dias vazios na ponta encostada. Se as duas vizinhas forem a mesma cidade, elas se juntam numa só, e os planos das duas partes são mantidos. |
-| `closeOpen(openStopId)` | Remove as noites em aberto e encurta a viagem. As cidades depois dela antecipam, com os planos indo junto. |
-| `removeDay(dayRef, via)` | Remove aquele dia, e as visitas dele vão para a mochila. O buraco fecha pelo lado de `via`: `open` (padrão com volta marcada) faz os dias seguintes da cidade anteciparem e põe 1 noite em aberto logo depois dela, sem mexer no resto; `return` faz tudo depois antecipar, incluindo a volta; `stop` faz quem ganha a noite fechar o buraco do lado dela, e as cidades do meio deslocam. Com 1 noite, equivale a `removeStop`. |
-| `swapDays(a, b)` | Troca as visitas de dois dias da **mesma** parada. |
-| `setTripStart(date \| null)` | Desloca tudo; `null` passa para dias relativos. |
-| `setTripEnd(date, takeFrom[])` | Encurtar exige escolher de quais paradas tirar (a interface sugere a mais longa). Alongar adiciona noites à última parada (ou a `takeFrom[0]`). |
-| `setLock(lock)` | Só muda a trava. |
-| `setLegMode / setLegTimes / setLegHubs` | Editam o trecho. O motor não toca na passagem: se ela é de outro meio, a derivação `bookingStatus` aponta `wrong-mode`. |
-| `setLegNightsAboard(legId, n)` | 🔒: a vizinha seguinte cede. 🔓: estende. Cria ou remove dias do tipo `leg`. |
-| `addWaypoint / removeWaypoint` | Paradas no caminho de um trecho. |
-| `scheduleVisit(visitId, placeId, dayRef, slot)` | Agenda; o mesmo lugar pode estar em vários dias. |
-| `unscheduleVisit / moveVisit / setVisitMeta` | Desagenda, move ou edita dados da visita. |
-| `setParticipants(target, ids)` | Define quem está numa parada, trecho ou visita. |
-| `addResource / removeResource / addAnchor / removeAnchor` | Recursos e âncoras (sem tela neste subprojeto). |
-| `setTentative / setLodging / setPace / setDefaultMode / setTravelers` | Ajustes da parada e da viagem. |
+| Operação                                                                            | Semântica                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setNights(stopId, n, via)`                                                         | `n ≥ 1`. `via` diz de onde vem ou para onde vai a diferença: `{ kind: "return" }` (move a volta), `{ kind: "stop", stopId }` (outra cidade cede ou recebe; as cidades do meio deslocam) ou `{ kind: "open" }` (ao encolher, deixa noites em aberto na ponta). A doadora precisa ficar com ≥ 1 noite, senão o erro `DONOR_TOO_SHORT` traz as sugestões de `suggestDonors`.                                                       |
+| `moveBoundary(index, k)`                                                            | Entre `stops[index]` e `stops[index+1]`: uma ganha `k` e a outra perde `k`, **nas pontas encostadas**. Ambas ≥ 1. O total é preservado.                                                                                                                                                                                                                                                                                         |
+| `shiftStop(stopId, ±1)`                                                             | Precisa de vizinha dos dois lados: a anterior ganha (ou perde) 1 e a seguinte o contrário. Na primeira ou última parada, a interface oferece mudar a ida ou a volta.                                                                                                                                                                                                                                                            |
+| `reorderStop(stopId, toIndex)`                                                      | Muda a ordem, recalcula trechos, funde vizinhas iguais.                                                                                                                                                                                                                                                                                                                                                                         |
+| `insertStop(index, stopId, destinationId, nights)`                                  | 🔓: estende a viagem. 🔒: a vizinha cede (erro se não puder).                                                                                                                                                                                                                                                                                                                                                                   |
+| `splitStopWith(stopId, afterOrdinal, newStopId, destinationId, nights, tailStopId)` | Divide S em S1 (`afterOrdinal` dias) + Nova + S2 (o resto, com o mesmo destino de S). 🔒: as noites da Nova saem de S2 e, se faltar, de S1. Cada parte precisa de ≥ 1 noite, senão erro com sugestão de inserir antes ou depois. 🔓: a volta se move.                                                                                                                                                                           |
+| `removeStop(stopId)`                                                                | **A parada vira noites em aberto** (lixeira). As visitas vão para a Mochila. O destino e a Mochila permanecem ("Destinos guardados").                                                                                                                                                                                                                                                                                           |
+| `fillOpen(openStopId, destinationId, nights?, newStopId)`                           | Preenche o espaço todo ou parte dele (o resto continua em aberto). Funde com a vizinha se for a mesma cidade.                                                                                                                                                                                                                                                                                                                   |
+| `stretchInto(openStopId, side)`                                                     | A vizinha (`before` / `after`) ocupa o espaço, com dias vazios na ponta encostada. Se as duas vizinhas forem a mesma cidade, elas se juntam numa só, e os planos das duas partes são mantidos.                                                                                                                                                                                                                                  |
+| `closeOpen(openStopId)`                                                             | Remove as noites em aberto e encurta a viagem. As cidades depois dela antecipam, com os planos indo junto.                                                                                                                                                                                                                                                                                                                      |
+| `removeDay(dayRef, via)`                                                            | Remove aquele dia, e as visitas dele vão para a mochila. O buraco fecha pelo lado de `via`: `open` (padrão com volta marcada) faz os dias seguintes da cidade anteciparem e põe 1 noite em aberto logo depois dela, sem mexer no resto; `return` faz tudo depois antecipar, incluindo a volta; `stop` faz quem ganha a noite fechar o buraco do lado dela, e as cidades do meio deslocam. Com 1 noite, equivale a `removeStop`. |
+| `swapDays(a, b)`                                                                    | Troca as visitas de dois dias da **mesma** parada.                                                                                                                                                                                                                                                                                                                                                                              |
+| `setTripStart(date \| null)`                                                        | Desloca tudo; `null` passa para dias relativos.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `setTripEnd(date, takeFrom[])`                                                      | Encurtar exige escolher de quais paradas tirar (a interface sugere a mais longa). Alongar adiciona noites à última parada (ou a `takeFrom[0]`).                                                                                                                                                                                                                                                                                 |
+| `setLock(lock)`                                                                     | Só muda a trava.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `setLegMode / setLegTimes / setLegHubs`                                             | Editam o trecho. O motor não toca na passagem: se ela é de outro meio, a derivação `bookingStatus` aponta `wrong-mode`.                                                                                                                                                                                                                                                                                                         |
+| `setLegNightsAboard(legId, n)`                                                      | 🔒: a vizinha seguinte cede. 🔓: estende. Cria ou remove dias do tipo `leg`.                                                                                                                                                                                                                                                                                                                                                    |
+| `addWaypoint / removeWaypoint`                                                      | Paradas no caminho de um trecho.                                                                                                                                                                                                                                                                                                                                                                                                |
+| `scheduleVisit(visitId, placeId, dayRef, slot)`                                     | Agenda; o mesmo lugar pode estar em vários dias.                                                                                                                                                                                                                                                                                                                                                                                |
+| `unscheduleVisit / moveVisit / setVisitMeta`                                        | Desagenda, move ou edita dados da visita.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `setParticipants(target, ids)`                                                      | Define quem está numa parada, trecho ou visita.                                                                                                                                                                                                                                                                                                                                                                                 |
+| `addResource / removeResource / addAnchor / removeAnchor`                           | Recursos e âncoras (sem tela neste subprojeto).                                                                                                                                                                                                                                                                                                                                                                                 |
+| `setTentative / setLodging / setPace / setDefaultMode / setTravelers`               | Ajustes da parada e da viagem.                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## 15. Derivações (funções puras)
 
@@ -565,54 +648,62 @@ Depois de qualquer sequência válida de operações:
 
 ## 17. Interface do subprojeto 1
 
-*Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/aprendizados.md`). Toda tela segue `docs/inventario-de-experiencia.md`.*
+_Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/aprendizados.md`). Toda tela segue `docs/inventario-de-experiencia.md`._
 
 **Como cada elemento é desenhado:** a frase de quem viaja → o gesto → a resposta visual → o que muda junto → a emoção. Todo gesto de arrastar tem o mesmo caminho em palavras (tocar no elemento abre as ações escritas), por acessibilidade (WCAG 2.2, 2.5.7) e precisão.
 
 ### 17.1 Casca e HUD
+
 - **Abas embaixo (M3.1):** Mapa · Atividades · Tarefas. Topo: o HUD escuro da v1. Vocabulário de jogo só no visual e nas comemorações; navegação e ações em palavras comuns ("destino" é a palavra genérica).
-- **HUD:** nome da viagem e **contagem** (os dois abrem "Sua viagem": nome, quem vai, de onde saem e voltam, datas), **nível de preparo**, "?" (Como jogar), modo dia/noite (automático · claro · escuro, lembrado no aparelho; o mapa de tiles e as partículas seguem), sons e Desfazer.
+- **HUD:** nome da viagem e **contagem** (os dois abrem "Sua viagem": nome, quem vai, de onde saem e voltam, datas), **nível de preparo**, "?" (Como jogar), modo dia/noite (um botão que alterna claro ↔ escuro; segue o aparelho só até o primeiro toque; lembrado; o mapa de tiles e as partículas seguem), sons e Desfazer.
+- **Avisos:** no pé da tela; com um painel aberto, no topo (nunca por cima do painel).
   - Antes da viagem: "Faltam 172 dias". Durante: "Dia 5 de 23 · hoje em Kyoto". Depois: "Viagem completa". Sem data: "Escolha a data de ida".
   - Nível: LV 1 "Sonhando" → LV 2 "Rascunho" → LV 3 "Roteiro firme" → LV 4 "Quase lá" → LV 5 "Pronto pra partir", com a barra de XP listrada.
 - **XP vem do estado, não de cliques:** cada passagem comprada, cada cidade com hospedagem em todas as noites, cada imperdível com dia e cada item com dia vale pontos. Desfazer tira os pontos; mexer em noites não dá pontos. Sem sequência diária e sem culpa.
 - **Comemorações em três tamanhos:** carimbo 済 e "+30 XP" a cada passo; destino com todas as atividades marcadas num dia ("TUDO COM DIA!") com chuva de pétalas; LEVEL UP ao mudar de nível. Sons 8 bits opcionais, desligados por padrão. Tudo respeita "reduzir movimento".
 
 ### 17.2 Mapa (a tela da viagem, M3)
-- **Uma tela só, como na v1:** o painel do mapa (§8) com a contagem e o resumo por cima ("Japão · 23 noites · 6 lugares"), "▶ Ver a viagem" e "+ Adicionar destino"; logo abaixo a **Trilha** (§17.3); o **cartão do dia** (dia N de T, data, onde está, onde dorme (nome da hospedagem, ou "onde vocês dormem?") e as atividades do dia com "+ Atividade"); e o **Roteiro** (§17.4). No desktop (≥ 900 px), mapa e trilha à esquerda e o roteiro à direita.
+
+- **Uma tela só, como na v1:** o painel do mapa (§8) com a contagem e o resumo por cima ("Japão · 23 noites · 6 lugares"), "▶ Ver a viagem" e "+ Adicionar destino" (a contagem é compacta: rótulo, número e unidade numa linha; o resumo "23 noites · 6 lugares" fica no cabeçalho da trilha); logo abaixo a **Trilha** (§17.3); o **cartão do dia** (dia N de T, data, onde está, onde dorme (nome da hospedagem, ou "onde vocês dormem?") e as atividades do dia com "+ Atividade"); e o **Roteiro** (§17.4). No desktop (≥ 900 px), mapa e trilha à esquerda e o roteiro à direita.
 - **Cursor de dia:** tocar numa data ou arrastar pela régua, tocar num destino da trilha (vai para o primeiro dia dele e rola o roteiro até o cartão), as fichas da cidade e "▶ Ver a viagem" movem o mesmo cursor; mapa, cartão do dia e trilha seguem.
-- Tocar numa fase entra na cidade (§8); "◀ Mapa" volta.
+- Tocar numa fase entra na cidade (§8); "◀ Mapa" volta. **Dentro da cidade, mudar o dia muda a cidade** (trilha, régua, cartão do dia e "▶ Ver a viagem" seguem a mesma regra do `setCursorDay`).
+- **"+ Atividade aqui" (M3.2):** entra no modo "marcar": cursor de mira, faixa "Marque no mapa onde fica a atividade nova" com "Não adicionar"; **um clique** abre "Nova atividade" já com o lugar. Segurar no mapa continua abrindo o painel.
 - Depois de criar a viagem, a pessoa cai aqui, com o mapa enquadrado no escopo.
 
 ### 17.3 Roteiro: a Trilha (visão geral, aprovada)
+
 - **Régua de dias** sob os blocos: dia da semana e número, mês fixo à esquerda ao rolar, fim de semana tingido; bandeiras IDA e VOLTA (com 🔒 quando marcada) nas pontas.
 - **Blocos** por cidade, largura proporcional às noites, com o selo da escrita local; noites a bordo hachuradas com o veículo; noites em aberto tracejadas com "+". Entre as cidades, o ícone do transporte.
 - **Gestos:**
 
-  | Você quer… | Gesto | Caminho em palavras (no cartão do destino) |
-  |---|---|---|
-  | Mais ou menos noites | Arrastar o pegador ◆ da divisa, com balão de prévia ao vivo | estepe `– +` de noites (com as escolhas da §5.1) |
-  | Chegar 1 dia antes ou depois mantendo as noites | Segurar a cidade e arrastar **pouco** para o lado: ela empurra a vizinha dia a dia | "⋯" → "Chegar 1 dia antes" / "Chegar 1 dia depois" |
-  | Mudar a ordem | Segurar e arrastar **além** da vizinha (o balão diz "Kyoto vai para depois de Tóquio") | "⋯" → "Mudar a ordem" |
-  | Tirar a cidade | Segurar → a lixeira em pixel aparece → soltar nela ("puf" de pétalas) | "⋯" → "Tirar do roteiro" |
-  | Visitar outra cidade no meio desta | Arrastar a cidade da **prateleira de destinos** (sob a trilha) e soltar no meio do bloco | tocar no destino na prateleira → "No meio de Kyoto" |
-  | Pôr uma cidade entre duas | Soltar da prateleira numa divisa | "+ Parar no caminho" no trecho |
-  | Preencher noites em aberto | Soltar da prateleira no espaço tracejado, ou tocar no "+" | "+ Escolher destino" |
-
+  | Você quer…                                      | Gesto                                                                                    | Caminho em palavras (no cartão do destino)          |
+  | ----------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------- |
+  | Mais ou menos noites                            | Arrastar o pegador ◆ da divisa, com balão de prévia ao vivo                              | estepe `– +` de noites (com as escolhas da §5.1)    |
+  | Chegar 1 dia antes ou depois mantendo as noites | Segurar a cidade e arrastar **pouco** para o lado: ela empurra a vizinha dia a dia       | "⋯" → "Chegar 1 dia antes" / "Chegar 1 dia depois"  |
+  | Mudar a ordem                                   | Segurar e arrastar **além** da vizinha (o balão diz "Kyoto vai para depois de Tóquio")   | "⋯" → "Mudar a ordem"                               |
+  | Tirar a cidade                                  | Segurar → a lixeira em pixel aparece → soltar nela ("puf" de pétalas)                    | "⋯" → "Tirar do roteiro"                            |
+  | Visitar outra cidade no meio desta              | Arrastar a cidade da **prateleira de destinos** (sob a trilha) e soltar no meio do bloco | tocar no destino na prateleira → "No meio de Kyoto" |
+  | Pôr uma cidade entre duas                       | Soltar da prateleira numa divisa                                                         | "+ Parar no caminho" no trecho                      |
+  | Preencher noites em aberto                      | Soltar da prateleira no espaço tracejado, ou tocar no "+"                                | "+ Escolher destino"                                |
   - Para "pouco" e "além": arrastar até a vizinha ficar com 1 noite empurra; passar disso, ou uma vizinha de 1 noite, muda a ordem. O balão sempre diz qual dos dois vai acontecer antes de soltar.
   - Arrastar um bloco já na trilha só empurra, reordena ou vai para a lixeira. Para dividir uma estadia, a cidade vem da prateleira: assim os gestos nunca se confundem.
   - Soltar onde não pode faz o bloco balançar e voltar, com o balão dizendo por quê ("Volta marcada. Toque no 🔒 para liberar.").
-  - **Segurar (M3.1):** 450 ms; o bloco infla enquanto espera, vibra e levanta (alça ⋮⋮ no canto). No toque, o arraste continua mesmo se o navegador cancelar o ponteiro. **Tocar sem segurar** leva ao cartão do destino no roteiro e põe o cursor no primeiro dia dele; não abre menu.
+  - **Mouse × toque (M3.2, normas dnd-kit/SortableJS):** com o **mouse**, um bloco (ou uma ficha da prateleira) levanta ao mover 6 px, sem espera; a **régua** rola a faixa ao arrastar e o clique escolhe o dia; a roda do mouse rola a faixa. Com o **dedo**, segurar 450 ms levanta (o bloco infla enquanto espera, vibra; alça ⋮⋮ no canto), os blocos rolam a faixa e a régua passa os dias (a barra de dias da v1). No toque, o arraste continua mesmo se o navegador cancelar o ponteiro. **Tocar ou clicar sem arrastar** leva ao cartão do destino no roteiro e põe o cursor no primeiro dia dele; não abre menu.
+  - **Pegadores:** pílulas com setas ◂▸ (cursor ⟷ no PC) que acenam uma vez ao abrir a viagem.
+
 - **Zoom:** "Dias" (44 px por noite) e "Ver tudo" (a viagem inteira na largura da tela). Estadias longas mostram semanas na régua; o arraste continua em dias.
 - **Sincroniza na hora:** roteiro, mapa, tarefas, atividades que ficaram sem dia, alertas na própria trilha (bandeirinha vermelha no bloco com hotel fora das datas).
 
 ### 17.4 Roteiro: cidades, trechos e dias (visão granular)
+
 - Lista na ordem da viagem: cartão de cada cidade e, entre eles, o trecho.
-- **Cartão do destino (M3.1):** selo, datas, noites com `– +`, onde se dorme (nome da hospedagem com 済 quando reservada; "onde vocês dormem?" abre o painel de hospedagem), os **dias sempre à vista** (data, atividades por turno e "+ Atividade" em cada um; "⋯" do dia: tirar esta noite, trocar com outro dia), as **atividades ainda sem dia** do destino e dos bate-voltas (chips: segurar e arrastar até o dia, ou tocar e escolher o dia) e um "⋯" com o raro: mudar a ordem, chegar 1 dia antes/depois, tirar do roteiro. Sem "noites incertas": não resolvia um problema real.
+- **Cartão do destino (M3.1):** selo, datas, noites com `– +`, onde se dorme (nome da hospedagem com 済 quando reservada; "onde vocês dormem?" abre o painel de hospedagem), os **dias sempre à vista** (data, atividades por turno e "+ Atividade" em cada um; "⋯" do dia: tirar esta noite, trocar com outro dia), as **atividades ainda sem dia** do destino e dos bate-voltas (chips: arrastar até o dia, ou tocar e escolher o dia). **As atividades dos dias também arrastam** (M3.2): para outro dia (muda de dia, inclusive no cartão do dia) ou para a área "sem dia" (tira do dia); mouse ao mover 6 px, dedo segurando 300 ms e um "⋯" com o raro: mudar a ordem, chegar 1 dia antes/depois, tirar do roteiro. Sem "noites incertas": não resolvia um problema real.
 - **Trecho:** veículo e meio, data, tempo com a fonte, e o **interruptor de passagem** "Passagem: falta / comprada 済" que desmarca no mesmo lugar (com Desfazer). Comprar a passagem de volta marca a volta, com aviso. "Editar trecho" abre meio, horários e noites a bordo; "+ Parar no caminho" põe um destino entre os dois.
-- **Painel "Nova atividade":** nome com sugestões perto do destino (busca online, só pontos de interesse), tipo, e a prioridade como botão de criar (Se der · Quero · Imperdível). Aberto de um dia, a atividade já entra nele e as "já na lista, sem dia" entram com um toque. É o mesmo painel de "+ Atividade aqui" (segurar no mapa da cidade, já com o lugar) e do "+ Atividade" da aba Atividades.
+- **Painel "Nova atividade":** nome com sugestões perto do destino (busca online, só pontos de interesse), tipo, prioridade como seleção (Se der · **Quero** · Imperdível, "Quero" já marcado) e o botão **"Criar atividade"** (desligado sem nome). Aberto de um dia, a atividade já entra nele e as "já na lista, sem dia" entram com um toque. É o mesmo painel de "+ Atividade aqui" (segurar no mapa da cidade, já com o lugar) e do "+ Atividade" da aba Atividades.
 - **Painel "Onde vocês dormem em X?":** as hospedagens da parada com "já reservei" / "ainda não reservei" e "Tirar"; para as noites que faltam, o nome (sugestões de hotéis online, ou "Hospedagem em X") e "já reservei" (carimbo 済 e XP).
 
 ### 17.5 Atividades: cartões com cara de coleção
+
 - A palavra "mochila" fica só no motor (o conjunto de atividades de um destino); na interface é sempre **atividade**.
 - Cada destino é uma **página** ("Kyoto 京都 · 5/8 com dia", com a barra), na ordem da viagem; depois os bate-voltas e os "Destinos guardados". "+ Atividade" no cabeçalho abre o painel "Nova atividade" (§17.4).
 - Cada atividade é um **cartão** com moldura de prioridade: Se der (prata), Quero (azul), **Imperdível (dourada, com brilho)**.
@@ -624,18 +715,23 @@ Depois de qualquer sequência válida de operações:
 - Destino com todas as atividades marcadas num dia comemora uma vez ("TUDO COM DIA!").
 
 ### 17.6 Quests
+
 - A Saúde do roteiro (§15) com textos de quem viaja, gravidade e "Ver" que leva ao alvo; algumas resolvem num toque ("Marcar comprada", "Marcar hospedagem", "Colar").
 - Lista vazia comemora: "Tudo pronto. Boa viagem!".
 
 ### 17.7 Minhas viagens e criar viagem
+
+- **Criar com cidade (M3.2):** o passo 2 pergunta "Vão dormir em outra cidade?" ("O Rio já está. Bate-voltas e passeios entram depois, no roteiro."), campo "Outra cidade"; com país, "Em quais cidades vão dormir?" e o campo "Cidades". Campos de formulário com 16 px (sem zoom no iOS).
 - **M3.1:** cada viagem tem "⋯" com Renomear e Apagar (aviso com Desfazer). Abrir um exemplo de novo reaproveita a cópia que já existe; ao abrir, os exemplos antigos ganham as coordenadas e o escopo que faltavam.
 - Lista das viagens guardadas no aparelho, "Explorar exemplos" (as 6 viagens de teste, copiadas para mexer sem medo) e "Criar viagem".
 - Criar (§7): pra onde (busca de cidades com lista própria offline e, com internet, Photon), quando (ou "ainda não sei"), quem vai, como vão se mover. As noites se dividem igualmente e a viagem abre com "Mundo criado!".
 
 ### 17.8 Desfazer em tudo
+
 - Itinerário, mochila e reservas mudam por comandos com inverso. Uma ação composta (comprar a passagem de volta + marcar a volta) é desfeita de uma vez.
 
 ### 17.9 Acessibilidade e celular
+
 - Alvos de toque ≥ 44 px, texto ≥ 12 px, contraste 4.5:1, foco visível, "reduzir movimento", painéis inferiores para edição.
 - Todo arraste tem o caminho em palavras; segurar para arrastar não pode ser o único caminho.
 
@@ -678,13 +774,13 @@ Depois de qualquer sequência válida de operações:
 
 ## 21. Riscos
 
-| Risco | Resposta |
-|---|---|
+| Risco                                               | Resposta                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------- |
 | OpenFreeMap, Photon e OpenRouteService sem garantia | Provedores trocáveis, cache e plano B (linha reta, tabuleiro em cache) |
-| Imprecisão ao arrastar no celular | `– / +`, `‹ ›` e `↑ ↓` sempre presentes |
-| Conflitos de edição offline | Fila de operações reaplicadas, com explicação quando falhar |
-| Custo de leituras no Firestore | Itinerário num documento só; alerta de orçamento |
-| A gramática completa assustar | Tudo aparece só quando usado (princípio 4) |
+| Imprecisão ao arrastar no celular                   | `– / +`, `‹ ›` e `↑ ↓` sempre presentes                                |
+| Conflitos de edição offline                         | Fila de operações reaplicadas, com explicação quando falhar            |
+| Custo de leituras no Firestore                      | Itinerário num documento só; alerta de orçamento                       |
+| A gramática completa assustar                       | Tudo aparece só quando usado (princípio 4)                             |
 
 ## 22. Protótipo de validação
 
