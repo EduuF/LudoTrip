@@ -289,6 +289,24 @@ describe('saúde do roteiro', () => {
     ).toEqual(['L:douro>lagos'])
   })
 
+  it('passagem vale para um trecho só, mesmo com o par de cidades repetido', () => {
+    const t = japao()
+    const s = run(t.itinerary, {
+      type: 'splitStopWith',
+      stopId: 's8',
+      afterOrdinal: 4,
+      destinationId: 'd-tokyo',
+      nights: 2,
+      via: { kind: 'stop', stopId: 's8' },
+    }).state
+    const missing = healthOf(t, s)
+      .filter((i) => i.kind === 'transport-missing')
+      .map((i) => s.legs.find((l) => l.id === i.target.id)!)
+    const kyotoTokyo = missing.filter((l) => l.from === 's8')
+    expect(kyotoTokyo).toHaveLength(1)
+    expect(missing.some((l) => l.to === 's9')).toBe(false)
+  })
+
   it('Caminho e Rio não pedem passagem para trechos a pé', () => {
     const c = caminho()
     expect(

@@ -82,16 +82,16 @@ firestore.rules, firebase.json, .github/workflows/ci.yml
 ## M0 — Base do projeto
 
 ### Tarefa 1: criar o projeto
-- [ ] `npm create vite@latest . -- --template react-ts` dentro do repositório; manter o README e a pasta `docs/`.
-- [ ] Instalar `zustand react-router-dom idb-keyval`. Para desenvolvimento: `vitest @vitest/coverage-v8 fast-check @testing-library/react @testing-library/user-event jsdom eslint prettier @playwright/test`.
-- [ ] `tsconfig`: `"strict": true`, `"noUncheckedIndexedAccess": true`.
-- [ ] Scripts em `package.json`: `dev`, `build`, `typecheck` (`tsc -b`), `lint`, `test` (`vitest run`), `test:watch`, `e2e` (`playwright test`).
-- [ ] `src/engine/smoke.test.ts` com `expect(1+1).toBe(2)` para provar que o Vitest roda. Rodar `npm test`: passa.
-- [ ] Commit: `chore: projeto Vite + React + TS com Vitest`.
+- [x] `npm create vite@latest . -- --template react-ts` dentro do repositório; manter o README e a pasta `docs/`.
+- [x] Instalar `zustand react-router-dom idb-keyval`. Para desenvolvimento: `vitest @vitest/coverage-v8 fast-check @testing-library/react @testing-library/user-event jsdom eslint prettier @playwright/test`.
+- [x] `tsconfig`: `"strict": true`, `"noUncheckedIndexedAccess": true`.
+- [x] Scripts em `package.json`: `dev`, `build`, `typecheck` (`tsc -b`), `lint`, `test` (`vitest run`), `test:watch`, `e2e` (`playwright test`).
+- [x] `src/engine/smoke.test.ts` com `expect(1+1).toBe(2)` para provar que o Vitest roda. Rodar `npm test`: passa.
+- [x] Commit: `chore: projeto Vite + React + TS com Vitest`.
 
 ### Tarefa 2: integração contínua
-- [ ] `.github/workflows/ci.yml`: Node LTS, `npm ci`, `typecheck`, `lint`, `test`.
-- [ ] Commit: `ci: typecheck, lint e testes`.
+- [x] `.github/workflows/ci.yml`: Node LTS, `npm ci`, `typecheck`, `lint`, `test`.
+- [x] Commit: `ci: typecheck, lint e testes`.
 
 ---
 
@@ -107,7 +107,7 @@ type OpResult = { ok: true; state: Itinerary; inverse: Patch; effects: Effects }
 As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Osaka ficaria sem noites. Destrave a duração ou remova Osaka.").
 
 ### Tarefa 3: tipos
-- [ ] `src/engine/types.ts` com os tipos da spec §13, mais:
+- [x] `src/engine/types.ts` com os tipos da spec §13, mais:
 
   ```ts
   type Effects = {
@@ -120,53 +120,53 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   };
   ```
 
-- [ ] Commit: `feat(engine): tipos da gramática`.
+- [x] Commit: `feat(engine): tipos da gramática`.
 
 ### Tarefa 4: datas
-- [ ] Testes em `dates.test.ts`:
+- [x] Testes em `dates.test.ts`:
   - `addDays("2030-04-01", 23) === "2030-04-24"`;
   - virada de mês e de ano;
   - `diffDays` negativo;
   - nada depende do fuso do computador (forçar `TZ=America/Sao_Paulo` e `TZ=Asia/Tokyo` no teste).
-- [ ] Implementar com `Date.UTC` (igual ao protótipo).
-- [ ] `stopWindows(it)` devolve `{ stopId, startIndex, endIndex, start, end }`, considerando `nightsAboard` dos trechos entre paradas.
+- [x] Implementar com `Date.UTC` (igual ao protótipo).
+- [x] `stopWindows(it)` devolve `{ stopId, startIndex, endIndex, start, end }`, considerando `nightsAboard` dos trechos entre paradas.
   - Teste: Japão, Kyoto de 13/04 a 20/04.
   - Teste: com `start = null`, as datas vêm `null` e os índices continuam corretos.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 5: planos dos dias
-- [ ] `plans.ts`:
+- [x] `plans.ts`:
   - `planKey`;
   - `growAt(it, stopId, edge, k)` e `shrinkAt(it, stopId, edge, k)` aplicam a **regra da ponta**: dias vazios entram, ou dias saem, no começo (`start`) ou no fim (`end`), com as visitas que saem indo para `returnedToBag` e `itinerary.returned`;
   - `mergeAdjacentSameDestination(it)`: as noites somam, os planos da segunda parada continuam depois dos da primeira, e o efeito `merged` é registrado.
-- [ ] Testes:
+- [x] Testes:
   - `shrinkAt(end, 2)` de 7 → 5 devolve as visitas dos dias 6 e 7; `shrinkAt(start, 2)` devolve as dos dias 1 e 2 e os outros mantêm as datas;
   - `growAt(start, 1)` cria um dia vazio no começo e não muda a data dos demais;
   - fundir Tóquio 2 + Tóquio 2 dá 4 noites, com os planos na ordem.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 6: reconciliação de trechos
-- [ ] `legs.ts` com `reconcileLegs(it, newId)`:
+- [x] `legs.ts` com `reconcileLegs(it, newId)`:
   - pares vizinhos = `home → s0`, `si → si+1`, `sN → home`;
   - um trecho existente com o mesmo par é **mantido**;
   - um trecho em `archivedLegs` com o mesmo par é **restaurado**;
   - senão, é **criado** com `defaultMode` (com `fromHub`/`toHub` vazios);
   - trechos ativos cujo par sumiu vão para `archivedLegs` **se tiverem conteúdo** (horários, pontas, `waypoints`, `nightsAboard > 0`) e são descartados se estiverem vazios.
-- [ ] Teste-chave: Japão. Pôr horário 06:12 no trecho Kyoto → Tóquio, mover Kyoto para o topo (o trecho é arquivado) e mover de volta: o trecho volta **com 06:12**.
-- [ ] Commit.
+- [x] Teste-chave: Japão. Pôr horário 06:12 no trecho Kyoto → Tóquio, mover Kyoto para o topo (o trecho é arquivado) e mover de volta: o trecho volta **com 06:12**.
+- [x] Commit.
 
 ### Tarefa 7: remendo inverso e Desfazer seguro
-- [ ] `patch.ts`:
+- [x] `patch.ts`:
   - `makePatch(before, after)` registra só as partes tocadas: `stops`, `legs`, `archivedLegs`, chaves de `plans`, `start`, `lock`, `departurePlan`, `resources`, `anchors`, `travelers`;
   - `applyPatch(current, patch)` devolve `{ ok:false, code:"CHANGED_SINCE" }` se alguma parte tocada estiver diferente de `patch.after`.
-- [ ] Testes:
+- [x] Testes:
   - `applyPatch(op(s).state, op(s).inverse)` reproduz `s` em igualdade profunda;
   - se outra edição mexeu nas mesmas paradas, o resultado é `CHANGED_SINCE`;
   - se outra edição mexeu em partes diferentes, o Desfazer é aplicado.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 8: noites
-- [ ] Testes primeiro, depois a implementação de `ops/nights.ts`:
+- [x] Testes primeiro, depois a implementação de `ops/nights.ts`:
   - `setNights(Kyoto, 8, {kind:"return"})`: a volta vai para 25/04 e o novo dia vazio entra no fim de Kyoto.
   - `setNights(Kyoto, 8, {kind:"stop", stopId: Tóquio final})`: Tóquio final de 4 → 3 perdendo o **primeiro** dia; a volta continua em 24/04.
   - `setNights(Tóquio inicial, 3, {kind:"stop", stopId: Osaka})` (doadora distante):
@@ -183,10 +183,10 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   - `shiftStop(Kyoto, +1)`: Osaka ganha 1 dia no fim; Tóquio final perde o primeiro; os planos de Kyoto andam junto (Gion vai para 14/04).
   - `shiftStop` na primeira parada dá erro `NEEDS_BOTH_NEIGHBORS`.
   - A vizinha que ganha a noite recebe o dia vazio. É o defeito que o protótipo achou e precisa de teste próprio.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 9: estrutura
-- [ ] Testes, depois `ops/structure.ts`:
+- [x] Testes, depois `ops/structure.ts`:
   - `reorderStop(Kyoto, 0)` (começar por Kyoto): datas e trechos se refazem; as Tóquio que ficarem vizinhas se fundem e o efeito `merged` é registrado.
   - `insertStop` 🔒 cede noites da parada de referência; 🔓 estende a viagem.
   - `splitStopWith(Kyoto, 4, novo, tokyo, 2, cauda)` 🔒 resulta em Kyoto 4 → Tóquio 2 → Kyoto 1, com as visitas dos dias 6 e 7 de Kyoto em `returnedToBag`. Kyoto I e II usam o mesmo `destinationId`.
@@ -197,11 +197,11 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   - `stretchInto(aberto, "before")`: Tóquio inicial ganha dias vazios no fim.
   - Tóquio | aberto | Tóquio + `stretchInto` vira **uma** Tóquio com os planos das duas partes (o cenário do mantenedor).
   - `closeOpen` encurta a viagem e antecipa as cidades seguintes.
-  - Remover a única parada dá erro `LAST_STOP`.
-- [ ] Commit.
+  - Remover a única parada deixa todas as noites em aberto; `closeOpen` recusa encurtar até zero.
+- [x] Commit.
 
 ### Tarefa 10: dias e viagem
-- [ ] Testes, depois `ops/days.ts`:
+- [x] Testes, depois `ops/days.ts`:
   - `removeDay(dia 2 de Tóquio final, {kind:"open"})`: as visitas do dia 2 voltam à mochila; os dias 3 e 4 antecipam um dia; aparece 1 noite em aberto logo depois de Tóquio; as cidades seguintes e a volta não mudam.
   - `removeDay(…, {kind:"return"})`: a volta antecipa 1 dia.
   - `removeDay(…, {kind:"stop", stopId: anterior})`: o buraco fecha pelo lado de quem ganha: os dias antes do removido avançam 1 dia e a anterior ganha 1 dia no fim.
@@ -209,32 +209,32 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   - `setTripStart`: desloca tudo; `null` passa para dias relativos.
   - `setTripEnd` encurtando exige `takeFrom`; a interface sugere a parada mais longa.
   - `setLock`.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 11: trechos
-- [ ] Testes, depois `ops/legs.ts`:
+- [x] Testes, depois `ops/legs.ts`:
   - modo, horários (`arrDayOffset`) e pontas;
   - `setLegNightsAboard(1)` 🔒: a vizinha cede 1 noite e aparece um dia do tipo `leg`;
   - `addWaypoint`/`removeWaypoint`.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 12: visitas e ajustes
-- [ ] Testes, depois `ops/visits.ts` e `ops/misc.ts`:
+- [x] Testes, depois `ops/visits.ts` e `ops/misc.ts`:
   - agendar o mesmo lugar em dois dias é permitido;
   - desagendar, mover visita, editar metadados;
   - participantes, recursos e âncoras;
   - pouso, noites tentativas, ritmo, modo padrão e viajantes.
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 13: comandos
-- [ ] `commands.ts`:
+- [x] `commands.ts`:
   - `type Command = { type: "setNights"; stopId; nights } | …` (um por operação, todos serializáveis);
   - `dispatch(itinerary, command, ids: () => ID)`: os ids novos vêm de fora, para manter o motor determinístico.
-- [ ] Teste: `JSON.parse(JSON.stringify(cmd))` despachado dá o mesmo resultado. É isso que permite a fila offline e as transações.
-- [ ] Commit.
+- [x] Teste: `JSON.parse(JSON.stringify(cmd))` despachado dá o mesmo resultado. É isso que permite a fila offline e as transações.
+- [x] Commit.
 
 ### Tarefa 14: derivações
-- [ ] Testes com as fixtures, depois `derive/*`:
+- [x] Testes com as fixtures, depois `derive/*`:
   - `days()`: 24 dias no Japão; o dia 11/04 é bate-volta a Nara; o dia 24/04 é o dia de volta.
   - `worlds()`: Europa tem 3 mundos.
   - `bookingStatus()`: `ok`, `out-of-window`, `orphan` (reordenar Kyoto deixa a passagem Kyoto → Tóquio órfã) e `wrong-mode` (passagem de trem num trecho que virou ônibus).
@@ -242,19 +242,24 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   - `lodgingGaps()`: depois de `moveBoundary(Osaka|Kyoto, −2)`, Kyoto tem as noites 11/04 e 12/04 sem hospedagem.
   - `estimateLeg()`: os mesmos fatores do protótipo.
   - `health()`: cada tipo de pendência da spec §15, com alvo para "Ver".
-- [ ] Commit.
+- [x] Commit.
 
 ### Tarefa 15: fixtures e invariantes
-- [ ] `fixtures/`: Japão, Rio, Portugal de carro, Europa com voos, cruzeiro, Caminho de Santiago (spec §19).
-- [ ] `invariants.test.ts` com fast-check:
+- [x] `fixtures/`: Japão, Rio, Portugal de carro, Europa com voos, cruzeiro, Caminho de Santiago (spec §19).
+- [x] `invariants.test.ts` com fast-check:
   - gerar sequências de 1 a 30 comandos aleatórios válidos e inválidos sobre cada fixture;
   - verificar as 9 invariantes da spec §16 depois de cada passo;
   - verificar o Desfazer: aplicar todos os inversos em ordem reversa reproduz a fixture original;
   - `numRuns: 1000` por fixture.
-- [ ] `npm test` precisa passar com cobertura de linhas ≥ 90% em `src/engine`.
-- [ ] Commit: `test(engine): invariantes com sequências aleatórias`.
+- [x] `npm test` precisa passar com cobertura de linhas ≥ 90% em `src/engine`.
+- [x] Commit: `test(engine): invariantes com sequências aleatórias`.
 
 **Ponto de revisão M1:** mostrar ao mantenedor o relatório de testes e uma demonstração no terminal dos cenários da spec §5.3.
+
+**Andamento (2026-10-13):** M1 entregue.
+- 121 testes; as invariantes rodam 1.000 sequências aleatórias por viagem (6.000 por execução); cobertura de linhas do motor ≈ 99%.
+- Desvios do plano: os planos dos dias ficaram em `Stop.days` e `Leg.aboard` (sem `plans.ts`); `core.ts` reúne linha do tempo, regra da ponta, fusão e reconciliação de trechos; as mensagens ficaram em `narrate.ts` (`describeEffects` com prévia, `describeError`, `describeIssue`).
+- Para a revisão, em vez da demonstração no terminal: o **laboratório do motor** (`npm run lab`, ou `npm run lab:build` para um HTML único), uma tela simples que usa o motor de verdade.
 
 ---
 

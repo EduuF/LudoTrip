@@ -51,4 +51,5 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
   - **Toda mudança no motor vem com testes, incluindo as invariantes com sequências aleatórias (fast-check).**
 - **A interface só despacha comandos serializáveis** (`dispatch(itinerary, command)`). Isso serve a fila offline e às transações.
 - **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
-- **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (disponíveis a partir do M0).
+- **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (a partir do M4).
+- **Laboratório do motor:** `npm run lab` abre `lab.html` (tela simples que usa o motor de verdade); `npm run lab:build` gera `dist-lab/laboratorio.html`, um HTML único que pode ser publicado como artifact para o mantenedor testar no celular.

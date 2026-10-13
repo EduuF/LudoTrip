@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { japao, rio } from './fixtures/trips'
+import { japao, portugal, rio } from './fixtures/trips'
 import { refuse, run } from './fixtures/helpers'
-import { describeEffects, describeError, describeUndoRefusal } from './narrate'
+import { describeEffects, describeError, describeIssue, describeUndoRefusal } from './narrate'
+import { health } from './derive'
 import type { Command } from './commands'
 import type { BuiltTrip } from './fixtures/build'
 import type { ErrorCode } from './core'
@@ -137,5 +138,71 @@ describe('quando não dá', () => {
   it('Desfazer recusado', () => {
     expect(describeUndoRefusal('CHANGED_SINCE')).toBe('Alguém mudou isso depois. Não dá para desfazer.')
     expect(describeUndoRefusal('NOTHING_TO_UNDO')).toBe('Nada para desfazer.')
+  })
+})
+
+describe('prévia (antes de escolher)', () => {
+  it('fala no presente', () => {
+    const t = japao()
+    const r = run(t.itinerary, { type: 'moveBoundary', index: 6, k: -2 })
+    expect(describeEffects(r.effects, t.itinerary, r.state, t, 'preview')).toBe(
+      'Parque de Nara e mais 3 voltam para a mochila.',
+    )
+    const v = run(t.itinerary, { type: 'setNights', stopId: 's8', nights: 6, via: { kind: 'return' } })
+    expect(describeEffects(v.effects, t.itinerary, v.state, t, 'preview')).toBe(
+      'Caminho do Filósofo volta para a mochila. Volta vai para ter 23/04.',
+    )
+    const a = run(t.itinerary, { type: 'removeStop', stopId: 's2' }).state
+    const j = run(a, { type: 'stretchInto', stopId: 's2', side: 'before' })
+    expect(describeEffects(j.effects, a, j.state, t, 'preview')).toBe('Tóquio vira uma só: 5 noites.')
+  })
+})
+
+describe('quests', () => {
+  const quests = (t: BuiltTrip, it = t.itinerary) =>
+    health(it, { destinations: t.destinations, places: t.places, bookings: t.bookings }).map((i) =>
+      describeIssue(i, it, t, t.bookings),
+    )
+
+  it('Japão no começo', () => {
+    const t = japao()
+    const q = quests(t)
+    expect(q).toContain('Tóquio: falta hospedagem (2 noites).')
+    expect(q).toContain('Tóquio → Ginzan Onsen: falta a passagem de trem.')
+    expect(q).toContain('teamLab Planets é imperdível e ainda não tem dia.')
+    expect(q).not.toContain('Kyoto → Tóquio: falta a passagem de trem.')
+  })
+
+  it('depois de mexer', () => {
+    const t = japao()
+    let s = run(t.itinerary, { type: 'moveBoundary', index: 6, k: -2 }).state
+    s = run(s, { type: 'removeStop', stopId: 's3' }).state
+    s = run(s, { type: 'setLegMode', legId: 'L:kyoto>tokyo', mode: 'bus' }).state
+    s = run(s, {
+      type: 'addAnchor',
+      anchor: { id: 'a1', title: 'Show', date: '2030-04-21', destinationId: 'd-osaka' },
+    }).state
+    const q = quests(t, s)
+    expect(q).toContain('Você tem passagem de trem para Kyoto → Tóquio.')
+    expect(q).toContain('Kyoto: qui 11/04 e sex 12/04 sem hospedagem.')
+    expect(q).toContain('2 noites em aberto (qui 04/04 a sex 05/04).')
+    expect(q).toContain('Show (21/04) ficou fora de Osaka.')
+    const shifted = run(t.itinerary, { type: 'shiftStop', stopId: 's8', by: 1 }).state
+    expect(quests(t, shifted)).toEqual(
+      expect.arrayContaining([
+        'Hotel em Kyoto: as datas não batem com Kyoto (14/04 a 21/04).',
+        'Trem-bala Kyoto → Tóquio: a passagem é de 20/04; o trecho agora é 21/04.',
+      ]),
+    )
+    const end = run(t.itinerary, { type: 'reorderStop', stopId: 's8', toIndex: 8 }).state
+    expect(quests(t, end)).toContain('Voo Tóquio → São Paulo: esse trecho não está mais no roteiro.')
+  })
+
+  it('carro: direção longa e fora do aluguel', () => {
+    const t = portugal()
+    const s = run(t.itinerary, { type: 'setTripStart', date: '2030-09-08' }).state
+    const q = quests(t, s)
+    expect(q).toContain('Vale do Douro → Lagos: ~7 h de carro num dia.')
+    expect(q).toContain('Lisboa → Nazaré fica fora do período de Carro alugado.')
   })
 })

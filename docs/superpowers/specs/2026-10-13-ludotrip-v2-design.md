@@ -376,82 +376,88 @@ Todos os passos podem ser pulados. Existe também um atalho de escapada.
 ## 13. Modelo de dados do motor
 
 ```ts
+// Fonte da verdade: src/engine/types.ts (este bloco resume).
 type ID = string;
 type ISODate = string;            // "2030-04-01" (data local do destino)
 type LocalTime = string;          // "06:12"
 
-type Lock = "free" | "fixed";
+type Lock = "free" | "fixed";     // volta livre ou marcada
 type Pace = "calm" | "normal" | "intense";
 type LegMode = "flight" | "train" | "bus" | "car" | "boat" | "walk" | "bike" | "moto";
 type Lodging = "hotel" | "hostel" | "apartment" | "friends" | "camping" | "motorhome" | "onboard";
 type Slot = "morning" | "afternoon" | "evening" | "any";
+type Rarity = "maybe" | "want" | "must";   // Se der · Quero · Imperdível
 
-interface Traveler { id: ID; name: string; userId?: ID; sprite: SpriteSpec }
+interface Traveler { id: ID; name: string; userId?: ID; sprite?: SpriteSpec }
 
 interface Destination {            // um lugar com Mochila; pode ter 0..n paradas
   id: ID; name: string; localName?: string; country?: string /* ISO2 */;
   lat?: number; lon?: number; tz?: string;
-  kind: "city" | "region" | "park" | "vessel" | "undefined";
+  kind: "city" | "region" | "park" | "vessel";
 }
 
-interface Place {                  // item da Mochila (subcoleção places)
+interface Place {                  // item da Mochila (fora do itinerário)
   id: ID; destinationId: ID; name: string; lat?: number; lon?: number;
-  rarity: "maybe" | "want" | "must";   // Se der · Quero · Imperdível
-  estMinutes?: number; note?: string; source?: "photon" | "manual";
+  rarity: Rarity; estMinutes?: number; note?: string;
 }
 
 interface Visit { id: ID; placeId: ID; slot: Slot; time?: LocalTime; note?: string;
   participants?: ID[]; visited?: boolean }
+type DayPlan = Visit[];
 
 interface Stop {
-  id: ID; destinationId: ID | null;  // null = noites em aberto (espaço tracejado, sem dias planejáveis)
-  nights: number /* inteiro ≥ 1 */;
+  id: ID; destinationId: ID | null;  // null = noites em aberto (sem visitas)
+  days: DayPlan[];                   // noites = days.length (>= 1); o plano de cada dia mora aqui
   tentative?: boolean; lodging: Lodging; participants?: ID[];
 }
 
-interface Hub { kind: "airport" | "station" | "port" | "other"; code?: string; name: string }
-
 interface Leg {
   id: ID; from: ID | "home"; to: ID | "home";      // ids de Stop
-  mode: LegMode; dep?: LocalTime; arr?: LocalTime; arrDayOffset?: number; // +1 chega no dia seguinte, −1 linha de data
+  mode: LegMode; dep?: LocalTime; arr?: LocalTime; arrDayOffset?: number; // +1 chega no dia seguinte
   fromHub?: Hub; toHub?: Hub; via?: Hub[];
-  nightsAboard: number;                             // ≥ 0; noites consumidas pelo trecho
-  waypoints: Visit[];                               // paradas no caminho
+  durationMin?: number;              // duração digitada (vence a estimativa)
+  aboard: DayPlan[];                 // noites a bordo (nunca no trecho de volta: lá vale arrDayOffset)
+  waypoints: Visit[];                // paradas no caminho
   participants?: ID[];
+  touched?: boolean;                 // a pessoa mexeu: é arquivado (não descartado) se sair da rota
 }
 
-type DayRef = { kind: "stop"; stopId: ID; ordinal: number }      // ordinal 0..nights-1 (+ dia de volta)
-            | { kind: "leg"; legId: ID; ordinal: number };        // noites a bordo
+type DayRef = { kind: "stop"; stopId: ID; ordinal: number }
+            | { kind: "leg"; legId: ID; ordinal: number }
+            | { kind: "departure" };                       // dia da volta
 
 interface Itinerary {              // vive inteiro no documento trips/{id}
   version: number;                 // incrementa a cada operação
-  start: ISODate | null;           // null = datas desconhecidas
+  start: ISODate | null;           // null = datas desconhecidas ("dia 1, dia 2…")
   lock: Lock; defaultMode: LegMode; pace: Pace;
   travelers: Traveler[];
-  homeName?: string;
+  home?: { name: string; lat?: number; lon?: number; tz?: string };
   stops: Stop[];                   // ordem = ordem da viagem
-  legs: Leg[];                     // ativos (um por par vizinho + ida + volta)
-  archivedLegs: Leg[];             // trechos com conteúdo cujo par saiu da rota (restaurados se o par voltar)
-  plans: Record<string, Visit[]>;  // chave "s:{stopId}:{ordinal}" ou "l:{legId}:{ordinal}"
-  departurePlan: Visit[];          // dia da volta (pertence à última parada)
+  legs: Leg[];                     // ativos: ida, um por par vizinho, volta
+  archivedLegs: Leg[];             // trechos com conteúdo cujo par saiu da rota (voltam se o par voltar)
+  departurePlan: DayPlan;          // plano do dia da volta
   resources: Resource[]; anchors: Anchor[];
-  returned: { placeId: ID; fromDate: ISODate | null; fromLabel: string }[]; // "voltou de qua 07" (últimos 50)
+  returned: { placeId: ID; fromDate: ISODate | null; fromLabel: string }[]; // "voltou de qua 07" (até 50)
 }
 
-interface Resource { id: ID; kind: "rental-car" | "rail-pass" | "esim" | "insurance" | "other";
-  title: string; start?: ISODate; end?: ISODate; covers?: LegMode[] }
-interface Anchor { id: ID; title: string; date: ISODate; time?: LocalTime; destinationId?: ID }
-
-interface Booking {                 // subcoleção bookings; NUNCA alterada pelo motor
-  id: ID; kind: "lodging" | "transport" | "ticket" | "other"; title: string;
-  start?: ISODate; end?: ISODate;   // hospedagem: check-in e check-out
-  target: { stopId?: ID; legFrom?: ID | "home"; legTo?: ID | "home"; destinationId?: ID };
-  mode?: LegMode;                    // transporte: meio da passagem (aviso se o trecho mudar de meio)
-  status: "planned" | "booked"; archived?: boolean;
-}
+type Booking =                     // subcoleção bookings; NUNCA alterada pelo motor
+  | { id: ID; kind: "lodging"; title: string; destinationId: ID; checkin: ISODate; checkout: ISODate;
+      status: "planned" | "booked"; archived?: boolean }
+  | { id: ID; kind: "transport"; title: string; fromDestinationId: ID | "home"; toDestinationId: ID | "home";
+      date: ISODate; mode: LegMode; status: "planned" | "booked"; archived?: boolean }
+  | { id: ID; kind: "ticket" | "other"; title: string; date?: ISODate; destinationId?: ID;
+      status: "planned" | "booked"; archived?: boolean };
 ```
 
 **Destinos, lugares e reservas** ficam em subcoleções. O **itinerário** fica inteiro no documento da viagem: assim cada operação é uma transação num único documento. Mesmo uma viagem de um ano fica bem abaixo do limite de 1 MB.
+
+**Decisões tomadas na implementação (M1):**
+- Os planos dos dias moram dentro das paradas (`Stop.days`) e dos trechos (`Leg.aboard`), em vez de um mapa `plans` à parte: mover uma cidade leva os dias junto sem traduzir chaves.
+- As reservas apontam para **destinos e datas**, não para ids de parada: assim continuam fatos estáveis quando paradas se fundem, dividem ou somem. `bookingStatus` encontra a parada ou o trecho pela data.
+- Remover a única cidade deixa todas as noites em aberto (não há erro de "última cidade"); só `closeOpen` recusa encurtar até zero.
+- A noite no avião da volta não é noite da viagem: o trecho de volta usa `arrDayOffset` e recusa noites a bordo.
+- Ao trocar a primeira ou a última cidade, a nova ida ou volta herda o meio da anterior (o voo continua voo).
+- Um comando que não muda nada (ex.: mover uma visita para onde ela já está) devolve `NO_CHANGE` e não vira Desfazer.
 
 ## 14. Operações do motor
 
@@ -463,7 +469,7 @@ op(state, args) => { state, inverse, effects }
 ```
 
 - As operações são funções **puras e determinísticas**, sem `Date.now()` ou ids aleatórios dentro do motor. Os ids vêm nos argumentos.
-- **O `inverse` é um remendo só dos campos que a operação tocou** (paradas, trechos, chaves de `plans`, início, trava), com os valores de antes.
+- **O `inverse` é um remendo só dos campos que a operação tocou** (paradas, trechos, início, trava, plano do dia da volta), com os valores de antes.
   - Desfazer aplica esse remendo **apenas se aqueles campos não mudaram desde então**.
   - Se outra pessoa mexeu neles, o Desfazer é recusado com a explicação "alguém mudou isso depois", em vez de apagar o trabalho dela.
 - `effects` descreve o que mudou, para a interface narrar:
@@ -546,7 +552,7 @@ op(state, args) => { state, inverse, effects }
 Depois de qualquer sequência válida de operações:
 
 1. Toda parada tem `nights` inteiro ≥ 1.
-2. Com 🔒, `Σ nights + Σ nightsAboard` só muda por `setTripEnd` ou `setLock`.
+2. O total de noites (paradas + a bordo) só muda quando a pessoa escolhe mexer na volta: `via: return`, `setTripEnd` ou `closeOpen`.
 3. Existe exatamente um trecho ativo para cada par vizinho, mais a ida e a volta.
 4. **Conservação de visitas:** toda visita que existia continua num dia ou trecho, ou aparece em `effects.returnedToBag`, ou foi removida por uma operação explícita de desagendar.
 5. Nenhum `Place` some.

@@ -5,6 +5,28 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M1: motor do roteiro
+
+### Motor
+- **As invariantes com fast-check acharam dois defeitos de modelo** que os testes de cenário não viam:
+  - noite a bordo no trecho de volta caía no mesmo dia da partida. **Regra:** na volta, a noite no avião é `arrDayOffset` (+1), nunca noite da viagem;
+  - comandos que não mudam nada (mover uma visita para onde ela já está) geravam um Desfazer vazio. **Regra:** `dispatch` devolve `NO_CHANGE` quando o remendo sai vazio.
+- **O laboratório achou um terceiro:** com o par de cidades repetido (Kyoto → Tóquio duas vezes depois de encaixar), uma passagem fazia os dois trechos parecerem comprados. **Regra:** cada reserva vale para um trecho só, o do mesmo dia.
+- **Trocar a primeira cidade criava a ida "de trem para o Japão".** **Regra:** a nova ida ou volta herda o meio da anterior.
+- **Reservas apontam para destino + data**, nunca para id de parada; ids somem em fusões e divisões, destinos e datas não.
+
+### Texto
+- **Abreviações de dia da semana colidem com palavras.** "Volta passa a ter 23/04" ("ter" = terça) ficou ambíguo. **Regra:** reler toda frase que junta verbo e data; na prévia, usar "Volta vai para ter 23/04".
+
+### Repositório público
+- **Datas reais da viagem tinham escapado para a spec e o plano** (exemplos com as datas de verdade). Foram trocadas por datas fictícias de 2030, mas continuam no histórico já enviado.
+  - **Regra:** antes de cada push, procurar nomes e datas reais (`grep -rn` por nomes, ano e "dd/mm" do mês da viagem).
+
+### Ferramentas e ambiente
+- **O painel de navegador roda o servidor de desenvolvimento** (`.claude/launch.json` com `npm --prefix …/LudoTrip run dev`), com scripts e console.
+  - A simulação de celular (`resize_window` mobile) **desloca as coordenadas do mouse**: o clique cai em outro elemento. **Regra:** para testar fluxos, clicar pela própria página (`element.click()` via javascript) e usar capturas só para olhar.
+- **Heredoc longo no Bash falha** ("unexpected EOF"), mesmo com aspas. **Regra:** escrever o script com a ferramenta de arquivo e rodar o arquivo.
+
 ## 2026-10-13 — Protótipo de edição e retorno do mantenedor
 
 ### Texto e interface

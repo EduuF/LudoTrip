@@ -577,8 +577,9 @@ export function health(
     })
   }
 
-  const transports = bookings.filter(
-    (b): b is Extract<Booking, { kind: 'transport' }> => b.kind === 'transport',
+  // Cada passagem vale para um trecho só (o do mesmo dia); pares repetidos (Kyoto → Tóquio duas vezes) contam separado.
+  const ticketed = new Set(
+    bookings.filter((b) => b.kind === 'transport').map((b) => bookingStatus(b, it).legId),
   )
   for (const leg of it.legs) {
     const from = endpointDest(it, leg.from)
@@ -606,10 +607,7 @@ export function health(
           data: { resourceId: r.id },
         })
     }
-    if (
-      NEEDS_TICKET.has(leg.mode) &&
-      !transports.some((b) => b.fromDestinationId === from && b.toDestinationId === to)
-    )
+    if (NEEDS_TICKET.has(leg.mode) && !ticketed.has(leg.id))
       issues.push({ kind: 'transport-missing', severity: 'info', target: { kind: 'leg', id: leg.id } })
   }
 
