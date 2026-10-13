@@ -2,7 +2,7 @@
 
 - **Data:** 2026-10-13
 - **Status:** rascunho para revisão do mantenedor
-- **Origem:** v1 "Sakura Quest" (artifact do claude.ai feito para a viagem ao Japão, abril de 2027)
+- **Origem:** v1 "Sakura Quest" (artifact do claude.ai feito para uma viagem ao Japão)
 
 Este documento tem duas partes:
 
@@ -134,21 +134,21 @@ Todos os formatos usam a mesma gramática:
 ## 5. Edição
 
 ### 5.1 Volta marcada (🔒) ou livre (🔓)
-- **A palavra "trava" não aparece na interface.** O resumo da viagem mostra "Volta 30/04", com um toque para alternar entre **"🔒 marcada"** e **"livre"**. Nas tabelas abaixo, 🔒 e 🔓 são só abreviações.
+- **A palavra "trava" não aparece na interface.** O resumo da viagem mostra "Volta 24/04", com um toque para alternar entre **"🔒 marcada"** e **"livre"**. Nas tabelas abaixo, 🔒 e 🔓 são só abreviações.
 - **Volta livre:**
   - `+` adiciona a noite e empurra a volta;
   - `–` antecipa a volta;
-  - em ambos, um aviso curto com Desfazer ("Volta agora 01/05").
+  - em ambos, um aviso curto com Desfazer ("Volta agora 25/04").
 - **Volta marcada:** `+` e `–` abrem uma escolha curta, **nunca um erro**.
-  - `+` pergunta **"De onde sai essa noite?"**: lista as cidades com 2 ou mais noites (a mais próxima vem primeiro e já selecionada) e oferece "Adiar a volta (01/05)".
+  - `+` pergunta **"De onde sai essa noite?"**: lista as cidades com 2 ou mais noites (a mais próxima vem primeiro e já selecionada) e oferece "Adiar a volta (25/04)".
     - Tirar de uma cidade que não é vizinha desloca as cidades do meio, e o conteúdo delas vai junto.
-    - Se houver passagem de volta comprada, a opção de adiar avisa: "seu voo é 30/04".
+    - Se houver passagem de volta comprada, a opção de adiar avisa: "seu voo é 24/04".
   - `–` pergunta **"Para onde vai essa noite?"**: a cidade antes, a cidade depois, ou "Deixar em aberto".
 - A volta passa a ser marcada sozinha quando a passagem de volta é marcada como comprada. Um aviso conta o que mudou.
 
 ### 5.1.1 A regra da ponta (o que acontece com os dias planejados)
 - **Um dia entra ou sai sempre na ponta da cidade que se moveu. Todos os outros dias mantêm a data e o plano.**
-  - Arrastar a divisa Osaka|Kyoto 2 dias para a esquerda: Kyoto ganha 2 dias vazios **no começo**; Gion continua em 19/04.
+  - Arrastar a divisa Osaka|Kyoto 2 dias para a esquerda: Kyoto ganha 2 dias vazios **no começo**; Gion continua em 13/04.
   - Tóquio de 4 para 3 noites com `–`: sai o último dia de Tóquio.
   - Se a noite foi cedida por uma cidade **antes**, sai o primeiro dia.
 - **Os planos de um dia que sai voltam para a Mochila**, marcados como "voltou de qua 07". O aviso diz o quê ("Sensō-ji voltou para a mochila") e oferece Desfazer.
@@ -168,7 +168,7 @@ Todos os formatos usam a mesma gramática:
   - "Encurtar a viagem" só aparece com a volta livre.
 - **Arrastar uma vizinha para dentro do espaço** é o atalho de "Esticar". Se do outro lado estiver a mesma cidade, elas se juntam.
 - Espaços em aberto vizinhos se juntam num só.
-- As noites em aberto viram a quest "2 noites em aberto (10–11/04)". Também servem para quem decide no caminho (mochilão).
+- As noites em aberto viram a quest "2 noites em aberto (04–05/04)". Também servem para quem decide no caminho (mochilão).
 
 ### 5.1.3 Mensagens
 - **Curtas e exatas.** Cada palavra precisa de um motivo.
@@ -377,7 +377,7 @@ Todos os passos podem ser pulados. Existe também um atalho de escapada.
 
 ```ts
 type ID = string;
-type ISODate = string;            // "2027-04-07" (data local do destino)
+type ISODate = string;            // "2030-04-01" (data local do destino)
 type LocalTime = string;          // "06:12"
 
 type Lock = "free" | "fixed";
@@ -560,7 +560,7 @@ Depois de qualquer sequência válida de operações:
 ## 17. Interface do subprojeto 1
 
 - **Roteiro (padrão):**
-  - resumo da viagem: datas, noites e "Volta 30/04 🔒 marcada / livre" (§5.1);
+  - resumo da viagem: datas, noites e "Volta 24/04 🔒 marcada / livre" (§5.1);
   - **Faixa:**
     - pegadores sob a faixa;
     - prévia ao arrastar, mostrando o que sai;
@@ -611,7 +611,7 @@ Depois de qualquer sequência válida de operações:
 ## 19. Viagens de teste (fixtures do motor e dos testes ponta a ponta)
 
 1. **Japão (várias cidades com trem):**
-   - Tóquio 2 · Ginzan 1 · Tóquio 2 · Kawaguchiko 1 · Tóquio 1 · Kamakura 1 · Osaka 4 · Kyoto 7 · Tóquio 4 (23 noites, de 07/04 a 30/04/2027, 🔒);
+   - Tóquio 2 · Ginzan 1 · Tóquio 2 · Kawaguchiko 1 · Tóquio 1 · Kamakura 1 · Osaka 4 · Kyoto 7 · Tóquio 4 (23 noites, de 01/04 a 24/04/2030, 🔒);
    - bate-volta a Nara a partir de Osaka;
    - voos GRU→HND e HND→GRU como trechos de ida e volta.
 2. **Rio:** 1 parada de 5 noites; bate-volta a Petrópolis.

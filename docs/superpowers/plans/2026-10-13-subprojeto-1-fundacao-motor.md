@@ -124,13 +124,13 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ### Tarefa 4: datas
 - [ ] Testes em `dates.test.ts`:
-  - `addDays("2027-04-07", 23) === "2027-04-30"`;
+  - `addDays("2030-04-01", 23) === "2030-04-24"`;
   - virada de mês e de ano;
   - `diffDays` negativo;
   - nada depende do fuso do computador (forçar `TZ=America/Sao_Paulo` e `TZ=Asia/Tokyo` no teste).
 - [ ] Implementar com `Date.UTC` (igual ao protótipo).
 - [ ] `stopWindows(it)` devolve `{ stopId, startIndex, endIndex, start, end }`, considerando `nightsAboard` dos trechos entre paradas.
-  - Teste: Japão, Kyoto de 19/04 a 26/04.
+  - Teste: Japão, Kyoto de 13/04 a 20/04.
   - Teste: com `start = null`, as datas vêm `null` e os índices continuam corretos.
 - [ ] Commit.
 
@@ -167,8 +167,8 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ### Tarefa 8: noites
 - [ ] Testes primeiro, depois a implementação de `ops/nights.ts`:
-  - `setNights(Kyoto, 8, {kind:"return"})`: a volta vai para 01/05 e o novo dia vazio entra no fim de Kyoto.
-  - `setNights(Kyoto, 8, {kind:"stop", stopId: Tóquio final})`: Tóquio final de 4 → 3 perdendo o **primeiro** dia; a volta continua em 30/04.
+  - `setNights(Kyoto, 8, {kind:"return"})`: a volta vai para 25/04 e o novo dia vazio entra no fim de Kyoto.
+  - `setNights(Kyoto, 8, {kind:"stop", stopId: Tóquio final})`: Tóquio final de 4 → 3 perdendo o **primeiro** dia; a volta continua em 24/04.
   - `setNights(Tóquio inicial, 3, {kind:"stop", stopId: Osaka})` (doadora distante):
     - Ginzan, Tóquio, Kawaguchiko, Tóquio e Kamakura deslocam 1 dia, com os planos indo junto;
     - Tóquio inicial ganha o dia no fim;
@@ -179,8 +179,8 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
   - `moveBoundary(Osaka|Kyoto, −2)` (regra da ponta):
     - Osaka 2 perde os 2 últimos dias (Nara e Shinsekai voltam à mochila);
     - Kyoto 9 ganha 2 dias vazios **no começo**;
-    - Gion continua em 19/04.
-  - `shiftStop(Kyoto, +1)`: Osaka ganha 1 dia no fim; Tóquio final perde o primeiro; os planos de Kyoto andam junto (Gion vai para 20/04).
+    - Gion continua em 13/04.
+  - `shiftStop(Kyoto, +1)`: Osaka ganha 1 dia no fim; Tóquio final perde o primeiro; os planos de Kyoto andam junto (Gion vai para 14/04).
   - `shiftStop` na primeira parada dá erro `NEEDS_BOTH_NEIGHBORS`.
   - A vizinha que ganha a noite recebe o dia vazio. É o defeito que o protótipo achou e precisa de teste próprio.
 - [ ] Commit.
@@ -235,11 +235,11 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ### Tarefa 14: derivações
 - [ ] Testes com as fixtures, depois `derive/*`:
-  - `days()`: 24 dias no Japão; o dia 17/04 é bate-volta a Nara; o dia 30/04 é o dia de volta.
+  - `days()`: 24 dias no Japão; o dia 11/04 é bate-volta a Nara; o dia 24/04 é o dia de volta.
   - `worlds()`: Europa tem 3 mundos.
   - `bookingStatus()`: `ok`, `out-of-window`, `orphan` (reordenar Kyoto deixa a passagem Kyoto → Tóquio órfã) e `wrong-mode` (passagem de trem num trecho que virou ônibus).
   - `suggestDonors()`: ordem por proximidade, com a prévia do efeito.
-  - `lodgingGaps()`: depois de `moveBoundary(Osaka|Kyoto, −2)`, Kyoto tem as noites 17/04 e 18/04 sem hospedagem.
+  - `lodgingGaps()`: depois de `moveBoundary(Osaka|Kyoto, −2)`, Kyoto tem as noites 11/04 e 12/04 sem hospedagem.
   - `estimateLeg()`: os mesmos fatores do protótipo.
   - `health()`: cada tipo de pendência da spec §15, com alvo para "Ver".
 - [ ] Commit.
