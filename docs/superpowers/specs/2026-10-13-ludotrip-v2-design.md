@@ -565,41 +565,77 @@ Depois de qualquer sequência válida de operações:
 
 ## 17. Interface do subprojeto 1
 
-- **Roteiro (padrão):**
-  - resumo da viagem: datas, noites e "Volta 24/04 🔒 marcada / livre" (§5.1);
-  - **Faixa:**
-    - pegadores sob a faixa;
-    - prévia ao arrastar, mostrando o que sai;
-    - segurar um bloco para arrastar → reordenar ou **lixeira**;
-    - noites em aberto tracejadas com "+".
-  - **Lista** com cartões de cidade, de noites em aberto e de trecho.
-    - O cartão de trecho tem "🎫 Passagem" com o check de comprada e o tempo com a fonte.
-  - **Escolhas em vez de erros:** "De onde sai essa noite?" e "Para onde vai essa noite?" (§5.1).
-  - **Dias:** visitas por turno, "remover este dia", trocar dias. Os dias aceitam **itens arrastados da mochila**.
-- **Mochila:**
-  - filtro por destino;
-  - busca de lugares (Photon, com espera entre teclas e no mínimo 3 letras);
-  - **raridade editável** (Se der · Quero · Imperdível);
-  - estados da §6;
-  - arrastar para um dia ou "+ Agendar" (seletor que inclui os dias de destinos próximos);
-  - "Destinos guardados".
-- **Quests:** a Saúde do roteiro com correção em um toque (ir até o alvo).
-- **Mapa:** tabuleiro simples com contornos, paradas numeradas e trilha pontilhada, no visual da v1.
-- **Desfazer:**
-  - aviso de ~6 s com a narração dos efeitos ("Dia 7 de Kyoto voltou à Mochila: 2 lugares");
-  - pilha de desfazer da sessão;
-  - histórico em `feed`.
-- **Compartilhar:**
-  - gerar link com papel e enviar pelo compartilhamento do celular (WhatsApp etc.);
-  - lista de membros com troca de papel e remoção;
-  - revogar link.
-- **Acessibilidade e celular:**
-  - alvos de toque ≥ 44 px;
-  - texto ≥ 12 px;
-  - contraste 4.5:1;
-  - foco visível;
-  - respeito a "reduzir movimento";
-  - painéis inferiores para edição.
+*Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/aprendizados.md`). Toda tela segue `docs/inventario-de-experiencia.md`.*
+
+**Como cada elemento é desenhado:** a frase de quem viaja → o gesto → a resposta visual → o que muda junto → a emoção. Todo gesto de arrastar tem o mesmo caminho em palavras (tocar no elemento abre as ações escritas), por acessibilidade (WCAG 2.2, 2.5.7) e precisão.
+
+### 17.1 Casca e HUD
+- **Abas embaixo:** Mundo · Roteiro · Mochila · Quests. Topo: o HUD escuro da v1.
+- **HUD:** apelido da viagem, **contagem** e **nível de preparo**, mais Desfazer.
+  - Antes da viagem: "Faltam 172 dias". Durante: "Dia 5 de 23 · hoje em Kyoto". Depois: "Viagem completa". Sem data: "Escolha a data de ida".
+  - Nível: LV 1 "Sonhando" → LV 2 "Rascunho" → LV 3 "Roteiro firme" → LV 4 "Quase lá" → LV 5 "Pronto pra partir", com a barra de XP listrada.
+- **XP vem do estado, não de cliques:** cada passagem comprada, cada cidade com hospedagem em todas as noites, cada imperdível com dia e cada item com dia vale pontos. Desfazer tira os pontos; mexer em noites não dá pontos. Sem sequência diária e sem culpa.
+- **Comemorações em três tamanhos:** carimbo 済 e "+30 XP" a cada passo; página do álbum completa com chuva de pétalas; LEVEL UP ao mudar de nível. Sons 8 bits opcionais, desligados por padrão. Tudo respeita "reduzir movimento".
+
+### 17.2 Mundo (tela inicial da viagem)
+- Tabuleiro gerado na hora para qualquer viagem: contornos do mundo (`world-atlas`) projetados com `d3-geo` na área das cidades, terra com o traço e a sombra da v1, mar com seigaiha, trilha pontilhada na ordem das cidades, fases numeradas (estrela dourada quando a cidade está pronta: hospedagem e imperdíveis resolvidos), nomes em pílulas sem sobreposição (`relax` e `placeLabels` da v1) e o grupo em pixel art na cidade atual (ou na primeira, antes da viagem).
+- Ida e volta aparecem como setas saindo do tabuleiro ("✈ São Paulo").
+- Contagem grande no topo, como na v1 ("FALTAM 1265 dias · 12:04:31").
+- Tocar numa fase abre a cidade no Roteiro.
+
+### 17.3 Roteiro: a Trilha (visão geral, aprovada)
+- **Régua de dias** sob os blocos: dia da semana e número, mês fixo à esquerda ao rolar, fim de semana tingido; bandeiras IDA e VOLTA (com 🔒 quando marcada) nas pontas.
+- **Blocos** por cidade, largura proporcional às noites, com o selo da escrita local; noites a bordo hachuradas com o veículo; noites em aberto tracejadas com "+". Entre as cidades, o ícone do transporte.
+- **Gestos:**
+
+  | Você quer… | Gesto | Caminho em palavras (tocar na cidade) |
+  |---|---|---|
+  | Mais ou menos noites | Arrastar o pegador ◆ da divisa, com balão de prévia ao vivo | "Mais 1 noite" / "Menos 1 noite" (com as escolhas da §5.1) |
+  | Chegar 1 dia antes ou depois mantendo as noites | Segurar a cidade e arrastar **pouco** para o lado: ela empurra a vizinha dia a dia | "Chegar 1 dia antes" / "Chegar 1 dia depois" |
+  | Mudar a ordem | Segurar e arrastar **além** da vizinha (o balão diz "Kyoto vai para depois de Tóquio") | "Mudar a ordem" |
+  | Tirar a cidade | Segurar → a lixeira em pixel aparece → soltar nela ("puf" de pétalas) | "Tirar do roteiro" |
+  | Visitar outra cidade no meio desta | Arrastar a cidade da **prateleira de destinos** (sob a trilha) e soltar no meio do bloco | "Ir a outra cidade no meio" |
+  | Pôr uma cidade entre duas | Soltar da prateleira numa divisa | "+ Cidade aqui" no trecho |
+  | Preencher noites em aberto | Soltar da prateleira no espaço tracejado, ou tocar no "+" | "Escolher cidade" |
+
+  - Para "pouco" e "além": arrastar até a vizinha ficar com 1 noite empurra; passar disso, ou uma vizinha de 1 noite, muda a ordem. O balão sempre diz qual dos dois vai acontecer antes de soltar.
+  - Arrastar um bloco já na trilha só empurra, reordena ou vai para a lixeira. Para dividir uma estadia, a cidade vem da prateleira: assim os gestos nunca se confundem.
+  - Soltar onde não pode faz o bloco balançar e voltar, com o balão dizendo por quê ("Volta marcada. Toque no 🔒 para liberar.").
+- **Zoom:** "Dias" (44 px por noite) e "Ver tudo" (a viagem inteira na largura da tela). Estadias longas mostram semanas na régua; o arraste continua em dias.
+- **Sincroniza na hora:** lista abaixo, tabuleiro, quests, figurinhas que voltaram, alertas na própria trilha (bandeirinha vermelha no bloco com hotel fora das datas).
+
+### 17.4 Roteiro: cidades, trechos e dias (visão granular)
+- Lista na ordem da viagem: cartão de cada cidade e, entre eles, o trecho.
+- **Cartão da cidade:** datas, noites com `– +`, chips de hospedagem ("Hotel em Kyoto ✓", "qui 11/04 sem hospedagem"), "Ver dias" e o menu com as ações em palavras.
+- **Trecho:** veículo e meio, data, tempo com a fonte, e o **interruptor de passagem** "Passagem: falta / comprada 済" que desmarca no mesmo lugar (com Desfazer). Comprar a passagem de volta marca a volta, com aviso. "Editar trecho" abre meio, horários, noites a bordo e "+ Cidade aqui".
+- **Dias da cidade:** cada dia com a data, as figurinhas coladas (por turno) e "⋯" (remover este dia, trocar com outro dia).
+- **Bandeja de figurinhas:** com os dias de uma cidade abertos, a bandeja embaixo mostra as figurinhas soltas daquela cidade e das próximas (bate-volta). Segurar e arrastar até o dia cola a figurinha; tocar nela pergunta o dia.
+
+### 17.5 Mochila: o álbum de figurinhas
+- Cada destino é uma **página do álbum** ("Kyoto 京都 · 5/8 coladas"), na ordem da viagem; depois, "Destinos guardados".
+- Cada item é uma **figurinha** com moldura de raridade: Se der (prata), Quero (azul), **Imperdível (dourada, com brilho)**.
+  - Colada: em cor, com o chip do dia ("seg 15", "×2").
+  - Solta: tracejada; imperdível solta brilha e vira quest.
+  - "Voltou de qua 07" quando saiu de um dia removido.
+  - Visitada: carimbo ✓.
+- **Nova figurinha:** nome + três botões (Se der · Quero · Imperdível); um toque cria e ela "cai" na página.
+- Tocar numa figurinha: colar no dia (seletor de dias, os da cidade primeiro e os de bate-volta depois), trocar a raridade, marcar visitada, tirar do álbum (com Desfazer).
+- Página completa (todas as figurinhas com dia) comemora uma vez.
+
+### 17.6 Quests
+- A Saúde do roteiro (§15) com textos de quem viaja, gravidade e "Ver" que leva ao alvo; algumas resolvem num toque ("Marcar comprada", "Marcar hospedagem", "Colar").
+- Lista vazia comemora: "Tudo pronto. Boa viagem!".
+
+### 17.7 Minhas viagens e criar viagem
+- Lista das viagens guardadas no aparelho, "Explorar exemplos" (as 6 viagens de teste, copiadas para mexer sem medo) e "Criar viagem".
+- Criar (§7): pra onde (busca de cidades com lista própria offline e, com internet, Photon), quando (ou "ainda não sei"), quem vai, como vão se mover. As noites se dividem igualmente e a viagem abre com "Mundo criado!".
+
+### 17.8 Desfazer em tudo
+- Itinerário, mochila e reservas mudam por comandos com inverso. Uma ação composta (comprar a passagem de volta + marcar a volta) é desfeita de uma vez.
+
+### 17.9 Acessibilidade e celular
+- Alvos de toque ≥ 44 px, texto ≥ 12 px, contraste 4.5:1, foco visível, "reduzir movimento", painéis inferiores para edição.
+- Todo arraste tem o caminho em palavras; segurar para arrastar não pode ser o único caminho.
 
 ## 18. Persistência, concorrência e offline
 

@@ -265,129 +265,52 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 
 ## M2 — App local (sem login), usável no celular
 
-### Tarefa 16: visual e casca
-- [ ] Seguir `docs/guia-de-vibe.md` desde o início.
-  - `ui/tokens.css` com os tokens da v1 (washi, sakura, ink, beni etc., claro e escuro) e as fontes Shippori Mincho B1, Zen Kaku Gothic New e DotGothic16 (Google Fonts).
-  - Botões com borda de tinta e sombra deslocada; selos-kanji; carimbo 済.
-  - HUD de nível (simples no M2); partículas do tema ao fundo.
-- [ ] Casca com barra inferior **Mapa · Roteiro · Mochila · Quests** (área segura do celular) e rotas `/viagens`, `/viagem/:id/(mapa|roteiro|mochila|quests)`.
-- [ ] Componentes base: `BottomSheet` (foco preso, Esc fecha, arrastar para baixo fecha), `Stepper`, `Snackbar` (com Desfazer), `Chip`, `Button`.
-- [ ] Teste de componente: o `Stepper` chama `onChange` e respeita o mínimo.
-- [ ] Commit.
+*Reescrito em 2026-10-13 depois do retorno ao laboratório (spec §17 revisada). O laboratório do motor sai de cena: o M2 é o app de verdade.*
 
-### Tarefa 17: estado e repositório local
-- [ ] `state/repo.ts`, com a interface:
+**Decisões técnicas do M2:**
+- **React 18.3** (não 19): a prévia para o mantenedor é um artifact, que carrega bibliotecas grandes por CDN em versão UMD, e o React 19 não tem UMD. Nada do código depende do 19.
+- Navegação pelo estado do app (abas e telas); rotas com URL entram junto com o PWA no M4.
+- Estado em Zustand; persistência em IndexedDB (idb-keyval) atrás de `TripRepo`, com memória como plano B.
+- Arrastar com pointer events próprios (sem biblioteca): a Trilha tem regras que nenhuma biblioteca cobre.
 
-  ```ts
-  interface TripRepo {
-    list(): Promise<TripMeta[]>;
-    load(id): Promise<TripData>;
-    run(id, cmd): Promise<RunResult>;
-    // + CRUD de places, destinations e bookings
-    subscribe(id, cb): Unsubscribe;
-  }
-  ```
+### Tarefa 16: base visual e componentes
+- [ ] `ui/tokens.css` (guia de vibe, claro e escuro), fontes, botões de tinta, selos, carimbo 済, pétalas com vento.
+- [ ] Componentes: `Sheet` (painel que sobe; Esc e fundo fecham), `Stepper`, `Toast` (com Desfazer), `Seal`, `XpFloat`, `LevelUp`.
 
-- [ ] `localRepo.ts` com IndexedDB via idb-keyval.
-- [ ] `tripStore.ts`:
-  - `run(cmd)` aplica `dispatch`, guarda o inverso na pilha de Desfazer e narra os efeitos;
-  - a narração é igual à do protótipo ("Osaka 2 · Kyoto 9 noites · 4 lugares voltaram à Mochila");
-  - `undo()` usa `applyPatch` e, em caso de `CHANGED_SINCE`, mostra "Alguém mudou isso depois; não dá para desfazer sem apagar a mudança".
-- [ ] Testes do store com o repositório em memória.
-- [ ] Commit.
+### Tarefa 17: documento da viagem e Desfazer em tudo
+- [ ] `app/doc.ts` (puro): `TripDoc = { meta, itinerary, destinations, places, bookings }` e `runDoc(doc, action)` para comandos do motor e da mochila/reservas, devolvendo o inverso. Ações compostas viram uma entrada só de Desfazer.
+- [ ] `engine/derive`: `tripPhase(it, today)` e `progress(it, data)` (XP, nível, tarefas).
+- [ ] Testes: cada ação de mochila e reserva desfaz exatamente; XP sobe e volta com Desfazer.
 
-### Tarefa 18: Roteiro (Lista)
-- [ ] `Summary`: datas, noites, paradas, países, trava 🔒/🔓 com a explicação de uma linha.
-- [ ] **Volta marcada / livre** no resumo e as escolhas que substituem erros (spec §5.1):
-  - "De onde sai essa noite?" usa `suggestDonors`, com a mais próxima pré-selecionada e a prévia do efeito;
-  - "Para onde vai essa noite?" oferece antes, depois ou deixar em aberto.
-  - Nenhum erro do motor chega à tela sem botões de saída.
-- [ ] Cartão de **noites em aberto**: tracejado, "+ Escolher cidade", "Esticar <vizinha>", "Juntar <cidade>" (quando os dois lados são a mesma cidade) e "Encurtar a viagem" (só com volta livre).
-- [ ] `StopCard`:
-  - `[– N noites +]`, `‹ ›` (só com vizinhas dos dois lados), `↑ ↓`, `⋯`;
-  - chips de reservas e de hospedagem parcial;
-  - "Ver dias e Mochila".
-- [ ] `LegCard`:
-  - data, seletor de modo, origem → destino e pontas (avião);
-  - **tempo com fonte** ("estimativa" por enquanto);
-  - **"🎫 Passagem"** com o check de comprada, que cria ou atualiza a reserva de transporte do trecho;
-  - aviso de passagem de outro meio;
-  - chip de direção longa.
-- [ ] Menu ⋯ (`BottomSheet`):
-  - "Encaixar outro destino", com destino, onde (antes/no meio/depois), depois de qual noite, noites e **prévia do resultado**;
-  - "Trocar destino";
-  - "Remover parada".
-- [ ] Teste de componente: tocar `+` dispara `setNights` e a narração aparece.
-- [ ] Commit.
+### Tarefa 18: repositório local e store
+- [ ] `TripRepo` com IndexedDB e memória; `store.ts` com viagens, viagem aberta, pilha de Desfazer, aviso e comemorações.
 
-### Tarefa 19: Faixa
-- [ ] Blocos com largura proporcional às noites (mínimo de 46 px por noite) e rolagem horizontal com esmaecido nas bordas.
-- [ ] **Pegadores sob a faixa** (o ícone do modo do trecho). O arraste usa pointer events com `setPointerCapture`, prévia ao vivo das datas e confirmação ao soltar (`moveBoundary`).
-- [ ] Segurar um bloco e arrastar: reordena (indicador de onde vai cair) ou solta na **lixeira em pixel art**, que faz "puf" com partículas do tema e deixa noites em aberto.
-- [ ] Arrastar um bloco vizinho para dentro de noites em aberto = `stretchInto` (junta se o outro lado for a mesma cidade).
-- [ ] Linha de mundos (bandeiras) quando houver mais de um país.
-- [ ] Fitas de recursos e bandeiras de âncoras.
-- [ ] A Faixa rola sozinha até a parada selecionada ou editada.
-- [ ] Tocar num bloco seleciona a parada e rola a lista até ela.
-- [ ] Teste de componente com eventos de ponteiro simulados: arrastar −2 dias dispara `moveBoundary(i, −2)`.
-- [ ] Commit.
+### Tarefa 19: Trilha
+- [ ] Régua de dias, blocos, ícones de transporte, bandeiras, zoom "Dias"/"Ver tudo".
+- [ ] `trilha/intent.ts` (puro, testado): pegador → noites; bloco → empurrar, reordenar ou lixeira; prateleira → dividir, inserir ou preencher.
+- [ ] Gestos com prévia ao vivo pelo `preview()` do motor; lixeira com "puf"; menu da cidade com as ações em palavras.
 
-### Tarefa 20: dias
-- [ ] `DayList` dentro do `StopCard`:
-  - data;
-  - visitas por turno;
-  - etiqueta "bate-volta a X";
-  - chip "Dormir: …" ou "⚠ sem hospedagem";
-  - "remover este dia";
-  - "trocar com…" (seletor de dia da mesma parada).
-- [ ] Dias do tipo `leg` (noites a bordo) aparecem entre as paradas.
-- [ ] Commit.
+### Tarefa 20: cidades, trechos e dias
+- [ ] Cartões de cidade, noites em aberto e trecho (interruptor de passagem, horários, meio, noites a bordo, "+ Cidade aqui").
+- [ ] Dias com figurinhas por turno, remover dia, trocar dias; bandeja de figurinhas com arrastar e tocar.
 
-### Tarefa 21: Mochila
-- [ ] `providers/places.ts`:
-  - `PlacesProvider.search(q, near?)`;
-  - Photon com espera de 350 ms entre teclas, mínimo de 3 letras e cache em memória;
-  - fallback "adicionar à mão" (nome + toque no mapa fica para depois; por enquanto, só o nome).
-- [ ] `MochilaScreen`:
-  - filtro por destino;
-  - **itens com moldura de raridade** (Se der · Quero · Imperdível; o Imperdível sem dia brilha), com a raridade trocada num toque;
-  - estados da spec §6, incluindo "voltou de qua 07";
-  - **arrastar um item até um dia** do Roteiro (segurar e arrastar no celular, com os dias de destino destacados e a lista rolando nas bordas);
-  - "+ Agendar" abre o `DayPicker`, com seleção múltipla e os dias de destinos próximos marcados como bate-volta;
-  - seção "Destinos guardados".
-- [ ] Testes:
-  - agendar o mesmo item em 2 dias mostra "×2";
-  - um item que voltou de um dia removido mostra "voltou de …";
-  - arrastar um item até um dia chama `scheduleVisit`.
-- [ ] Commit.
+### Tarefa 21: Mochila (álbum)
+- [ ] Páginas por destino com progresso, figurinhas com moldura de raridade, nova figurinha com a raridade no ato, painel da figurinha, destinos guardados, página completa.
 
 ### Tarefa 22: Quests
-- [ ] `QuestsScreen` lista `health()` por gravidade, com "Ver" levando ao alvo (parada, trecho ou lugar).
-- [ ] Estado vazio comemorativo.
-- [ ] Commit.
+- [ ] Textos do `describeIssue`, "Ver", resoluções num toque, lista vazia comemorativa.
 
-### Tarefa 23: criar viagem
-- [ ] `CreateTrip`, passos da spec §7. Todos podem ser pulados, e existe o atalho de escapada.
-  - **Divisão automática:** noites distribuídas igualmente; o resto vai para as primeiras cidades.
-  - **"Mundo criado!":** animação curta com GSAP, respeitando "reduzir movimento".
-- [ ] Commit.
+### Tarefa 23: Mundo (tabuleiro) e HUD
+- [ ] Tabuleiro com `world-atlas` + `d3-geo`, trilha, fases, pílulas, sprites; contagem grande; HUD com contagem e nível.
 
-### Tarefa 24: tabuleiro simples
-- [ ] `mapa/Board`:
-  - `world-atlas` (`countries-50m`) com `d3-geo` (`geoMercator().fitExtent` na área das paradas, com margem);
-  - terra com o traço da v1;
-  - trilha pontilhada pela rota;
-  - nós numerados;
-  - `relax()` e `placeLabels()` portados de `viagem-japao/sakura-quest/index.html`.
-- [ ] Tocar num nó abre a parada no Roteiro.
-- [ ] Commit.
+### Tarefa 24: Minhas viagens, exemplos e criar viagem
+- [ ] Lista local, exemplos copiáveis, criação em passos com lista offline de cidades e "Mundo criado!".
 
-### Tarefa 25: Minhas viagens e exemplos
-- [ ] Lista de viagens e "Criar viagem".
-- [ ] "Explorar exemplos" copia uma fixture para testar sem compromisso.
-- [ ] Commit.
+### Tarefa 25: prévia para o mantenedor
+- [ ] `npm run preview:artifact` gera um HTML único (React 18 e d3 por CDN; o resto embutido) para publicar como artifact.
+- [ ] Conferir o inventário da experiência antes de mostrar.
 
-**Ponto de revisão M2:** publicar uma prévia (Firebase Hosting ou uma prévia temporária) para testadores usarem no celular, ainda sem login.
+**Ponto de revisão M2:** o mantenedor testa a prévia no celular.
 
 ---
 
