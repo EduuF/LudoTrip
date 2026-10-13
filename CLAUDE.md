@@ -1,0 +1,54 @@
+# LudoTrip — instruções para o Claude Code
+
+LudoTrip é um planejador de viagens com cara de jogo para **qualquer** viagem: uma cidade, várias, vários países, road trip, cruzeiro, trilha… É um site (PWA) público, usado 95% no celular.
+
+Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao Japão, muito querido pela vibe.
+
+## Leia antes de trabalhar
+
+| Documento | Para quê |
+|---|---|
+| `docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md` | O design: gramática da viagem, regras de edição, Mochila, mapa, permissões, tecnologia |
+| `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md` | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox) |
+| `docs/guia-de-vibe.md` | Identidade visual e de movimento que precisa ser mantida |
+| `docs/aprendizados.md` | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.** |
+
+## Regras de ouro (vencem qualquer outra coisa)
+
+1. **Usabilidade, correção, diversão e intuição** são as regras máximas. A vibe da v1 vem logo depois e é um norte, não uma régua.
+2. **Editar nunca destrói.** O que sai do calendário volta para a Mochila. Toda ação tem Desfazer. Nada de "tem certeza?".
+3. **Reservas são fatos.** O app nunca muda a data de uma reserva sozinho; mostra o conflito e oferece a correção.
+4. **O app se adapta ao conteúdo da viagem.** Ninguém escolhe "tipo de viagem"; as funções acendem pelo que a viagem contém.
+5. **Celular primeiro (375 px).** Alvos de toque ≥ 44 px, texto ≥ 12 px, contraste 4.5:1. Arrastar é atalho, nunca o único caminho.
+6. **Pense em todas as jornadas.** Antes de fechar uma função, liste os cenários de uso, incluindo os estranhos, e garanta o comportamento certo em cada um.
+
+## Como escrever textos da interface
+
+- Curto e exato: **cada palavra precisa de motivo.**
+- Palavras de quem viaja (cidade, noite, volta, passagem, mochila), nunca termos internos (parada, trava, vizinha, trecho órfão, entidade).
+- Nunca deixe a pessoa num beco sem saída: em vez de erro, mostre as saídas como botões.
+  - Exemplo: "Ginzan Onsen tem só 1 noite." [Tirar de Osaka] [Adiar a volta]
+- Ações dizem o que fazem ("Encaixar", "Desfazer"), e os avisos confirmam o que aconteceu ("Sensō-ji voltou para a mochila").
+- Português do Brasil; o vocabulário de jogo é bem-vindo (Fase, Mundo, Quest, LV).
+
+## Como trabalhar
+
+- **Fluxo:** ideias novas passam por brainstorming → spec → plano → implementação com TDD. Mudanças de design atualizam a spec antes do código.
+- **Marcos:** pare ao fim de cada marco do plano para o mantenedor revisar.
+- **Git:**
+  - commits pequenos, em português, terminando com a linha de coautoria do Claude;
+  - **push liberado** para `origin` (github.com/EduuF/LudoTrip);
+  - nunca reescrever histórico já enviado.
+- **Repositório público:** nada de nomes, datas ou dados pessoais de viagens reais em código, testes ou documentos. Use exemplos anônimos.
+- **Testar no navegador:** o mantenedor costuma deixar o Chrome aberto numa segunda tela. Use Claude in Chrome para validar páginas publicadas, em janela estreita sempre que possível.
+- **Custos:** só planos gratuitos até haver uso real. Serviços externos ficam atrás de interfaces trocáveis (`src/providers`), com cache e plano B.
+
+## Engenharia
+
+- **`src/engine`** é o motor puro do roteiro: sem React, sem rede, sem `Date.now()`, com ids vindos de fora.
+  - Toda regra de edição mora aqui.
+  - Toda operação devolve novo estado, inverso (remendo) e efeitos.
+  - **Toda mudança no motor vem com testes, incluindo as invariantes com sequências aleatórias (fast-check).**
+- **A interface só despacha comandos serializáveis** (`dispatch(itinerary, command)`). Isso serve a fila offline e às transações.
+- **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
+- **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (disponíveis a partir do M0).
