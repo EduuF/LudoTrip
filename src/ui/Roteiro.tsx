@@ -233,7 +233,10 @@ export function DayRow({
   const trips = day.dayTrips.map((x) => doc.destinations.find((d) => d.id === x)?.name).filter(Boolean)
   const visits = [...day.visits].sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot])
   return (
-    <div className={`day${compact ? ' compact' : ''}`} data-dayref={day.ref ? JSON.stringify(day.ref) : undefined}>
+    <div
+      className={`day${compact ? ' compact' : ''}`}
+      data-dayref={day.ref ? JSON.stringify(day.ref) : undefined}
+    >
       {compact ? null : (
         <div className="d">
           {day.label}
@@ -550,11 +553,7 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
           <DayRow key={d.index} day={d} title="noite a bordo" />
         ))}
         <div className="row">
-          <button
-            type="button"
-            className="link"
-            onClick={() => openSheet({ kind: 'leg', legId: leg.id })}
-          >
+          <button type="button" className="link" onClick={() => openSheet({ kind: 'leg', legId: leg.id })}>
             Editar trecho
           </button>
           {leg.to !== 'home' ? (

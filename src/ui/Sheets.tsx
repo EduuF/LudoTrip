@@ -10,8 +10,9 @@ import {
   plural,
   tripRange,
 } from '../engine'
-import type { ID, LegMode, Rarity, Slot } from '../engine'
+import type { ID, LegMode, PlaceKind, Rarity, Slot } from '../engine'
 import { uid, useApp } from '../app/store'
+import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import {
   aboardChoice,
   cityName,
@@ -51,6 +52,9 @@ function Body({ sheet }: { sheet: SheetSpec }) {
   const patchSheet = useApp((s) => s.patchSheet)
   const setOpenStop = useApp((s) => s.setOpenStop)
   const focusOn = useApp((s) => s.focusOn)
+  const enterCity = useApp((s) => s.enterCity)
+  const setPlacing = useApp((s) => s.setPlacing)
+  const say = useApp((s) => s.say)
   const it = doc.itinerary
   const destName = (id: ID) => doc.destinations.find((d) => d.id === id)?.name ?? 'Destino'
 
@@ -477,7 +481,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
             {destName(p.destinationId)} ·{' '}
             {st?.days.length ? `colada em ${st.days.map((d) => d.label).join(', ')}` : 'solta'}
           </p>
-          <div className="rarity-row" role="group" aria-label="Raridade">
+          <div className="rarity-row" role="group" aria-label="Prioridade">
             {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
               <button
                 key={r}
@@ -490,6 +494,47 @@ function Body({ sheet }: { sheet: SheetSpec }) {
               </button>
             ))}
           </div>
+          <div className="kind-row" role="group" aria-label="Tipo do lugar">
+            {PLACE_KIND_ORDER.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={(p.kind ?? 'sight') === k ? 'on' : ''}
+                aria-pressed={(p.kind ?? 'sight') === k}
+                onClick={() =>
+                  (p.kind ?? 'sight') !== k && act({ type: 'setPlace', id: p.id, patch: { kind: k } })
+                }
+              >
+                <b>{PLACE_KINDS[k].glyph}</b> {PLACE_KINDS[k].label}
+              </button>
+            ))}
+          </div>
+          {p.lat !== undefined && p.lon !== undefined ? (
+            <>
+              <OptButton o={{ label: 'Ver no mapa da cidade', run: () => enterCity(p.destinationId) }} />
+              <a
+                className="opt"
+                href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <b>Abrir no Google Maps</b>
+                <span>Rotas, horários e fotos no app de mapas.</span>
+              </a>
+            </>
+          ) : (
+            <OptButton
+              o={{
+                label: 'Marcar no mapa',
+                detail: ['Toque no mapa da cidade onde fica.'],
+                run: () => {
+                  enterCity(p.destinationId)
+                  setPlacing(p.id)
+                  say(`Toque no mapa onde fica ${p.name}.`)
+                },
+              }}
+            />
+          )}
           <OptButton
             o={{
               label: st?.days.length ? 'Colar em mais um dia' : 'Colar num dia',
@@ -612,7 +657,67 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'end':
       return <Dates />
+
+    case 'newPlace':
+      return <NewPlace destId={sheet.destId} lat={sheet.lat} lon={sheet.lon} />
   }
+}
+
+/** Lugar novo marcado no mapa da cidade: nome, tipo e prioridade (um toque cria). */
+function NewPlace({ destId, lat, lon }: { destId: ID; lat: number; lon: number }) {
+  const doc = useApp((s) => s.doc)!
+  const act = useApp((s) => s.act)
+  const [name, setName] = useState('')
+  const [kind, setKind] = useState<PlaceKind>('sight')
+  const dest = doc.destinations.find((d) => d.id === destId)
+  const create = (rarity: Rarity) => {
+    if (!name.trim()) return
+    act({
+      type: 'addPlace',
+      place: { id: uid('p'), destinationId: destId, name: name.trim(), rarity, lat, lon, kind },
+    })
+  }
+  return (
+    <>
+      <h2>Lugar novo em {dest?.name ?? 'destino'}</h2>
+      <p className="sub">Já marcado no mapa. Dê o nome, o tipo e a prioridade.</p>
+      <input
+        className="input"
+        id="novo-lugar"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Nome do lugar"
+        aria-label="Nome do lugar"
+        autoComplete="off"
+      />
+      <div className="kind-row" role="group" aria-label="Tipo do lugar">
+        {PLACE_KIND_ORDER.map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={kind === k ? 'on' : ''}
+            aria-pressed={kind === k}
+            onClick={() => setKind(k)}
+          >
+            <b>{PLACE_KINDS[k].glyph}</b> {PLACE_KINDS[k].label}
+          </button>
+        ))}
+      </div>
+      <div className="rarity-row" role="group" aria-label="Criar com a prioridade">
+        {(['maybe', 'want', 'must'] as Rarity[]).map((r) => (
+          <button
+            key={r}
+            type="button"
+            className={`rar r-${r}`}
+            disabled={!name.trim()}
+            onClick={() => create(r)}
+          >
+            {RARITY[r].gems} {RARITY[r].label}
+          </button>
+        ))}
+      </div>
+    </>
+  )
 }
 
 function Times({ legId }: { legId: ID }) {

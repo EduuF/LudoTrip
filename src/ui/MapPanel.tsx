@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { days as allDays, placeStates, plural, timeline, tripPhase, worlds } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
+import { citySpots, DAY_COLORS } from '../map/spots'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
 // resumo por cima, mais "+ Destino". O mapa em si carrega sob demanda (d3, contornos e MapLibre).
@@ -74,32 +75,98 @@ function Countdown() {
   )
 }
 
-/** Cabeçalho dentro da cidade: voltar, nome, dias e lugares. */
+/** Cabeçalho dentro da cidade: voltar, nome, dias e lugares; fichas de dias (filtro) e o que falta marcar. */
 function CityHead({ destId }: { destId: string }) {
   const doc = useApp((s) => s.doc)!
   const exitCity = useApp((s) => s.exitCity)
+  const cursor = useApp((s) => s.cursorDay)
+  const setCursorDay = useApp((s) => s.setCursorDay)
+  const setPlacing = useApp((s) => s.setPlacing)
+  const openSheet = useApp((s) => s.openSheet)
+  const say = useApp((s) => s.say)
   const it = doc.itinerary
   const d = doc.destinations.find((x) => x.id === destId)
-  const nDays = allDays(it, doc.places).filter((x) => x.destinationId === destId).length
+  const ds = allDays(it, doc.places)
+  const city = citySpots(doc, destId)
   const states = placeStates(it, doc.places)
   const mine = doc.places.filter((p) => p.destinationId === destId)
   const placed = mine.filter((p) => states.get(p.id)?.days.length).length
+  const chipDays = [
+    ...city.cityDays.map((x) => x.index),
+    ...city.trails.map((t) => t.dayIndex).filter((i) => !city.cityDays.some((x) => x.index === i)),
+  ].sort((a, b) => a - b)
+  const trailColor = (i: number) => {
+    const t = city.trails.find((x) => x.dayIndex === i)
+    return t ? DAY_COLORS[t.ordinal % DAY_COLORS.length] : null
+  }
   return (
-    <div className="city-head">
-      <button type="button" className="btn small" onClick={exitCity}>
-        ◀ Mapa
-      </button>
-      <div className="city-t">
-        <b>
-          {d?.name}
-          {d?.localName && d.localName !== d.name ? <span className="local"> {d.localName}</span> : null}
-        </b>
-        <span>
-          {nDays ? `${plural(nDays, 'dia', 'dias')} · ` : 'bate-volta · '}
-          {placed}/{mine.length} lugares com dia
-        </span>
+    <>
+      <div className="city-head">
+        <button type="button" className="btn small" onClick={exitCity}>
+          ◀ Mapa
+        </button>
+        <div className="city-t">
+          <b>
+            {d?.name}
+            {d?.localName && d.localName !== d.name ? <span className="local"> {d.localName}</span> : null}
+          </b>
+          <span>
+            {city.cityDays.length ? `${plural(city.cityDays.length, 'dia', 'dias')} · ` : 'bate-volta · '}
+            {placed}/{mine.length} lugares com dia
+          </span>
+        </div>
       </div>
-    </div>
+      <div className="city-days" role="group" aria-label="Dias nesta cidade">
+        <button
+          type="button"
+          className={chipDays.includes(cursor ?? -1) ? '' : 'on'}
+          aria-pressed={!chipDays.includes(cursor ?? -1)}
+          onClick={() => setCursorDay(null)}
+        >
+          Todos
+        </button>
+        {chipDays.map((i) => {
+          const day = ds[i]
+          const c = trailColor(i)
+          return (
+            <button
+              key={i}
+              type="button"
+              className={cursor === i ? 'on' : ''}
+              aria-pressed={cursor === i}
+              aria-label={`Ver o dia ${day?.label ?? i + 1} no mapa`}
+              onClick={() => setCursorDay(i)}
+            >
+              {c ? <i style={{ background: c }} /> : null}
+              {day?.label ?? `dia ${i + 1}`}
+            </button>
+          )
+        })}
+        {city.unplaced.length ? (
+          <button
+            type="button"
+            className="warn"
+            onClick={() =>
+              openSheet({
+                kind: 'choice',
+                title: 'Sem lugar no mapa',
+                sub: 'Toque numa figurinha e depois no mapa, onde ela fica.',
+                options: city.unplaced.map((p) => ({
+                  label: p.name,
+                  detail: ['Marcar no mapa'],
+                  run: () => {
+                    setPlacing(p.id)
+                    say(`Toque no mapa onde fica ${p.name}.`)
+                  },
+                })),
+              })
+            }
+          >
+            ⚑ {city.unplaced.length} sem lugar
+          </button>
+        ) : null}
+      </div>
+    </>
   )
 }
 
@@ -107,6 +174,8 @@ export function MapPanel() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
   const mapView = useApp((s) => s.mapView)
+  const setPlacing = useApp((s) => s.setPlacing)
+  const say = useApp((s) => s.say)
   const it = doc.itinerary
   const nights = timeline(it).total
   const places = new Set(it.stops.map((s) => s.destinationId).filter(Boolean)).size
@@ -141,19 +210,32 @@ export function MapPanel() {
           : wm}
       </span>
       <div className="map-acts">
-        <button
-          type="button"
-          className="btn small"
-          onClick={() =>
-            openSheet({
-              kind: 'dest',
-              title: 'Que destino entra na viagem?',
-              pick: (destId) => openSheet({ kind: 'where', destId }),
-            })
-          }
-        >
-          + Destino
-        </button>
+        {mapView.kind === 'city' ? (
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => {
+              setPlacing('new')
+              say('Toque no mapa onde fica o lugar novo. Ou segure no mapa a qualquer hora.')
+            }}
+          >
+            + Lugar aqui
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn small"
+            onClick={() =>
+              openSheet({
+                kind: 'dest',
+                title: 'Que destino entra na viagem?',
+                pick: (destId) => openSheet({ kind: 'where', destId }),
+              })
+            }
+          >
+            + Destino
+          </button>
+        )}
       </div>
     </section>
   )

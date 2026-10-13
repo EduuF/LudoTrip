@@ -78,7 +78,13 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
     case 'addPlace':
       return `Figurinha nova: ${action.place.name.trim()}.`
     case 'setPlace':
-      return action.patch.rarity ? 'Raridade trocada.' : 'Figurinha salva.'
+      return action.patch.lat !== undefined
+        ? 'Lugar marcado no mapa.'
+        : action.patch.rarity
+          ? 'Prioridade trocada.'
+          : action.patch.kind
+            ? 'Tipo do lugar salvo.'
+            : 'Figurinha salva.'
     case 'removePlace': {
       const p = doc.places.find((x) => x.id === action.id)
       return `${p?.name ?? 'Figurinha'} saiu do álbum.`

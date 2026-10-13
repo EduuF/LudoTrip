@@ -25,3 +25,4 @@ export type SheetSpec =
   | { kind: 'end'; date: ISODate | null }
   | { kind: 'order'; stopId: ID }
   | { kind: 'where'; destId: ID }
+  | { kind: 'newPlace'; destId: ID; lat: number; lon: number }

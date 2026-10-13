@@ -130,6 +130,46 @@ describe('app', () => {
     expect(day.querySelector('.tr-trip')).toBeTruthy()
   })
 
+  it('tocar numa fase do mapa entra na cidade: dias como fichas, lugares por dia, voltar', async () => {
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Kyoto: entrar no mapa da cidade' }, { timeout: 8000 }),
+    )
+    expect(await screen.findByRole('button', { name: '◀ Mapa' })).toBeTruthy()
+    const map = () => within(screen.getByRole('group', { name: 'Lugares no mapa da cidade' }))
+    expect(screen.getByText(/7 dias · 7\/8 lugares com dia/)).toBeTruthy()
+    const gion = await map().findByRole('button', { name: 'Gion' })
+    // Entrar leva o cursor ao primeiro dia de Kyoto (Gion aceso, Kiyomizu-dera esmaecido).
+    expect(gion.getAttribute('class')).not.toContain('dim')
+    expect(map().getByRole('button', { name: 'Kiyomizu-dera' }).getAttribute('class')).toContain('dim')
+    fireEvent.click(screen.getByRole('button', { name: /^Ver o dia dom 14/ }))
+    expect(map().getByRole('button', { name: 'Gion' }).getAttribute('class')).toContain('dim')
+    expect(map().getByRole('button', { name: 'Kiyomizu-dera' }).getAttribute('class')).not.toContain('dim')
+    expect(within(screen.getByRole('region', { name: 'Dia escolhido' })).getByText('em Kyoto')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
+    expect(map().getByRole('button', { name: 'Gion' }).getAttribute('class')).not.toContain('dim')
+    fireEvent.click(screen.getByRole('button', { name: '◀ Mapa' }))
+    expect(await screen.findByRole('button', { name: 'Kyoto: entrar no mapa da cidade' })).toBeTruthy()
+  })
+
+  it('figurinha sem lugar: "Marcar no mapa" e um toque no mapa guardam as coordenadas', async () => {
+    tab('Mochila')
+    const input = screen.getByLabelText('Nova figurinha em Kyoto')
+    fireEvent.change(input, { target: { value: 'Ginkaku-ji' } })
+    fireEvent.click(within(input.closest('form')!).getByRole('button', { name: /Quero/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Ginkaku-ji, Quero, solta/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Marcar no mapa'))
+    tab('Mapa')
+    expect((await screen.findAllByText(/Toque no mapa onde fica Ginkaku-ji\./)).length).toBeGreaterThan(0)
+    const board = document.querySelector('.board')!
+    await waitFor(() => expect(board.className).toContain('placing'))
+    fireEvent.click(board, { clientX: 10, clientY: 10 })
+    expect(await screen.findByText('Lugar marcado no mapa.')).toBeTruthy()
+    const p = useApp.getState().doc!.places.find((x) => x.name === 'Ginkaku-ji')!
+    expect(typeof p.lat).toBe('number')
+    expect(await screen.findByRole('button', { name: 'Ginkaku-ji, sem dia' })).toBeTruthy()
+  })
+
   it('"+ Adicionar destino" põe um lugar antes da volta, escolhendo de onde saem as noites', async () => {
     const before = useApp.getState().doc!.itinerary.stops.length
     fireEvent.click(screen.getByRole('button', { name: /Adicionar destino/ }))

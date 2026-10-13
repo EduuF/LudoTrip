@@ -37,7 +37,12 @@ export const sfx = {
     ]),
   stamp: () => tone([[110, 0.12]], 'triangle', 0.12),
   pop: () => tone([[880, 0.06]], 'triangle', 0.06),
-  enter: () => tone([[392, 0.06], [523, 0.08], [784, 0.14]]),
+  enter: () =>
+    tone([
+      [392, 0.06],
+      [523, 0.08],
+      [784, 0.14],
+    ]),
   step: () => tone([[660, 0.04]], 'triangle', 0.05),
   level: () =>
     tone([

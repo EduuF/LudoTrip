@@ -9,6 +9,7 @@ import type {
   Itinerary,
   Patch,
   Place,
+  PlaceKind,
   Rarity,
   Scope,
 } from '../engine'
@@ -41,7 +42,11 @@ export interface TripDoc {
 export type DocAction =
   | { type: 'engine'; command: Command }
   | { type: 'addPlace'; place: Omit<Place, 'id'> & { id?: ID } }
-  | { type: 'setPlace'; id: ID; patch: { rarity?: Rarity; name?: string } }
+  | {
+      type: 'setPlace'
+      id: ID
+      patch: { rarity?: Rarity; name?: string; lat?: number; lon?: number; kind?: PlaceKind }
+    }
   | { type: 'removePlace'; id: ID }
   | { type: 'addDestination'; destination: Destination }
   | { type: 'addBooking'; booking: Booking }

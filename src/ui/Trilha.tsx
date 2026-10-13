@@ -687,7 +687,11 @@ export function Trilha() {
                   {trips.length ? (
                     <span className="tr-trips" aria-hidden="true">
                       {trips.map((id) => (
-                        <em key={id} className="tr-trip" style={{ background: colorOf(doc.destinations, id) }} />
+                        <em
+                          key={id}
+                          className="tr-trip"
+                          style={{ background: colorOf(doc.destinations, id) }}
+                        />
                       ))}
                     </span>
                   ) : null}

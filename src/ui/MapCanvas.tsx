@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as RPointerEvent, MouseEvent as RMouseEvent } from 'react'
 import { useApp } from '../app/store'
 import type { MapAdapter } from '../map/adapter'
 import { cityFrame, frame } from '../map/frame'
@@ -7,6 +8,7 @@ import { paperAdapter } from '../map/paper'
 import { tilesAdapter } from '../map/tiles'
 import type { Theme } from '../map/style/washi'
 import { BoardOverlay } from './BoardOverlay'
+import { CityOverlay } from './CityOverlay'
 
 // O mapa de verdade (spec §8): começa no papel (instantâneo, sem rede) e troca para os tiles do
 // OpenStreetMap no estilo washi assim que há WebGL e rede. A nossa camada SVG fica por cima dos dois.
@@ -18,9 +20,15 @@ function currentTheme(): Theme {
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+const HOLD_MS = 550
+
 export function MapCanvas() {
   const doc = useApp((s) => s.doc)!
   const mapView = useApp((s) => s.mapView)
+  const placing = useApp((s) => s.placing)
+  const setPlacing = useApp((s) => s.setPlacing)
+  const openSheet = useApp((s) => s.openSheet)
+  const act = useApp((s) => s.act)
   const box = useRef<HTMLDivElement>(null)
   const tilesEl = useRef<HTMLDivElement>(null)
   const [adapter, setAdapter] = useState<MapAdapter | null>(null)
@@ -77,9 +85,62 @@ export function MapCanvas() {
     prev.current = { adapter, key }
   }, [adapter, target])
 
+  // Toque no mapa: marcar uma figurinha ("placing") ou criar um lugar novo. Segurar: "+ Lugar aqui".
+  const lonLatAt = (clientX: number, clientY: number) => {
+    const r = box.current?.getBoundingClientRect()
+    if (!r || !adapter) return null
+    return adapter.unproject([clientX - r.left, clientY - r.top])
+  }
+  const cityId = mapView.kind === 'city' ? mapView.destId : null
+  const onClick = (e: RMouseEvent<HTMLDivElement>) => {
+    if (!placing || !cityId) return
+    const ll = lonLatAt(e.clientX, e.clientY)
+    if (!ll) return
+    if (placing === 'new') openSheet({ kind: 'newPlace', destId: cityId, lon: ll[0], lat: ll[1] })
+    else act({ type: 'setPlace', id: placing, patch: { lon: ll[0], lat: ll[1] } })
+    setPlacing(null)
+  }
+  const hold = useRef<{ x: number; y: number; t: number } | null>(null)
+  const onPointerDown = (e: RPointerEvent<HTMLDivElement>) => {
+    if (!cityId || placing) return
+    const { clientX: x, clientY: y } = e
+    clearTimeout(hold.current?.t)
+    hold.current = {
+      x,
+      y,
+      t: window.setTimeout(() => {
+        const ll = lonLatAt(x, y)
+        hold.current = null
+        if (ll) openSheet({ kind: 'newPlace', destId: cityId, lon: ll[0], lat: ll[1] })
+      }, HOLD_MS),
+    }
+  }
+  const onPointerMove = (e: RPointerEvent<HTMLDivElement>) => {
+    const h = hold.current
+    if (h && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) {
+      clearTimeout(h.t)
+      hold.current = null
+    }
+  }
+  const onPointerEnd = () => {
+    clearTimeout(hold.current?.t)
+    hold.current = null
+  }
+  const placingName =
+    placing === 'new' ? 'o lugar novo' : placing ? (doc.places.find((p) => p.id === placing)?.name ?? '') : ''
+
   const [W, H] = adapter?.size() ?? [0, 0]
   return (
-    <div className={`board ${adapter?.kind ?? 'paper'}`} ref={box}>
+    <div
+      className={`board ${adapter?.kind ?? 'paper'}${placing ? ' placing' : ''}`}
+      ref={box}
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="map-tiles" ref={tilesEl} />
       {adapter && target ? (
         <svg
@@ -88,10 +149,22 @@ export function MapCanvas() {
           height={H}
           viewBox={`0 0 ${W} ${H}`}
           role="group"
-          aria-label="Destinos no mapa"
+          aria-label={cityId ? 'Lugares no mapa da cidade' : 'Destinos no mapa'}
         >
-          <BoardOverlay adapter={adapter} tick={tick} settled={settled} />
+          {cityId ? (
+            <CityOverlay adapter={adapter} tick={tick} settled={settled} destId={cityId} />
+          ) : (
+            <BoardOverlay adapter={adapter} tick={tick} settled={settled} />
+          )}
         </svg>
+      ) : null}
+      {placing && cityId ? (
+        <div className="map-hint">
+          Toque no mapa onde fica {placingName}.
+          <button type="button" onClick={() => setPlacing(null)}>
+            Cancelar
+          </button>
+        </div>
       ) : null}
       {adapter?.kind === 'tiles' ? (
         <a className="map-credit" href="https://openfreemap.org" target="_blank" rel="noreferrer">

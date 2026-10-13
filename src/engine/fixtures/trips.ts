@@ -99,9 +99,9 @@ export const japao = (): BuiltTrip =>
         ['Kinkaku-ji', 'must', 35.0394, 135.7292, 'sight'],
         ['Mercado Nishiki', 'maybe', 35.005, 135.7649, 'food'],
         ['Caminho do Filósofo', 'want', 35.0235, 135.7944, 'nature'],
-        ['Sanjūsangen-dō', 'must'],
+        ['Sanjūsangen-dō', 'must', 34.9878, 135.7716, 'sight'],
       ],
-      hakone: [['Onsen com vista', 'maybe']],
+      hakone: [['Onsen com vista', 'maybe', 35.2323, 139.1069, 'nature']],
     },
     legModes: [
       ['home', 'tokyo', 'flight'],

@@ -62,6 +62,12 @@ export function paperAdapter(el: HTMLElement): MapAdapter {
         return
       }
       const from = { k: proj.scale(), t: proj.translate() }
+      // A escala é interpolada em logaritmo: só vale com escalas positivas (área maior que a folga).
+      if (!(from.k > 0 && to.k > 0)) {
+        proj.scale(to.k).translate(to.t)
+        emit('end')
+        return
+      }
       const t0 = performance.now()
       const dur = 700
       const step = (now: number) => {

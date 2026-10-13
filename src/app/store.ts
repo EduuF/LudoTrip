@@ -53,6 +53,8 @@ export interface AppState {
   /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
   cursorDay: number | null
   mapView: MapView
+  /** À espera de um toque no mapa: marcar esta figurinha, ou criar um lugar novo ('new'). */
+  placing: ID | 'new' | null
   focus: string | null
   sound: boolean
   init(): Promise<void>
@@ -71,6 +73,7 @@ export interface AppState {
   /** Entra no mapa da cidade; o cursor de dias vai para o primeiro dia dela, como na v1. */
   enterCity(destId: ID): void
   exitCity(): void
+  setPlacing(what: ID | 'new' | null): void
   focusOn(elementId: string, tab?: Tab): void
   clearFocus(): void
   addExample(key: ExampleKey): Promise<void>
@@ -141,6 +144,7 @@ export const useApp = create<AppState>((set, get) => {
     openStop: null,
     cursorDay: null,
     mapView: { kind: 'trip' },
+    placing: null,
     focus: null,
     sound: false,
 
@@ -161,6 +165,7 @@ export const useApp = create<AppState>((set, get) => {
         openStop: null,
         cursorDay: null,
         mapView: { kind: 'trip' },
+        placing: null,
         toast: null,
       })
     },
@@ -271,7 +276,10 @@ export const useApp = create<AppState>((set, get) => {
       sfx.enter()
     },
     exitCity() {
-      set({ mapView: { kind: 'trip' } })
+      set({ mapView: { kind: 'trip' }, placing: null })
+    },
+    setPlacing(what) {
+      set({ placing: what, sheet: null })
     },
 
     focusOn(elementId, tab) {
