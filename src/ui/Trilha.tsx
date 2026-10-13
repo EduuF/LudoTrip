@@ -94,6 +94,17 @@ export function Trilha() {
     return () => removeEventListener('touchmove', block)
   }, [])
 
+  // O dia escolhido fica à vista (ao tocar, arrastar a régua ou "ver a viagem").
+  useEffect(() => {
+    const el = scrollRef.current
+    if (cursor === null || !el || typeof el.scrollTo !== 'function') return
+    const x = cursor * dw + 18
+    const left = el.scrollLeft
+    const w = el.clientWidth
+    if (x < left + 30) el.scrollTo({ left: Math.max(0, x - 60), behavior: 'smooth' })
+    else if (x + dw > left + w - 30) el.scrollTo({ left: x + dw + 60 - w, behavior: 'smooth' })
+  }, [cursor, dw])
+
   // Rolagem automática perto das bordas enquanto arrasta.
   const edgeX = useRef<number | null>(null)
   useEffect(() => {
@@ -121,6 +132,27 @@ export function Trilha() {
   const dayAt = (clientX: number) => {
     const r = innerRef.current?.getBoundingClientRect()
     return r ? (clientX - r.left) / dw : 0
+  }
+
+  // Arrastar pela régua passa os dias (o grupo anda no mapa), como a barra de dias da v1.
+  const scrubbing = useRef(false)
+  const scrubTo = (clientX: number) =>
+    setCursorDay(Math.max(0, Math.min(timeline(it).total, Math.floor(dayAt(clientX)))))
+  const onScrubDown = (e: RPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    scrubbing.current = true
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* ponteiro sintético (testes) */
+    }
+    scrubTo(e.clientX)
+  }
+  const onScrubMove = (e: RPointerEvent<HTMLDivElement>) => {
+    if (scrubbing.current) scrubTo(e.clientX)
+  }
+  const onScrubEnd = () => {
+    scrubbing.current = false
   }
 
   // O que desenhar: durante "empurrar" ou pegadores, a prévia; senão, o roteiro atual.
@@ -643,7 +675,15 @@ export function Trilha() {
             />
           ) : null}
 
-          <div className="tr-ruler" role="group" aria-label="Dias da viagem: toque num dia para vê-lo">
+          <div
+            className="tr-ruler"
+            role="group"
+            aria-label="Dias da viagem: toque ou arraste para ver cada dia"
+            onPointerDown={onScrubDown}
+            onPointerMove={onScrubMove}
+            onPointerUp={onScrubEnd}
+            onPointerCancel={onScrubEnd}
+          >
             {Array.from({ length: tl.total + 1 }, (_, i) => {
               const date = view.start ? addDays(view.start, i) : null
               const wd = date ? weekday(date) : ''

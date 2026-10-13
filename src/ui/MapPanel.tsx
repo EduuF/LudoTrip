@@ -1,14 +1,19 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { days as allDays, placeStates, plural, timeline, tripPhase, worlds } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
+import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
-// resumo por cima, mais "+ Destino". O mapa em si carrega sob demanda (d3, contornos e MapLibre).
+// resumo por cima, "+ Destino" / "+ Lugar aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
+// anda pelo mapa). A porta de shoji fecha e abre ao entrar e sair da cidade. O mapa em si carrega sob
+// demanda (d3, contornos e MapLibre).
 
 const MapCanvas = lazy(() => import('./MapCanvas').then((m) => ({ default: m.MapCanvas })))
 
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+const PLAY_MS = 1400
+const PLAY_MS_REDUCED = 900
 
 function Countdown() {
   const doc = useApp((s) => s.doc)!
@@ -170,6 +175,60 @@ function CityHead({ destId }: { destId: string }) {
   )
 }
 
+/** "▶ Ver a viagem": os dias passam sozinhos; qualquer toque para. Dentro da cidade, segue a cidade do dia. */
+function usePlay() {
+  const playing = useApp((s) => s.playing)
+  const setPlaying = useApp((s) => s.setPlaying)
+  useEffect(() => {
+    if (!playing) return
+    const st = useApp.getState()
+    const doc = st.doc
+    if (!doc) return
+    const total = allDays(doc.itinerary, doc.places).length
+    if ((st.cursorDay ?? 0) >= total - 1) st.setCursorDay(0)
+    const ms = reducedMotion() ? PLAY_MS_REDUCED : PLAY_MS
+    const timer = setInterval(() => {
+      const s = useApp.getState()
+      const d = s.doc
+      if (!d) return setPlaying(false)
+      const ds = allDays(d.itinerary, d.places)
+      const next = (s.cursorDay ?? -1) + 1
+      if (next >= ds.length) return setPlaying(false)
+      s.setCursorDay(next)
+      const dest = ds[next]?.destinationId
+      if (s.mapView.kind === 'city' && dest && dest !== s.mapView.destId) s.enterCity(dest)
+    }, ms)
+    const stop = (e: Event) => {
+      // Toques no próprio botão (■ Parar) já tratam; qualquer outro toque para a simulação.
+      if ((e.target as HTMLElement | null)?.closest?.('.play')) return
+      setPlaying(false)
+    }
+    document.addEventListener('pointerdown', stop, true)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('pointerdown', stop, true)
+    }
+  }, [playing, setPlaying])
+  return { playing, toggle: () => setPlaying(!playing) }
+}
+
+/** Porta de shoji ao entrar e sair da cidade (guia de vibe). */
+function useShoji(key: string) {
+  const [open, setOpen] = useState(false)
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    if (reducedMotion()) return
+    setOpen(true)
+    const t = setTimeout(() => setOpen(false), 760)
+    return () => clearTimeout(t)
+  }, [key])
+  return open
+}
+
 export function MapPanel() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
@@ -190,6 +249,9 @@ export function MapPanel() {
   ]
     .filter(Boolean)
     .join(' · ')
+  const { playing, toggle } = usePlay()
+  const shoji = useShoji(mapView.kind === 'city' ? mapView.destId : 'trip')
+  const canPlay = allDays(it, doc.places).length > 1
 
   return (
     <section className="mappanel" aria-label="Mapa da viagem">
@@ -209,6 +271,13 @@ export function MapPanel() {
           ? (doc.destinations.find((d) => d.id === mapView.destId)?.localName ?? '')
           : wm}
       </span>
+      {canPlay ? (
+        <div className="map-play">
+          <button type="button" className={`btn small play${playing ? ' on' : ''}`} onClick={toggle}>
+            {playing ? '■ Parar' : '▶ Ver a viagem'}
+          </button>
+        </div>
+      ) : null}
       <div className="map-acts">
         {mapView.kind === 'city' ? (
           <button
@@ -236,6 +305,10 @@ export function MapPanel() {
             + Destino
           </button>
         )}
+      </div>
+      <div className={`shoji${shoji ? ' on' : ''}`} aria-hidden="true">
+        <div />
+        <div />
       </div>
     </section>
   )

@@ -266,28 +266,28 @@ Todos os formatos usam a mesma gramática:
 
 ## 7. Criar uma viagem (~60 s)
 
-1. **Pra onde?** Cidades, país, ou região indefinida.
-2. **Quando?** Datas, ou "ainda não sei, ~N dias".
-3. **Quem vai?** 1–4 ou "uma galera"; cada um monta o bonequinho.
-4. **Como vão se mover?** Isso define o modo padrão dos trechos.
-5. **Como dividir os dias?** Proposta automática na Faixa.
-6. **"Mundo criado!"**
+*Como implementado no M3.*
 
-Todos os passos podem ser pulados. Existe também um atalho de escapada.
+1. **Pra onde?** Um país, uma região ou uma cidade: vira o **escopo** da viagem (`TripDoc.scope`), que enquadra o mapa e dá nome e marca-d'água mesmo sem nenhuma parada decidida. Busca na lista própria (sem rede) e no mundo todo (Photon). "De onde vocês saem?" é opcional.
+2. **Por onde?** Com um país: as cidades e lugares, na ordem imaginada (sugestões do país), ou **"Ainda não sei: decido no mapa"** (a viagem nasce com as noites em aberto). Com uma cidade: ela já é o primeiro lugar; dá para somar outra cidade ou um bate-volta.
+3. **Quando?** Primeira noite (ou em branco: dia 1, dia 2…) e quantas noites.
+4. **Quem vai?** 1–4 ou "uma galera" (Kombi).
+5. **Como vão se mover?** Define o meio padrão dos trechos (a ida e a volta viram avião quando a casa é longe).
+6. **Nome** e **"VIAGEM CRIADA!"**: cai na tela do Mapa, enquadrada no escopo, com a trilha pronta para mexer.
+
+Todos os passos têm um padrão razoável; nenhum trava.
 
 ## 8. Mapa, bonequinhos e temas
 
-- **O tabuleiro muda conforme o formato:**
-  - uma cidade: o tabuleiro é a cidade;
-  - um país: um mundo;
-  - vários países: mapa dos mundos com aviões em arco;
-  - road trip: rota real pelas estradas;
-  - trilha: perfil de montanha;
-  - cruzeiro: rota no mar.
-- **Como é gerado:**
-  - Natural Earth (`world-atlas`) + `d3-geo`, enquadrado na viagem, com traço simplificado e decoração procedural semeada pela viagem;
-  - `relax()` e `placeLabels()` reaproveitados da v1 (`viagem-japao/sakura-quest/index.html`).
-- **Mapa local:** MapLibre GL + OpenFreeMap com estilo "de brinquedo"; o `flyTo` é o "entrar na fase".
+*Como implementado no M3 (`src/map`, `src/ui/MapCanvas.tsx`, `BoardOverlay.tsx`, `CityOverlay.tsx`).*
+
+- **Duas camadas.** Por baixo, o mapa de verdade: tiles vetoriais do OpenStreetMap (OpenFreeMap, esquema OpenMapTiles) desenhados pelo MapLibre GL com o estilo **washi** (`src/map/style/washi.ts`: papel, mar com seigaiha, contornos de tinta, parques matcha, rios, fronteiras tracejadas, ruas só de perto, nenhum rótulo). Por cima, a **nossa camada SVG** em pixels: fases numeradas (estrela quando o destino está pronto), trilha pontilhada sobre areia com a parte percorrida em vermelho, pílulas sem sobreposição (`relax` e `placeLabels` da v1), decoração pixel semeada por país, seta para casa e o grupo em pixel. A camada só conhece um **adaptador** (`project`, `unproject`, `fit`, `onMove`).
+- **Papel.** Sem WebGL, sem rede ou dentro do artifact, o adaptador "papel" (`d3-geo` + `world-atlas`) desenha os contornos. É também o primeiro quadro (antes dos tiles chegarem) e o dublê dos testes.
+- **Enquadramento** (`frame.ts`, puro): só os destinos das paradas e os bate-voltas, nunca a casa; sem parada localizada, o escopo (caixa do país ou um raio em volta da cidade). O nível (cidade, região, país, mundo) sai da extensão.
+- **Entrar na cidade.** Tocar numa fase: porta de shoji e `flyTo` na caixa dos lugares; as figurinhas com coordenadas viram pontos com selo por tipo (景 食 買 山 駅 宿), cada dia vira uma trilha pontilhada colorida e o dia escolhido acende (o resto esmaece); fichas de dias no cabeçalho; "⚑ N sem lugar" leva a marcar com um toque; segurar no mapa (ou "+ Lugar aqui") cria um lugar já posicionado.
+- **O tempo anda.** O cursor de dia (trilha, fichas, cartão do dia, "▶ Ver a viagem") move o grupo pela trilha (`route.ts` dá a posição pura; a camada anima como fração do caminho, 0,45–2,4 s, coraçãozinho ao chegar). Dentro da cidade, o grupo pula para o primeiro lugar do dia; ao "ver a viagem", o mapa segue a cidade de cada dia.
+- **Bonequinhos:** de 1 a 4, lado a lado; 5 ou mais, a Kombi. Editar nomes e visual: subprojeto 2.
+- **Temas:** decoração por país (sakura e torii no Japão, palmeiras nos trópicos, castelos na Europa, cactos no deserto); paleta e partículas por tema: próximas rodadas.
 - **Bonequinhos:** gerador de sprites; viajantes podem existir sem conta. De 1 a 4, lado a lado; 5 ou mais, uma **Kombi** ("uma galera"). Nos trechos, o grupo vira o veículo. Participantes diferentes fazem o grupo se dividir no mapa.
 - **Temas automáticos** por destino, estação e hemisfério, com o nome no idioma local. A intensidade do jogo é ajustável.
 
@@ -570,18 +570,18 @@ Depois de qualquer sequência válida de operações:
 **Como cada elemento é desenhado:** a frase de quem viaja → o gesto → a resposta visual → o que muda junto → a emoção. Todo gesto de arrastar tem o mesmo caminho em palavras (tocar no elemento abre as ações escritas), por acessibilidade (WCAG 2.2, 2.5.7) e precisão.
 
 ### 17.1 Casca e HUD
-- **Abas embaixo:** Mundo · Roteiro · Mochila · Quests. Topo: o HUD escuro da v1.
-- **HUD:** apelido da viagem, **contagem** e **nível de preparo**, mais Desfazer.
+- **Abas embaixo (M3):** Mapa · Mochila · Tarefas. Topo: o HUD escuro da v1. Vocabulário de jogo só no visual e nas comemorações; navegação e ações em palavras comuns ("destino" é a palavra genérica).
+- **HUD:** apelido da viagem, **contagem** e **nível de preparo**, "?" (Como jogar), sons e Desfazer.
   - Antes da viagem: "Faltam 172 dias". Durante: "Dia 5 de 23 · hoje em Kyoto". Depois: "Viagem completa". Sem data: "Escolha a data de ida".
   - Nível: LV 1 "Sonhando" → LV 2 "Rascunho" → LV 3 "Roteiro firme" → LV 4 "Quase lá" → LV 5 "Pronto pra partir", com a barra de XP listrada.
 - **XP vem do estado, não de cliques:** cada passagem comprada, cada cidade com hospedagem em todas as noites, cada imperdível com dia e cada item com dia vale pontos. Desfazer tira os pontos; mexer em noites não dá pontos. Sem sequência diária e sem culpa.
 - **Comemorações em três tamanhos:** carimbo 済 e "+30 XP" a cada passo; página do álbum completa com chuva de pétalas; LEVEL UP ao mudar de nível. Sons 8 bits opcionais, desligados por padrão. Tudo respeita "reduzir movimento".
 
-### 17.2 Mundo (tela inicial da viagem)
-- Tabuleiro gerado na hora para qualquer viagem: contornos do mundo (`world-atlas`) projetados com `d3-geo` na área das cidades, terra com o traço e a sombra da v1, mar com seigaiha, trilha pontilhada na ordem das cidades, fases numeradas (estrela dourada quando a cidade está pronta: hospedagem e imperdíveis resolvidos), nomes em pílulas sem sobreposição (`relax` e `placeLabels` da v1) e o grupo em pixel art na cidade atual (ou na primeira, antes da viagem).
-- Ida e volta aparecem como setas saindo do tabuleiro ("✈ São Paulo").
-- Contagem grande no topo, como na v1 ("FALTAM 1265 dias · 12:04:31").
-- Tocar numa fase abre a cidade no Roteiro.
+### 17.2 Mapa (a tela da viagem, M3)
+- **Uma tela só, como na v1:** o painel do mapa (§8) com a contagem e o resumo por cima ("Japão · 23 noites · 6 lugares"), "▶ Ver a viagem" e "+ Destino"; logo abaixo a **Trilha** (§17.3); o **cartão do dia** (dia N de T, data, onde está, onde dorme ou "sem hospedagem · marcar reservada", figurinhas do dia e "+ colar"); e o **Roteiro** (§17.4). No desktop (≥ 900 px), mapa e trilha à esquerda e o roteiro à direita.
+- **Cursor de dia:** tocar numa data ou arrastar pela régua, tocar num destino (vai para o primeiro dia dele), as fichas da cidade e "▶ Ver a viagem" movem o mesmo cursor; mapa, cartão do dia e trilha seguem.
+- Tocar numa fase entra na cidade (§8); "◀ Mapa" volta.
+- Depois de criar a viagem, a pessoa cai aqui, com o mapa enquadrado no escopo.
 
 ### 17.3 Roteiro: a Trilha (visão geral, aprovada)
 - **Régua de dias** sob os blocos: dia da semana e número, mês fixo à esquerda ao rolar, fim de semana tingido; bandeiras IDA e VOLTA (com 🔒 quando marcada) nas pontas.

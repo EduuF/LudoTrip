@@ -310,11 +310,40 @@ As mensagens de erro vêm em português e explicam o que fazer (por exemplo, "Os
 - [ ] `npm run preview:artifact` gera um HTML único (React 18 e d3 por CDN; o resto embutido) para publicar como artifact.
 - [ ] Conferir o inventário da experiência antes de mostrar.
 
-**Ponto de revisão M2:** o mantenedor testa a prévia no celular.
+**Ponto de revisão M2:** o mantenedor testa a prévia no celular. *(Feito: 16 pontos de retorno; ver `docs/aprendizados.md`.)*
 
 ---
 
-## M3 — Contas, nuvem e compartilhamento
+## M3 — Mapa vivo e roteiro numa tela só
+
+*Plano de ação do retorno do M2 (2026-10-13). Entregue: fases A, B e C.*
+
+- [x] **A1** GitHub Pages (`https://eduuf.github.io/LudoTrip/`), manifest e ícones em pixel art; `BASE_PATH` no Vite.
+- [x] **A2** Glossário (Mapa, Mochila, Tarefas, NÍVEL, "destino") e prioridades de ouro no `CLAUDE.md`.
+- [x] **A3** Tela única: mapa + trilha + cartão do dia + roteiro; duas colunas no desktop.
+- [x] **A4** Destinos genéricos: países em português, escopo da viagem, criar em 6 passos com "decido no mapa", `createItinerary` com noites em aberto, `PlaceSearch` compartilhado.
+- [x] **A5** "+ Adicionar destino" antes da volta e "+ Parar no caminho" nos trechos.
+- [x] **A6** Bate-volta na régua e no cartão do dia.
+- [x] **A7** Cursor de dia e cartão do dia.
+- [x] **B1** `frame.ts` (enquadramento puro, testado).
+- [x] **B2** Adaptadores papel (d3) e tiles (MapLibre + OpenFreeMap), troca transparente.
+- [x] **B3** Estilo washi (`style/washi.ts`), seigaiha como `fill-pattern`.
+- [x] **B4** Camada SVG em pixels sobre o mapa (`BoardOverlay`), decoração por país.
+- [x] **B5** Entrar na cidade (`CityOverlay`, `spots.ts`): lugares por dia, fichas, marcar no mapa, "+ Lugar aqui", Google Maps.
+- [x] **B6** Busca online (Photon) com cache e lista própria como plano B; nova figurinha com lugar.
+- [x] **B7** Figurinhas de exemplo com coordenadas e tipo.
+- [x] **B8** Mapa em chunk separado; artifact em modo papel.
+- [x] **C1** `route.ts` (posição pura por dia). **C2** Bonequinhos andam pela trilha; parte percorrida em vermelho.
+- [x] **C3** Arrastar pela régua; "▶ Ver a viagem"; dentro da cidade segue a cidade do dia.
+- [x] **C4** Porta de shoji; tutorial "Como jogar" com holofote.
+- [x] **C5** Fumaça ponta a ponta com Playwright (375 × 812) no CI.
+- [x] **C6** Spec §7, §8 e §17; inventário; aprendizados; este plano.
+
+**Ponto de revisão M3:** o mantenedor testa no celular em `https://eduuf.github.io/LudoTrip/`.
+
+---
+
+## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**
 - criar o projeto no console do Firebase (plano Spark gratuito);
@@ -377,11 +406,13 @@ Eu deixo o passo a passo pronto em `docs/setup-firebase.md`.
 - [ ] Tela "Histórico" simples a partir de `feed` (quem e o quê).
 - [ ] Commit.
 
-**Ponto de revisão M3:** o mantenedor cria uma viagem, convida uma pessoa como Editora e outra como Leitora, e as duas testam.
+**Ponto de revisão M4:** o mantenedor cria uma viagem, convida uma pessoa como Editora e outra como Leitora, e as duas testam.
 
 ---
 
-## M4 — PWA, testes ponta a ponta e publicação
+## M5 — PWA completo, testes ponta a ponta e publicação definitiva
+
+*O manifest, os ícones e a fumaça ponta a ponta já existem desde o M3; aqui entram o cache offline (app, contornos e tiles da viagem), mais jornadas e a publicação com conta própria.*
 
 ### Tarefa 33: PWA
 - [ ] `vite-plugin-pwa`: manifest "LudoTrip" com ícones e cor do tema, e cache do app e dos dados do `world-atlas`.

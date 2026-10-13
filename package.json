@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "preview:artifact": "node scripts/build-preview.mjs"
+    "preview:artifact": "node scripts/build-preview.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@playwright/test": "^1.64.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",

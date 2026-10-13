@@ -182,4 +182,18 @@ describe('app', () => {
     expect(await screen.findByText(/Nara entrou no roteiro\./)).toBeTruthy()
     expect(useApp.getState().doc!.itinerary.stops.length).toBe(before + 1)
   })
+
+  it('"Como jogar": três passos com holofote; aparece uma vez e o "?" mostra de novo', async () => {
+    expect(screen.queryByRole('dialog', { name: 'Como jogar' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Como jogar' }))
+    const tut = await screen.findByRole('dialog', { name: 'Como jogar' })
+    expect(within(tut).getByText('O mapa da viagem')).toBeTruthy()
+    fireEvent.click(within(tut).getByText('Próximo'))
+    expect(within(tut).getByText('A trilha dos dias')).toBeTruthy()
+    fireEvent.click(within(tut).getByText('Próximo'))
+    expect(within(tut).getByText('O cartão do dia')).toBeTruthy()
+    fireEvent.click(within(tut).getByText('Começar'))
+    expect(screen.queryByRole('dialog', { name: 'Como jogar' })).toBeNull()
+    expect(localStorage.getItem('ludotrip.tutorial')).toBe('1')
+  })
 })

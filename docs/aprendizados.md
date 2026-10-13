@@ -5,6 +5,24 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M3: mapa vivo e roteiro numa tela só
+
+### Causas-raiz do retorno do M2 (16 pontos)
+1. **O mapa foi tratado como tela de abertura, não como o centro.** Na v1 o mapa era onde se via *onde* e *quando*; o roteiro era o painel ao lado. **Regra:** a tela principal é mapa + trilha + cartão do dia + roteiro, numa só.
+2. **"Destino" nasceu como "cidade".** País, região e "ainda não sei" não cabiam; sem busca online, qualquer lugar fora da lista ficava sem mapa (a Romênia). **Regra:** o escopo da viagem (país, região ou cidade) é um dado próprio; "destino" é a palavra genérica; a busca online é obrigatória, com a lista própria como plano B.
+3. **O enquadramento incluía a casa** e usava contornos sem detalhe de cidade. **Regra:** enquadrar só pelos destinos; a casa é uma seta na borda; o detalhe vem de tiles.
+4. **Vocabulário e prioridades não estavam escritos.** **Regra:** prioridades de ouro (sem bugs, resolve de verdade, intuitivo, divertido, dinâmico, simples) e vocabulário de jogo só no visual estão no `CLAUDE.md`.
+
+### Técnica
+- **Mapa em duas camadas:** tiles (MapLibre + OpenFreeMap, estilo washi) por baixo e a nossa camada SVG por cima, com um adaptador que só sabe `project`/`unproject`/`fit`. O papel (d3-geo) é o primeiro desenho, o modo sem rede, o modo do artifact e o dublê dos testes. **Regra:** nenhuma peça do mapa conhece o MapLibre.
+- **O worker do MapLibre não carrega no Vite em modo dev** com a dependência pré-empacotada. **Regra:** importar `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url` e chamar `setWorkerUrl`.
+- **Interpolar escala em logaritmo quebra com escala negativa** (área menor que a folga, como no jsdom): vira NaN e o mapa some. **Regra:** só animar com escalas positivas.
+- **Posições do grupo como fração do caminho**, não em pixels: sobrevivem ao zoom e ao arraste do mapa.
+- **Viagens já salvas não ganham dados novos das fixtures** (as figurinhas antigas não tinham coordenadas). **Regra:** ao testar algo que depende de dados de exemplo, abrir o exemplo de novo pela lista.
+- **Testes nunca falam com a internet:** `fetch` recusado no setup; quem precisa de rede simula com `vi.stubGlobal`.
+- **Photon:** a primeira resposta leva uns segundos; nomes em português de cidades fora da lista própria não existem lá ("Bucareste" é "Bucharest"). **Regra:** a lista própria cobre os destinos mais comuns em português.
+- **Página pública:** o GitHub Pages (`BASE_PATH=/LudoTrip/`) é onde o mantenedor testa de verdade; o artifact é plano B em modo papel.
+
 ## 2026-10-13 — M2: o app de verdade
 
 - **Desmarcar não é arquivar.** Tocar de novo na passagem apaga a marcação (com Desfazer). "Arquivar" fica para a reserva real que saiu do roteiro.

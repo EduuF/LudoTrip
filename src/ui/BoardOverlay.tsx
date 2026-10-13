@@ -1,20 +1,23 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { geoContains } from 'd3-geo'
 import { lodgingGaps, placeStates, tripPhase } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
 import type { MapAdapter } from '../map/adapter'
+import { easeInOut, reducedMotion } from '../map/adapter'
 import { frame, framePoints, levelOf } from '../map/frame'
 import type { BBox } from '../map/frame'
+import { travelersAt } from '../map/route'
 import { colorOf, sealOf } from './colors'
 import { Travelers } from './kit'
 import { countries, decoKinds, f1, placeLabels, relax, rng } from './mapBits'
 import type { DecoKind, Rect } from './mapBits'
 import { Cloud, Deco } from './MapDeco'
 
-// A camada da viagem sobre o mapa (spec §17.2), no traço da v1: trilha pontilhada sobre areia,
-// fases numeradas (estrela quando o destino está pronto), pílulas sem sobreposição, decoração em
-// pixel art semeada pela viagem, seta para casa e o grupo em pixel. Posições vêm do adaptador.
+// A camada da viagem sobre o mapa (spec §17.2), no traço da v1: trilha pontilhada sobre areia com a
+// parte já percorrida em vermelho, fases numeradas (estrela quando o destino está pronto), pílulas sem
+// sobreposição, decoração em pixel art semeada pela viagem, seta para casa e o grupo em pixel, que anda
+// pela trilha quando o dia escolhido muda. Posições vêm do adaptador.
 
 interface Node {
   destId: ID
@@ -36,13 +39,34 @@ interface Props {
   settled: boolean
 }
 
+/** Comprimento aproximado de uma curva quadrática (como na v1). */
+function qLen(a: [number, number], c: [number, number], b: [number, number]): number {
+  let L = 0
+  let px = a[0]
+  let py = a[1]
+  for (let i = 1; i <= 24; i++) {
+    const t = i / 24
+    const u = 1 - t
+    const x = u * u * a[0] + 2 * u * t * c[0] + t * t * b[0]
+    const y = u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]
+    L += Math.hypot(x - px, y - py)
+    px = x
+    py = y
+  }
+  return L
+}
+
 export function BoardOverlay({ adapter, tick, settled }: Props) {
   const doc = useApp((s) => s.doc)!
   const enterCity = useApp((s) => s.enterCity)
+  const cursor = useApp((s) => s.cursorDay)
   const it = doc.itinerary
   const [W, H] = adapter.size()
   const labelCand = useRef(new Map<ID, number>())
   const decoCache = useRef<{ key: string; list: { kind: DecoKind; lon: number; lat: number }[] } | null>(null)
+
+  const phase = tripPhase(it, todayISO())
+  const dayIndex = cursor ?? (phase.kind === 'during' ? phase.day - 1 : 0)
 
   const model = useMemo(() => {
     void tick
@@ -54,12 +78,14 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
     const phases = new Map<ID, number[]>()
     const firstStop = new Map<ID, ID>()
     const seq: ID[] = []
+    const stopSeq = new Map<ID, number>()
     it.stops.forEach((s, i) => {
       const id = s.destinationId
       if (!id || !pts.some((p) => p.destId === id)) return
       phases.set(id, [...(phases.get(id) ?? []), i + 1])
       if (!firstStop.has(id)) firstStop.set(id, s.id)
       if (seq[seq.length - 1] !== id) seq.push(id)
+      stopSeq.set(s.id, seq.length - 1)
     })
     // Bate-volta: ligado à parada onde a figurinha está colada.
     const states = placeStates(it, doc.places)
@@ -90,23 +116,36 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
     relax(nodes, 36, 22, W, H)
     const byId = new Map(nodes.map((n) => [n.destId, n]))
 
-    // Trilha: curvas entre fases seguidas; idas e voltas repetidas ganham curvaturas diferentes.
+    // Trilha: curvas entre fases seguidas (idas e voltas repetidas ganham curvaturas diferentes),
+    // com o comprimento acumulado em cada fase para o grupo andar por ela.
     let route = ''
+    const seqLen: number[] = []
+    let total = 0
     seq.forEach((id, i) => {
       const n = byId.get(id)
-      if (!n) return
+      if (!n) {
+        seqLen.push(total)
+        return
+      }
       if (!route) {
         route = `M${f1(n.x)},${f1(n.y)}`
+        seqLen.push(0)
         return
       }
       const p = byId.get(seq[i - 1]!)
-      if (!p) return
+      if (!p) {
+        seqLen.push(total)
+        return
+      }
       const mx = (p.x + n.x) / 2
       const my = (p.y + n.y) / 2
       const dx = n.x - p.x
       const dy = n.y - p.y
       const bend = i % 2 ? 0.22 : -0.22
-      route += ` Q${f1(mx - dy * bend)},${f1(my + dx * bend)} ${f1(n.x)},${f1(n.y)}`
+      const c: [number, number] = [mx - dy * bend, my + dx * bend]
+      route += ` Q${f1(c[0])},${f1(c[1])} ${f1(n.x)},${f1(n.y)}`
+      total += qLen([p.x, p.y], c, [n.x, n.y])
+      seqLen.push(total)
     })
 
     // Casa: seta saindo do mapa na direção dela (nunca entra no enquadramento).
@@ -133,9 +172,8 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
 
     // Rótulos em pílulas sem sobreposição (nem com o grupo em pixel, nem com a seta de casa).
     const occ: Rect[] = nodes.map((n) => ({ x: n.x - 15, y: n.y - 15, w: 30, h: 30 }))
-    const phaseNow = tripPhase(it, todayISO())
-    const hereId = (phaseNow.kind === 'during' ? phaseNow.destinationId : seq[0]) ?? null
-    const spriteAt = hereId ? byId.get(hereId) : undefined
+    const pos = travelersAt(doc, dayIndex)
+    const spriteAt = pos?.kind === 'at' ? byId.get(pos.destId) : undefined
     if (spriteAt) occ.push({ x: spriteAt.x - 24, y: spriteAt.y - 48, w: 48, h: 32 })
     if (home) occ.push({ x: home.x - home.w / 2, y: home.y - 12, w: home.w, h: 24 })
     const fixed = settled ? undefined : nodes.map((n) => labelCand.current.get(n.destId))
@@ -203,8 +241,125 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
         })
       : []
 
-    return { nodes, byId, seq, route, home, labels, decos, clouds, spriteAt, path, land, destById }
-  }, [doc, it, adapter, tick, settled, W, H])
+    return {
+      nodes,
+      byId,
+      seq,
+      stopSeq,
+      seqLen,
+      total,
+      route,
+      home,
+      labels,
+      decos,
+      clouds,
+      path,
+      land,
+      destById,
+    }
+  }, [doc, it, adapter, tick, settled, W, H, dayIndex])
+
+  // ---------------------------------------------------------------------------
+  // O grupo anda pela trilha quando o dia escolhido muda (fração do caminho; sobrevive ao zoom).
+  // ---------------------------------------------------------------------------
+  const target = useMemo(() => {
+    if (!model) return null
+    const pos = travelersAt(doc, dayIndex)
+    if (!pos) return null
+    const fracAt = (stopId: ID) => {
+      const i = model.stopSeq.get(stopId)
+      return i === undefined ? null : model.total > 0 ? model.seqLen[i]! / model.total : 0
+    }
+    if (pos.kind === 'at') {
+      const f = fracAt(pos.stopId)
+      if (f !== null) return { frac: f }
+      const n = model.byId.get(pos.destId)
+      return n ? { xy: [n.x, n.y] as [number, number] } : null
+    }
+    if (pos.to === 'home' && pos.from !== 'home') {
+      const i = model.stopSeq.get(pos.from)
+      const n = i !== undefined ? model.byId.get(model.seq[i]!) : undefined
+      if (!n) return null
+      const h = model.home ?? { x: n.x, y: n.y }
+      return { frac: 1, xy: [n.x + (h.x - n.x) * pos.t, n.y + (h.y - n.y) * pos.t] as [number, number] }
+    }
+    if (pos.from === 'home' || pos.to === 'home') return null
+    const a = fracAt(pos.from)
+    const b = fracAt(pos.to)
+    if (a === null || b === null) return null
+    return { frac: a + (b - a) * pos.t }
+  }, [model, doc, dayIndex])
+
+  const pathRef = useRef<SVGPathElement>(null)
+  const maskRef = useRef<SVGPathElement>(null)
+  const spriteRef = useRef<SVGGElement>(null)
+  const state = useRef<{ frac: number; xy: [number, number] | null }>({ frac: 0, xy: null })
+  const anim = useRef(0)
+  const [heart, setHeart] = useState(0)
+
+  const place = (frac: number, xy: [number, number] | null) => {
+    const p = pathRef.current
+    const total = p?.getTotalLength?.() ?? 0
+    let x: number
+    let y: number
+    if (xy) [x, y] = xy
+    else if (p && total > 0) {
+      const pt = p.getPointAtLength(Math.max(0, Math.min(total, frac * total)))
+      x = pt.x
+      y = pt.y
+    } else return
+    spriteRef.current?.setAttribute('transform', `translate(${f1(x)},${f1(y - 18)})`)
+    if (maskRef.current) maskRef.current.style.strokeDasharray = `${frac * total} ${total + 40}`
+  }
+
+  // Mapa mexeu ou redesenhou: recoloca o grupo na mesma fração do caminho.
+  useLayoutEffect(() => {
+    place(state.current.frac, state.current.xy)
+  })
+
+  // Dia mudou: anda até lá (0,45 s a 2,4 s, conforme a distância), com coraçãozinho ao chegar.
+  useEffect(() => {
+    if (!target) return
+    cancelAnimationFrame(anim.current)
+    const from = state.current.frac
+    const toFrac = target.frac ?? from
+    const toXY = target.xy ?? null
+    const dist = Math.abs(toFrac - from)
+    if (reducedMotion() || (dist < 0.001 && !toXY && !state.current.xy)) {
+      state.current = { frac: toFrac, xy: toXY }
+      place(toFrac, toXY)
+      return
+    }
+    const fromXY = state.current.xy
+    const dur = Math.min(2400, 450 + dist * 4000)
+    const t0 = performance.now()
+    const step = (now: number) => {
+      const u = Math.min(1, (now - t0) / dur)
+      const e = easeInOut(u)
+      const frac = from + (toFrac - from) * e
+      let xy: [number, number] | null = null
+      if (toXY || fromXY) {
+        const p = pathRef.current
+        const total = p?.getTotalLength?.() ?? 0
+        const at = (fr: number, over: [number, number] | null): [number, number] | null => {
+          if (over) return over
+          if (!p || !total) return null
+          const pt = p.getPointAtLength(Math.max(0, Math.min(total, fr * total)))
+          return [pt.x, pt.y]
+        }
+        const a = at(from, fromXY)
+        const b = at(toFrac, toXY)
+        if (a && b) xy = [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]
+      }
+      state.current = { frac, xy: u < 1 ? xy : toXY }
+      place(frac, xy)
+      if (u < 1) anim.current = requestAnimationFrame(step)
+      else if (dist > 0.001 || toXY) setHeart((h) => h + 1)
+    }
+    anim.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(anim.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.frac, target?.xy?.[0], target?.xy?.[1]])
 
   if (!model) return null
 
@@ -220,6 +375,18 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
 
   return (
     <g>
+      <defs>
+        <mask id="trail-done" maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+          <path
+            ref={maskRef}
+            d={model.route}
+            fill="none"
+            stroke="#fff"
+            strokeWidth="26"
+            strokeLinecap="round"
+          />
+        </mask>
+      </defs>
       {model.path ? (
         <>
           <g transform="translate(0,5)" opacity="0.16">
@@ -277,12 +444,23 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
         opacity="0.9"
       />
       <path
+        ref={pathRef}
         d={model.route}
         fill="none"
-        stroke="var(--beni)"
+        stroke="var(--ink-soft)"
         strokeWidth="3.6"
         strokeDasharray="1 8"
         strokeLinecap="round"
+        opacity="0.6"
+      />
+      <path
+        d={model.route}
+        fill="none"
+        stroke="var(--beni)"
+        strokeWidth="4"
+        strokeDasharray="1 8"
+        strokeLinecap="round"
+        mask="url(#trail-done)"
       />
       {model.nodes
         .filter((n) => n.dayTrip && n.base)
@@ -374,11 +552,8 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
           </g>
         )
       })}
-      {model.spriteAt ? (
-        <g
-          transform={`translate(${f1(model.spriteAt.x)},${f1(model.spriteAt.y - 18)})`}
-          className="travelers"
-        >
+      {target ? (
+        <g ref={spriteRef} className="travelers" aria-hidden="true">
           <g className="bob">
             <svg
               x={-(Math.min(travelers, 4) * 6 * 2.4) / 2 - (travelers >= 5 ? 8 : 0)}
@@ -389,6 +564,18 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
             >
               <Travelers count={travelers} px={2.4} />
             </svg>
+            {heart ? (
+              <text
+                key={heart}
+                className="heart"
+                y="-28"
+                textAnchor="middle"
+                fontSize="14"
+                fill="var(--beni)"
+              >
+                ♥
+              </text>
+            ) : null}
           </g>
         </g>
       ) : null}

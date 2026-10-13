@@ -9,6 +9,7 @@ import { Celebrations, Petals, Toast } from './ui/kit'
 import { Mapa } from './ui/Mapa'
 import { Sheets } from './ui/Sheets'
 import { Tarefas } from './ui/Tarefas'
+import { Tutorial } from './ui/Tutorial'
 
 // Casca do app (spec §17.1): HUD com contagem e nível, abas embaixo, painéis e comemorações.
 // A tela principal é o Mapa: mapa, trilha, cartão do dia e roteiro numa tela só (spec §17.2).
@@ -20,6 +21,8 @@ function Hud() {
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const sound = useApp((s) => s.sound)
   const toggleSound = useApp((s) => s.toggleSound)
+  const setTutorial = useApp((s) => s.setTutorial)
+  const setTab = useApp((s) => s.setTab)
   const it = doc.itinerary
   const p = progress(it, doc)
   const phase = tripPhase(it, todayISO())
@@ -39,6 +42,17 @@ function Hud() {
             ‹
           </button>
           <span className="hud-name">{doc.meta.name}</span>
+          <button
+            type="button"
+            className="hud-btn"
+            aria-label="Como jogar"
+            onClick={() => {
+              setTab('mapa')
+              setTutorial(true)
+            }}
+          >
+            ?
+          </button>
           <button
             type="button"
             className="hud-btn"
@@ -141,6 +155,7 @@ function Trip() {
       <Tabs />
       <Toast withTray={tab === 'mapa' && !!openStop} />
       <Sheets />
+      {tab === 'mapa' ? <Tutorial /> : null}
     </>
   )
 }

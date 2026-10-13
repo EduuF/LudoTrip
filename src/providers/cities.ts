@@ -104,6 +104,12 @@ export const CITIES: City[] = [
   c('Copenhague', 'DK', 55.68, 12.57, 'Europe/Copenhagen', 'København'),
   c('Estocolmo', 'SE', 59.33, 18.07, 'Europe/Stockholm', 'Stockholm'),
   c('Reykjavík', 'IS', 64.15, -21.94, 'Atlantic/Reykjavik'),
+  c('Bucareste', 'RO', 44.43, 26.1, 'Europe/Bucharest', 'București'),
+  c('Brașov', 'RO', 45.65, 25.6, 'Europe/Bucharest'),
+  c('Sibiu', 'RO', 45.8, 24.15, 'Europe/Bucharest'),
+  c('Cluj-Napoca', 'RO', 46.77, 23.6, 'Europe/Bucharest'),
+  c('Timișoara', 'RO', 45.75, 21.23, 'Europe/Bucharest'),
+  c('Constança', 'RO', 44.18, 28.63, 'Europe/Bucharest', 'Constanța'),
   // Ásia e Oriente Médio
   c('Tóquio', 'JP', 35.68, 139.77, 'Asia/Tokyo', '東京'),
   c('Kyoto', 'JP', 35.01, 135.77, 'Asia/Tokyo', '京都'),

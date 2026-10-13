@@ -56,5 +56,6 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - **A interface só despacha comandos serializáveis** (`dispatch(itinerary, command)`). Isso serve a fila offline e às transações.
 - **Toda ação de quem usa tem Desfazer**, inclusive mochila e reservas (que ficam fora do itinerário): elas também passam por comandos com inverso. Toda marcação (passagem comprada, hospedagem, visitado) desmarca no mesmo lugar.
 - **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
-- **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (a partir do M4).
+- **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` e `npm run e2e` (Playwright, 375 × 812, contra o build; sem rede externa).
+- **Mapa:** `src/map` (enquadramento, adaptadores papel e tiles, estilo washi, lugares e posição por dia) é puro ou isolado atrás do adaptador; as camadas SVG (`BoardOverlay`, `CityOverlay`) nunca falam com o MapLibre diretamente. Serviços gratuitos: OpenFreeMap (tiles) e Photon (busca), ambos com plano B sem rede.
 - **Teste de verdade:** https://eduuf.github.io/LudoTrip/ (o workflow Pages publica a cada push na `main`; o mantenedor testa no celular, com internet). A prévia por artifact (`npm run preview:artifact` → `dist-preview/ludotrip.html`, HTML único com React 18 por CDN) é o plano B, em modo papel, sem rede. O laboratório do motor foi aposentado: o que vai para o mantenedor é sempre o app de verdade.

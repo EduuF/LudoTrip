@@ -590,6 +590,9 @@ h3 {
   left: 0;
   height: 34px;
   display: flex;
+  /* Arrastar pela régua passa os dias (o grupo anda no mapa); rolar a trilha é pelos blocos. */
+  touch-action: none;
+  cursor: ew-resize;
 }
 .tr-day {
   flex: none;
@@ -1613,6 +1616,70 @@ a.opt {
   display: flex;
   gap: 8px;
 }
+.map-play {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2;
+}
+.play.on {
+  background: var(--beni);
+  color: #fff;
+  border-color: var(--beni);
+}
+.map-overlay .heart {
+  animation: heart 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes heart {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+.shoji {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  pointer-events: none;
+}
+.shoji div {
+  flex: 1;
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 28px 100%,
+    var(--paper);
+  border: 3px solid var(--ink);
+  transform: scaleX(0);
+}
+.shoji div:first-child {
+  transform-origin: left;
+}
+.shoji div:last-child {
+  transform-origin: right;
+}
+.shoji.on div {
+  animation: shoji 0.76s ease-in-out;
+}
+@keyframes shoji {
+  0% {
+    transform: scaleX(0);
+  }
+  38% {
+    transform: scaleX(1);
+  }
+  58% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
 
 /* Cartão do dia */
 .daycard {
@@ -1679,6 +1746,54 @@ a.opt {
 .card.add-dest span {
   font-size: 12.5px;
   color: var(--ink-soft);
+}
+
+/* Como jogar: holofote sobre a peça e o cartão explicando */
+.tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.tutorial .spot {
+  position: fixed;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--ink) 62%, transparent);
+  outline: 3px dashed var(--sakura);
+  outline-offset: 2px;
+  pointer-events: none;
+  transition:
+    left 0.3s,
+    top 0.3s,
+    width 0.3s,
+    height 0.3s;
+}
+.tut-card {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom, 0px));
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 4px 4px 0 var(--sakura);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tut-card small {
+  font: 11px var(--f-pixel);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+.tut-card b {
+  font: 800 19px/1.15 var(--f-display);
+}
+.tut-card p {
+  margin: 0;
+  font-size: 14px;
 }
 
 /* Tela do mapa: uma coluna no celular; mapa e trilha à esquerda, roteiro à direita em telas largas */

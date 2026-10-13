@@ -9,6 +9,7 @@ import { localRepo } from './repo'
 import type { TripRepo } from './repo'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
+import { tutorialSeen } from './tutorial'
 
 export type Tab = 'mapa' | 'mochila' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
@@ -55,6 +56,10 @@ export interface AppState {
   mapView: MapView
   /** À espera de um toque no mapa: marcar esta figurinha, ou criar um lugar novo ('new'). */
   placing: ID | 'new' | null
+  /** "▶ Ver a viagem": os dias passam sozinhos. */
+  playing: boolean
+  /** "Como jogar" aberto. */
+  tutorial: boolean
   focus: string | null
   sound: boolean
   init(): Promise<void>
@@ -74,6 +79,8 @@ export interface AppState {
   enterCity(destId: ID): void
   exitCity(): void
   setPlacing(what: ID | 'new' | null): void
+  setPlaying(on: boolean): void
+  setTutorial(on: boolean): void
   focusOn(elementId: string, tab?: Tab): void
   clearFocus(): void
   addExample(key: ExampleKey): Promise<void>
@@ -145,6 +152,8 @@ export const useApp = create<AppState>((set, get) => {
     cursorDay: null,
     mapView: { kind: 'trip' },
     placing: null,
+    playing: false,
+    tutorial: false,
     focus: null,
     sound: false,
 
@@ -166,6 +175,8 @@ export const useApp = create<AppState>((set, get) => {
         cursorDay: null,
         mapView: { kind: 'trip' },
         placing: null,
+        playing: false,
+        tutorial: !tutorialSeen(),
         toast: null,
       })
     },
@@ -261,7 +272,15 @@ export const useApp = create<AppState>((set, get) => {
       set({ openStop: id })
     },
     setCursorDay(index) {
+      if (index === get().cursorDay) return
       set({ cursorDay: index })
+      if (index !== null) sfx.step()
+    },
+    setPlaying(on) {
+      set({ playing: on })
+    },
+    setTutorial(on) {
+      set({ tutorial: on, sheet: null })
     },
     enterCity(destId) {
       const { doc, cursorDay } = get()
