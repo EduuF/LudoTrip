@@ -6,6 +6,7 @@ import {
   describeEffects,
   describeError,
   legName,
+  lodgingGaps,
   plural,
   preview,
   stopName,
@@ -16,7 +17,7 @@ import {
 } from '../engine'
 import type { Command, ID, ISODate, Itinerary, Leg, Stop, Via } from '../engine'
 import type { TripDoc } from './doc'
-import { useApp } from './store'
+import { uid, useApp } from './store'
 import type { Opt } from '../ui/sheetTypes'
 
 // Escolhas em vez de erros (spec §5.1): cada opção mostra antes o que vai acontecer.
@@ -104,6 +105,36 @@ const donorLabel = (it: Itinerary, s: Stop) =>
     : `Usar as noites em aberto (${windowText(it, s.id)})`
 
 // ---------------------------------------------------------------------------
+// Hospedagem
+// ---------------------------------------------------------------------------
+
+/** Marca como reservada a hospedagem das noites ainda descobertas de um destino (com carimbo). */
+export function markLodging(stopId: ID) {
+  const d = doc()
+  const it = d.itinerary
+  const s = it.stops.find((x) => x.id === stopId)
+  const w = stopWindows(it).find((x) => x.stopId === stopId)
+  const gap = lodgingGaps(it, d.bookings).find((g) => g.stopId === stopId)
+  if (!s?.destinationId || !w?.start || !gap?.missing.length) return
+  const name = d.destinations.find((x) => x.id === s.destinationId)?.name ?? 'destino'
+  S().act(
+    {
+      type: 'addBooking',
+      booking: {
+        id: uid('h'),
+        kind: 'lodging',
+        title: `Hospedagem em ${name}`,
+        destinationId: s.destinationId,
+        checkin: addDays(w.start, gap.missing[0]!.ordinal),
+        checkout: addDays(w.start, gap.missing[gap.missing.length - 1]!.ordinal + 1),
+        status: 'booked',
+      },
+    },
+    { stamp: true },
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Noites de uma cidade
 // ---------------------------------------------------------------------------
 
@@ -144,7 +175,7 @@ export function minusNight(stopId: ID) {
       options: [
         {
           ...cmdOpt('Tirar do roteiro', { type: 'removeStop', stopId }),
-          detail: ['A noite fica em aberto, com as mesmas datas. A mochila da cidade fica guardada.'],
+          detail: ['A noite fica em aberto, com as mesmas datas. A mochila dele fica guardada.'],
         },
       ],
     })
@@ -172,9 +203,9 @@ export function minusNight(stopId: ID) {
 export function shiftCity(stopId: ID, by: 1 | -1) {
   const it = doc().itinerary
   const i = it.stops.findIndex((s) => s.id === stopId)
-  if (i === 0 && by < 0) return S().say('É a primeira cidade: para chegar antes, mude a data de ida.', true)
+  if (i === 0 && by < 0) return S().say('É o primeiro destino: para chegar antes, mude a data de ida.', true)
   if (i === it.stops.length - 1 && by > 0)
-    return S().say('É a última cidade: para chegar depois, mude a volta.', true)
+    return S().say('É o último destino: para chegar depois, mude a volta.', true)
   S().act({ type: 'engine', command: { type: 'shiftStop', stopId, by } })
 }
 
@@ -188,7 +219,7 @@ export function removeDayChoice(stopId: ID, ordinal: number) {
   const s = it.stops[i]
   if (!s) return
   const vias: [string, Via][] = []
-  if (s.days.length === 1) vias.push(['Tirar a cidade do roteiro', { kind: 'open' }])
+  if (s.days.length === 1) vias.push(['Tirar o destino do roteiro', { kind: 'open' }])
   else {
     if (it.lock === 'free') vias.push(['Antecipar a volta', { kind: 'return' }])
     vias.push(['Deixar a noite em aberto', { kind: 'open' }])
@@ -337,8 +368,8 @@ export function endOptions(target: ISODate): Opt[] {
       ? opts
       : [
           {
-            label: 'Nenhuma cidade tem tantas noites sobrando.',
-            detail: ['Tire uma cidade do roteiro ou escolha outra data.'],
+            label: 'Nenhum destino tem tantas noites sobrando.',
+            detail: ['Tire um destino do roteiro ou escolha outra data.'],
             run: () => {},
             disabled: true,
           },

@@ -1,22 +1,12 @@
-import {
-  addDays,
-  describeIssue,
-  health,
-  legDayIndex,
-  legName,
-  lodgingGaps,
-  MODE_NAMES,
-  progress,
-  stopWindows,
-  XP,
-} from '../engine'
+import { addDays, describeIssue, health, legDayIndex, legName, MODE_NAMES, progress, XP } from '../engine'
 import type { Booking, Issue } from '../engine'
 import { uid, useApp } from '../app/store'
 import type { DocAction } from '../app/doc'
+import { markLodging } from '../app/choices'
 
-// Quests: a Saúde do roteiro com textos de quem viaja e resolução num toque (spec §17.6).
+// Tarefas: a Saúde do roteiro com textos de quem viaja e resolução num toque (spec §17.6).
 
-const SEV = { alert: 'URGENTE', warn: 'ATENÇÃO', info: 'QUEST' } as const
+const SEV = { alert: 'URGENTE', warn: 'ATENÇÃO', info: 'TAREFA' } as const
 const REWARD: Partial<Record<Issue['kind'], number>> = {
   'transport-missing': XP.ticket,
   'lodging-missing': XP.lodging,
@@ -24,7 +14,7 @@ const REWARD: Partial<Record<Issue['kind'], number>> = {
   'must-unscheduled': XP.must,
 }
 
-export function Quests() {
+export function Tarefas() {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
@@ -40,13 +30,13 @@ export function Quests() {
     const d = i.data ?? {}
     if (i.target.kind === 'stop') {
       setOpenStop(i.target.id)
-      return focusOn(`c-${i.target.id}`, 'roteiro')
+      return focusOn(`c-${i.target.id}`, 'mapa')
     }
-    if (i.target.kind === 'leg') return focusOn(`l-${i.target.id}`, 'roteiro')
+    if (i.target.kind === 'leg') return focusOn(`l-${i.target.id}`, 'mapa')
     if (i.target.kind === 'place') return focusOn(`p-${i.target.id}`, 'mochila')
     if (i.target.kind === 'booking') {
-      if (d.stopId) return focusOn(`c-${String(d.stopId)}`, 'roteiro')
-      if (d.legId) return focusOn(`l-${String(d.legId)}`, 'roteiro')
+      if (d.stopId) return focusOn(`c-${String(d.stopId)}`, 'mapa')
+      if (d.legId) return focusOn(`l-${String(d.legId)}`, 'mapa')
     }
   }
 
@@ -80,31 +70,8 @@ export function Quests() {
         },
       }
     }
-    if (i.kind === 'lodging-missing' || i.kind === 'lodging-partial') {
-      const s = it.stops.find((x) => x.id === i.target.id)
-      const w = stopWindows(it).find((x) => x.stopId === i.target.id)
-      const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === i.target.id)
-      if (!s?.destinationId || !w?.start || !gap) return null
-      return {
-        label: 'Marcar reservada',
-        run: () =>
-          act(
-            {
-              type: 'addBooking',
-              booking: {
-                id: uid('h'),
-                kind: 'lodging',
-                title: `Hospedagem em ${doc.destinations.find((d) => d.id === s.destinationId)?.name ?? 'cidade'}`,
-                destinationId: s.destinationId!,
-                checkin: addDays(w.start!, gap.missing[0]!.ordinal),
-                checkout: addDays(w.start!, gap.missing[gap.missing.length - 1]!.ordinal + 1),
-                status: 'booked',
-              },
-            },
-            { stamp: true },
-          ),
-      }
-    }
+    if (i.kind === 'lodging-missing' || i.kind === 'lodging-partial')
+      return { label: 'Marcar reservada', run: () => markLodging(i.target.id) }
     if (i.kind === 'must-unscheduled') {
       const place = doc.places.find((x) => x.id === i.target.id)
       if (!place) return null
@@ -143,11 +110,11 @@ export function Quests() {
   return (
     <>
       <h1 className="title">
-        Quests <em>da viagem</em>
+        Tarefas <em>da viagem</em>
       </h1>
       <div className="pills" style={{ marginTop: 6 }}>
         <span className="pill">
-          LV {p.level} · {p.levelName}
+          NÍVEL {p.level} · {p.levelName}
         </span>
         {p.tasks
           .filter((t) => t.total)

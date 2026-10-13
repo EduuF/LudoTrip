@@ -10,7 +10,7 @@ import type { TripRepo } from './repo'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 
-export type Tab = 'mundo' | 'roteiro' | 'mochila' | 'quests'
+export type Tab = 'mapa' | 'mochila' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
 export type ExampleKey = keyof typeof ALL_TRIPS
 
@@ -48,6 +48,8 @@ export interface AppState {
   celebrations: Celebration[]
   sheet: SheetSpec | null
   openStop: ID | null
+  /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
+  cursorDay: number | null
   focus: string | null
   sound: boolean
   init(): Promise<void>
@@ -62,6 +64,7 @@ export interface AppState {
   patchSheet(patch: Partial<SheetSpec>): void
   closeSheet(): void
   setOpenStop(id: ID | null): void
+  setCursorDay(index: number | null): void
   focusOn(elementId: string, tab?: Tab): void
   clearFocus(): void
   addExample(key: ExampleKey): Promise<void>
@@ -121,7 +124,7 @@ export const useApp = create<AppState>((set, get) => {
   return {
     ready: false,
     screen: 'home',
-    tab: 'mundo',
+    tab: 'mapa',
     trips: [],
     doc: null,
     undoStack: [],
@@ -129,6 +132,7 @@ export const useApp = create<AppState>((set, get) => {
     celebrations: [],
     sheet: null,
     openStop: null,
+    cursorDay: null,
     focus: null,
     sound: false,
 
@@ -140,7 +144,16 @@ export const useApp = create<AppState>((set, get) => {
     async openTrip(id) {
       const doc = await repo.load(id)
       if (!doc) return toast('Essa viagem não está mais aqui.', true)
-      set({ doc, screen: 'trip', tab: 'mundo', undoStack: [], sheet: null, openStop: null, toast: null })
+      set({
+        doc,
+        screen: 'trip',
+        tab: 'mapa',
+        undoStack: [],
+        sheet: null,
+        openStop: null,
+        cursorDay: null,
+        toast: null,
+      })
     },
 
     goHome() {
@@ -232,6 +245,9 @@ export const useApp = create<AppState>((set, get) => {
 
     setOpenStop(id) {
       set({ openStop: id })
+    },
+    setCursorDay(index) {
+      set({ cursorDay: index })
     },
 
     focusOn(elementId, tab) {

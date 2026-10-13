@@ -73,10 +73,10 @@ describe('quando não dá', () => {
       'Kyoto precisa de pelo menos 1 noite.',
     )
     expect(sayError(t, { type: 'shiftStop', stopId: 's1', by: 1 })).toBe(
-      'É a primeira cidade: mude a data de ida.',
+      'É o primeiro destino: mude a data de ida.',
     )
     expect(sayError(t, { type: 'shiftStop', stopId: 's9', by: 1 })).toBe(
-      'É a última cidade: mude a data de volta.',
+      'É o último destino: mude a data de volta.',
     )
     expect(
       sayError(t, {
@@ -95,7 +95,7 @@ describe('quando não dá', () => {
         { type: 'closeOpen', stopId: 's1' },
         run(rio().itinerary, { type: 'removeStop', stopId: 's1' }).state,
       ),
-    ).toBe('É a única cidade da viagem.')
+    ).toBe('É o único destino da viagem.')
   })
 
   it('todo erro tem texto (nenhum fica sem mensagem)', () => {

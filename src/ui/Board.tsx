@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { geoContains, geoMercator, geoPath } from 'd3-geo'
 import type { GeoPermissibleObjects } from 'd3-geo'
 import { feature } from 'topojson-client'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import world from 'world-atlas/countries-50m.json'
-import { lodgingGaps, placeStates, tripPhase } from '../engine'
+import { lodgingGaps, placeStates, timeline, tripPhase } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
 import { colorOf, sealOf } from './colors'
@@ -15,7 +15,8 @@ import { Travelers } from './kit'
 // terra com contorno e sombra, mar com seigaiha, trilha pontilhada, fases numeradas e o grupo em pixel.
 
 const W = 1000
-const H = 720
+/** Altura do desenho: acompanha a proporção do painel (o mapa ocupa quase metade da tela do celular). */
+const H_DEFAULT = 720
 
 let countriesCache: Feature<Geometry>[] | null = null
 function countries(): Feature<Geometry>[] {
@@ -49,7 +50,7 @@ interface Node {
   base?: ID
 }
 
-function relax(nodes: Node[], min: number, pad: number) {
+function relax(nodes: Node[], min: number, pad: number, H: number) {
   for (let k = 0; k < 140; k++) {
     for (let i = 0; i < nodes.length; i++)
       for (let j = i + 1; j < nodes.length; j++) {
@@ -83,7 +84,11 @@ function relax(nodes: Node[], min: number, pad: number) {
 }
 
 type Rect = { x: number; y: number; w: number; h: number }
-function placeLabels(items: { x: number; y: number; w: number; h: number; gap: number }[], occ: Rect[]) {
+function placeLabels(
+  items: { x: number; y: number; w: number; h: number; gap: number }[],
+  occ: Rect[],
+  H: number,
+) {
   const ov = (a: Rect, b: Rect) =>
     Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
     Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
@@ -213,7 +218,24 @@ export function Board() {
   const doc = useApp((s) => s.doc)!
   const focusOn = useApp((s) => s.focusOn)
   const setOpenStop = useApp((s) => s.setOpenStop)
+  const setCursorDay = useApp((s) => s.setCursorDay)
   const it = doc.itinerary
+
+  // O desenho segue a proporção do painel, sem cortar nem esticar.
+  const box = useRef<HTMLDivElement>(null)
+  const [H, setH] = useState(H_DEFAULT)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect()
+      if (width > 0 && height > 0) setH(Math.round(Math.max(520, Math.min(1400, (W * height) / width))))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const model = useMemo(() => {
     const destById = new Map(doc.destinations.map((d) => [d.id, d]))
@@ -292,7 +314,7 @@ export function Board() {
         base: trip?.base,
       }
     })
-    relax(nodes, 58, 40)
+    relax(nodes, 58, 40, H)
     const byId = new Map(nodes.map((n) => [n.destId, n]))
 
     // Trilha: curvas entre fases seguidas; ida e volta repetidas ganham curvaturas diferentes.
@@ -352,6 +374,7 @@ export function Board() {
         return { x: n.x, y: n.y, w: name.length * 9.5 + 26, h: 30, gap: 24 }
       }),
       occ,
+      H,
     )
 
     // Decoração semeada pela viagem, só em terra e longe das fases.
@@ -376,14 +399,17 @@ export function Board() {
     const clouds = [0, 1, 2].map(() => ({ x: 80 + R() * (W - 160), y: 40 + R() * (H - 120) }))
 
     return { land, path, nodes, labels, route, home, decos, clouds, byId, seq }
-  }, [doc.destinations, doc.places, doc.meta.id, it])
+  }, [doc.destinations, doc.places, doc.meta.id, it, H])
 
   if (!model) {
     return (
-      <div className="board" style={{ padding: 18 }}>
-        <p className="note">
-          O tabuleiro aparece quando as cidades têm localização. Escolha cidades da lista ao criar a viagem.
-        </p>
+      <div className="board" ref={box}>
+        <div className="note-box">
+          <p className="note">
+            O mapa aparece quando a viagem tem destinos com localização. Toque em + Destino e escolha da
+            lista.
+          </p>
+        </div>
       </div>
     )
   }
@@ -403,8 +429,8 @@ export function Board() {
   const travelers = it.travelers.length || 1
 
   return (
-    <div className="board">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Tabuleiro da viagem">
+    <div className="board" ref={box}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Mapa da viagem">
         <defs>
           <pattern id="seigaiha" width="40" height="20" patternUnits="userSpaceOnUse">
             <g fill="none" stroke="var(--sea-line)" strokeWidth="1.4">
@@ -524,8 +550,10 @@ export function Board() {
           const color = colorOf(doc.destinations, n.destId)
           const go = () => {
             if (!n.firstStop) return
+            const seg = timeline(it).segments.find((s) => s.kind === 'stop' && s.id === n.firstStop)
+            if (seg) setCursorDay(seg.startIndex)
             setOpenStop(n.firstStop)
-            focusOn(`c-${n.firstStop}`, 'roteiro')
+            focusOn(`c-${n.firstStop}`, 'mapa')
           }
           return (
             <g

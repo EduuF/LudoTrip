@@ -387,9 +387,9 @@ export function Celebrations() {
             return (
               <button key={c.id} type="button" className="levelup" onClick={() => dismiss(c.id)}>
                 <span className="box" role="status">
-                  <b>LEVEL UP!</b>
+                  <b>NOVO NÍVEL!</b>
                   <span>
-                    LV {c.level} · {c.name}
+                    nível {c.level} · {c.name}
                   </span>
                   <small>toque para continuar</small>
                 </span>
@@ -408,9 +408,9 @@ export function Celebrations() {
             return (
               <button key={c.id} type="button" className="levelup" onClick={() => dismiss(c.id)}>
                 <span className="box" role="status">
-                  <b>MUNDO CRIADO!</b>
+                  <b>VIAGEM CRIADA!</b>
                   <span>{c.name}</span>
-                  <small>arraste na trilha para ajustar as noites</small>
+                  <small>o mapa e a trilha já estão prontos para mexer</small>
                 </span>
               </button>
             )

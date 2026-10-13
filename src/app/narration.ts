@@ -9,7 +9,7 @@ const names = (doc: TripDoc) => ({ destinations: doc.destinations, places: doc.p
 function leadForCommand(cmd: Command, doc: TripDoc): string | null {
   const it = doc.itinerary
   const city = (id: string) => stopName(it, id, names(doc))
-  const dest = (id: string) => doc.destinations.find((d) => d.id === id)?.name ?? 'A cidade'
+  const dest = (id: string) => doc.destinations.find((d) => d.id === id)?.name ?? 'O destino'
   switch (cmd.type) {
     case 'setNights':
       return `${city(cmd.stopId)}: ${plural(cmd.nights, 'noite', 'noites')}.`

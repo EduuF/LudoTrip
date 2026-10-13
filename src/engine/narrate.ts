@@ -26,12 +26,12 @@ export const MODE_NAMES: Record<LegMode, string> = {
   moto: 'moto',
 }
 
-/** Nome da cidade de uma parada ("Noites em aberto" quando não tem cidade). */
+/** Nome do destino de uma parada ("Noites em aberto" quando não tem destino). */
 export function stopName(it: Itinerary, stopId: unknown, names: Names): string {
   const stop = it.stops.find((s) => s.id === stopId)
-  if (!stop) return 'Essa cidade'
+  if (!stop) return 'Esse destino'
   if (!stop.destinationId) return 'Noites em aberto'
-  return names.destinations.find((d) => d.id === stop.destinationId)?.name ?? 'Essa cidade'
+  return names.destinations.find((d) => d.id === stop.destinationId)?.name ?? 'Esse destino'
 }
 
 function endName(it: Itinerary, end: ID | 'home', names: Names): string {
@@ -193,19 +193,19 @@ export function describeError(error: EngineError, it: Itinerary, names: Names): 
       return `${stopName(it, d.donorId, names)} tem só ${plural(donor ? nightsOf(donor) : 1, 'noite', 'noites')}.`
     }
     case 'SAME_STOP':
-      return 'Escolha outra cidade.'
+      return 'Escolha outro destino.'
     case 'NEEDS_BOTH_NEIGHBORS': {
       const first = it.stops[0]?.id === d.stopId
-      return first ? 'É a primeira cidade: mude a data de ida.' : 'É a última cidade: mude a data de volta.'
+      return first ? 'É o primeiro destino: mude a data de ida.' : 'É o último destino: mude a data de volta.'
     }
     case 'SPLIT_TOO_SMALL':
       return `Não cabe: ${stopName(it, d.stopId, names)} ficaria sem noites depois.`
     case 'NOT_OPEN':
-      return 'Essas noites já têm cidade.'
+      return 'Essas noites já têm destino.'
     case 'ALREADY_OPEN':
       return 'Essas noites já estão em aberto.'
     case 'OPEN_HAS_NO_PLANS':
-      return 'Escolha uma cidade para essas noites antes.'
+      return 'Escolha um destino para essas noites antes.'
     case 'NO_START':
       return 'Escolha a data de ida antes.'
     case 'INVALID_DATE':
@@ -217,15 +217,15 @@ export function describeError(error: EngineError, it: Itinerary, names: Names): 
     case 'INVALID':
       switch (d.reason) {
         case 'only-stop':
-          return 'É a única cidade da viagem.'
+          return 'É o único destino da viagem.'
         case 'same-destination':
-          return 'Já é essa cidade.'
+          return 'Já é esse destino.'
         case 'split-open':
         case 'open-has-no-days':
         case 'use-fill-open':
-          return 'Escolha uma cidade para essas noites antes.'
+          return 'Escolha um destino para essas noites antes.'
         case 'open-cannot-donate-here':
-          return 'Escolha de qual cidade sai a noite.'
+          return 'Escolha de qual destino sai a noite.'
         case 'home-leg-aboard':
           return 'Na volta, marque a chegada no dia seguinte.'
         default:

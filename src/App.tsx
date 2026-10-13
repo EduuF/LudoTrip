@@ -6,12 +6,12 @@ import { Album } from './ui/Album'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
 import { Celebrations, Petals, Toast } from './ui/kit'
-import { Mundo } from './ui/Mundo'
-import { Quests } from './ui/Quests'
-import { Roteiro } from './ui/Roteiro'
+import { Mapa } from './ui/Mapa'
 import { Sheets } from './ui/Sheets'
+import { Tarefas } from './ui/Tarefas'
 
 // Casca do app (spec §17.1): HUD com contagem e nível, abas embaixo, painéis e comemorações.
+// A tela principal é o Mapa: mapa, trilha, cartão do dia e roteiro numa tela só (spec §17.2).
 
 function Hud() {
   const doc = useApp((s) => s.doc)!
@@ -54,7 +54,7 @@ function Hud() {
         </div>
         <div className="hud-bottom">
           <span className="cd-chip">{cd}</span>
-          <span className="lv">LV {p.level}</span>
+          <span className="lv">NÍVEL {p.level}</span>
           <span
             className="xpbar"
             role="progressbar"
@@ -73,10 +73,9 @@ function Hud() {
 }
 
 const TABS: { id: Tab; k: string; label: string }[] = [
-  { id: 'mundo', k: '図', label: 'Mundo' },
-  { id: 'roteiro', k: '旅', label: 'Roteiro' },
+  { id: 'mapa', k: '図', label: 'Mapa' },
   { id: 'mochila', k: '帖', label: 'Mochila' },
-  { id: 'quests', k: '任', label: 'Quests' },
+  { id: 'tarefas', k: '任', label: 'Tarefas' },
 ]
 
 function Tabs() {
@@ -102,7 +101,7 @@ function Tabs() {
               {t.k}
             </span>
             {t.label}
-            {t.id === 'quests' && urgent ? <span className="badge">{urgent}</span> : null}
+            {t.id === 'tarefas' && urgent ? <span className="badge">{urgent}</span> : null}
           </button>
         ))}
       </div>
@@ -113,26 +112,34 @@ function Tabs() {
 function Trip() {
   const tab = useApp((s) => s.tab)
   const openStop = useApp((s) => s.openStop)
+  const focus = useApp((s) => s.focus)
+  const clearFocus = useApp((s) => s.clearFocus)
   const name = useApp((s) => s.doc?.meta.name)
   useEffect(() => {
     if (name) document.title = `${name} · LudoTrip`
   }, [name])
+
+  // "Ver" em qualquer tela: rola até o cartão e pisca (depois que a aba certa desenhou).
+  useEffect(() => {
+    if (!focus) return
+    const el = document.getElementById(focus)
+    clearFocus()
+    if (!el) return
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+    el.classList.remove('flash')
+    void el.offsetWidth
+    el.classList.add('flash')
+  }, [focus, clearFocus])
+
   return (
     <>
       <Hud />
-      <main className="wrap">
-        {tab === 'mundo' ? (
-          <Mundo />
-        ) : tab === 'roteiro' ? (
-          <Roteiro />
-        ) : tab === 'mochila' ? (
-          <Album />
-        ) : (
-          <Quests />
-        )}
+      <main className={`wrap${tab === 'mapa' ? ' wide' : ''}`}>
+        {tab === 'mapa' ? <Mapa /> : tab === 'mochila' ? <Album /> : <Tarefas />}
       </main>
       <Tabs />
-      <Toast withTray={tab === 'roteiro' && !!openStop} />
+      <Toast withTray={tab === 'mapa' && !!openStop} />
       <Sheets />
     </>
   )

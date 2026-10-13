@@ -16,7 +16,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 
 ## Regras de ouro (vencem qualquer outra coisa)
 
-1. **Usabilidade, correção, diversão e intuição** são as regras máximas. A vibe da v1 vem logo depois e é um norte, não uma régua.
+1. **Prioridades de ouro, nesta ordem** (em conflito, a de cima vence): **sem bugs** · **resolve problemas reais** de quem planeja viagens · **intuitivo** · **divertido** · **dinâmico** (site com vida, sem cara de IA, arte de verdade vinda de boas referências artísticas e de outros sites) · **simples** de usar e entender. A vibe da v1 vem logo depois e é um norte, não uma régua.
 2. **Editar nunca destrói.** O que sai do calendário volta para a Mochila. Toda ação tem Desfazer. Nada de "tem certeza?".
 3. **Reservas são fatos.** O app nunca muda a data de uma reserva sozinho; mostra o conflito e oferece a correção.
 4. **O app se adapta ao conteúdo da viagem.** Ninguém escolhe "tipo de viagem"; as funções acendem pelo que a viagem contém.
@@ -32,7 +32,8 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - Nunca deixe a pessoa num beco sem saída: em vez de erro, mostre as saídas como botões.
   - Exemplo: "Ginzan Onsen tem só 1 noite." [Tirar de Osaka] [Adiar a volta]
 - Ações dizem a intenção de quem viaja ("Tirar do roteiro", "Chegar 1 dia antes", "Desfazer"), nunca o nome da operação; ícone ou seta sozinha não basta. Os avisos confirmam o que aconteceu ("Sensō-ji voltou para a mochila").
-- Português do Brasil; o vocabulário de jogo é bem-vindo (Fase, Mundo, Quest, LV).
+- Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, figurinhas, estrelas); **navegação e ações em palavras comuns** (Mapa, Roteiro, Mochila, Tarefas, Destino). Nada de "Quest", "Mundo", "LV" ou "Fase" em rótulos.
+- **"Destino" é a palavra genérica** (país, região, cidade, parque, ilha, navio); "cidade" só quando é mesmo uma cidade.
 
 ## Como trabalhar
 
@@ -56,4 +57,4 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - **Toda ação de quem usa tem Desfazer**, inclusive mochila e reservas (que ficam fora do itinerário): elas também passam por comandos com inverso. Toda marcação (passagem comprada, hospedagem, visitado) desmarca no mesmo lugar.
 - **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
 - **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run e2e` (a partir do M4).
-- **Prévia para o mantenedor:** `npm run preview:artifact` gera `dist-preview/ludotrip.html`, um HTML único (React 18 por CDN, o resto embutido) que se publica como artifact para testar no celular. O laboratório do motor foi aposentado: o que vai para o mantenedor é sempre o app de verdade.
+- **Teste de verdade:** https://eduuf.github.io/LudoTrip/ (o workflow Pages publica a cada push na `main`; o mantenedor testa no celular, com internet). A prévia por artifact (`npm run preview:artifact` → `dist-preview/ludotrip.html`, HTML único com React 18 por CDN) é o plano B, em modo papel, sem rede. O laboratório do motor foi aposentado: o que vai para o mantenedor é sempre o app de verdade.

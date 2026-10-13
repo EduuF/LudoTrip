@@ -18,36 +18,21 @@ import {
 import type { Booking, Day, DayRef, ID, Leg, LegMode, Stop } from '../engine'
 import { uid, useApp } from '../app/store'
 import type { DocAction } from '../app/doc'
-import { cityName, minusNight, plusNight, removeDayChoice, swapDayChoice } from '../app/choices'
+import { cityName, markLodging, minusNight, plusNight, removeDayChoice, swapDayChoice } from '../app/choices'
 import { colorOf, sealOf } from './colors'
 import { Seal, Stepper, Vehicle } from './kit'
-import { Trilha } from './Trilha'
 
-// Roteiro (spec §17.3 e §17.4): a Trilha em cima; cidades, trechos e dias embaixo; a bandeja de figurinhas.
+// Roteiro (spec §17.4): a lista na ordem da viagem (destinos, trechos e dias), "+ Adicionar destino"
+// e a bandeja de figurinhas. A Trilha e o cartão do dia ficam acima, na tela do Mapa.
 
 const NEEDS_TICKET = new Set<LegMode>(['flight', 'train', 'bus', 'boat'])
 const SLOT_LABEL = { morning: 'manhã', afternoon: 'tarde', evening: 'noite', any: '' } as const
 const SLOT_ORDER = { morning: 0, afternoon: 1, evening: 2, any: 3 } as const
 
-export function Roteiro() {
+export function RoteiroList() {
   const doc = useApp((s) => s.doc)!
-  const focus = useApp((s) => s.focus)
-  const clearFocus = useApp((s) => s.clearFocus)
-  const openStop = useApp((s) => s.openStop)
   const it = doc.itinerary
   const ds = useMemo(() => allDays(it, doc.places), [it, doc.places])
-
-  useEffect(() => {
-    if (!focus) return
-    const el = document.getElementById(focus)
-    clearFocus()
-    if (!el) return
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
-    el.classList.remove('flash')
-    void el.offsetWidth
-    el.classList.add('flash')
-  }, [focus, clearFocus])
 
   const items: JSX.Element[] = []
   it.stops.forEach((s, i) => {
@@ -61,17 +46,32 @@ export function Roteiro() {
       ),
     )
   })
+  items.push(<AddDestCard key="add" />)
   const back = it.legs[it.stops.length]
   if (back) items.push(<LegCard key={back.id} leg={back} days={ds} />)
 
-  const trayStop = it.stops.find((s) => s.id === openStop && s.destinationId)
+  return <div className="list">{items}</div>
+}
 
+/** "… Adicionar destino … Volta": mais um lugar antes de voltar para casa. */
+function AddDestCard() {
+  const openSheet = useApp((s) => s.openSheet)
+  const count = useApp((s) => s.doc!.itinerary.stops.length)
   return (
-    <>
-      <Trilha />
-      <div className="list">{items}</div>
-      {trayStop ? <Tray stop={trayStop} /> : null}
-    </>
+    <button
+      type="button"
+      className="card add-dest"
+      onClick={() =>
+        openSheet({
+          kind: 'dest',
+          title: 'Que destino entra no fim da viagem?',
+          pick: (destId) => openSheet({ kind: 'insert', index: count, destId, nights: 1 }),
+        })
+      }
+    >
+      <b>+ Adicionar destino</b>
+      <span>Mais um lugar antes da volta. Para pôr no meio, use "+ Parar no caminho" num trecho.</span>
+    </button>
   )
 }
 
@@ -126,28 +126,7 @@ function CityCard({ stop, index, days }: { stop: Stop; index: number; days: Day[
     }
     if (gap && w.start && w.end) {
       pills.push(
-        <button
-          key="gap"
-          type="button"
-          className="pill warn"
-          onClick={() =>
-            act(
-              {
-                type: 'addBooking',
-                booking: {
-                  id: uid('h'),
-                  kind: 'lodging',
-                  title: `Hospedagem em ${dest?.name ?? 'cidade'}`,
-                  destinationId: stop.destinationId!,
-                  checkin: addDays(w.start!, gap.missing[0]!.ordinal),
-                  checkout: addDays(w.start!, gap.missing[gap.missing.length - 1]!.ordinal + 1),
-                  status: 'booked',
-                },
-              },
-              { stamp: true },
-            )
-          }
-        >
+        <button key="gap" type="button" className="pill warn" onClick={() => markLodging(stop.id)}>
           {gap.partial
             ? `${gap.missing.map((m) => m.label).join(', ')} sem hospedagem`
             : 'Hospedagem: falta reservar'}{' '}
@@ -237,18 +216,31 @@ function CityCard({ stop, index, days }: { stop: Stop; index: number; days: Day[
   }
 }
 
-export function DayRow({ day, menu, title }: { day: Day; menu?: () => void; title?: string }) {
+export function DayRow({
+  day,
+  menu,
+  title,
+  compact,
+}: {
+  day: Day
+  menu?: () => void
+  title?: string
+  /** Sem a coluna da data (o cartão do dia já a mostra). */
+  compact?: boolean
+}) {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
   const trips = day.dayTrips.map((x) => doc.destinations.find((d) => d.id === x)?.name).filter(Boolean)
   const visits = [...day.visits].sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot])
   return (
-    <div className="day" data-dayref={day.ref ? JSON.stringify(day.ref) : undefined}>
-      <div className="d">
-        {day.label}
-        {title ? <small>{title}</small> : null}
-        {trips.length ? <small>bate-volta: {trips.join(', ')}</small> : null}
-      </div>
+    <div className={`day${compact ? ' compact' : ''}`} data-dayref={day.ref ? JSON.stringify(day.ref) : undefined}>
+      {compact ? null : (
+        <div className="d">
+          {day.label}
+          {title ? <small>{title}</small> : null}
+          {trips.length ? <small>bate-volta: {trips.join(', ')}</small> : null}
+        </div>
+      )}
       <div className="slots">
         {visits.map((v) => {
           const p = doc.places.find((x) => x.id === v.placeId)
@@ -346,7 +338,7 @@ function OpenCard({ stop, index }: { stop: Stop; index: number }) {
           onClick={() =>
             openSheet({
               kind: 'dest',
-              title: 'Qual cidade fica nessas noites?',
+              title: 'Que destino fica nessas noites?',
               pick: (destId) =>
                 n === 1
                   ? act({
@@ -357,7 +349,7 @@ function OpenCard({ stop, index }: { stop: Stop; index: number }) {
             })
           }
         >
-          + Escolher cidade
+          + Escolher destino
         </button>
         {same ? (
           <button
@@ -557,14 +549,36 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
         {legDays.map((d) => (
           <DayRow key={d.index} day={d} title="noite a bordo" />
         ))}
-        <button
-          type="button"
-          className="link"
-          style={{ alignSelf: 'flex-start' }}
-          onClick={() => openSheet({ kind: 'leg', legId: leg.id })}
-        >
-          Editar trecho
-        </button>
+        <div className="row">
+          <button
+            type="button"
+            className="link"
+            onClick={() => openSheet({ kind: 'leg', legId: leg.id })}
+          >
+            Editar trecho
+          </button>
+          {leg.to !== 'home' ? (
+            <button
+              type="button"
+              className="link"
+              onClick={() =>
+                openSheet({
+                  kind: 'dest',
+                  title: 'Que destino entra aqui?',
+                  pick: (destId) =>
+                    openSheet({
+                      kind: 'insert',
+                      index: it.stops.findIndex((s) => s.id === leg.to),
+                      destId,
+                      nights: 1,
+                    }),
+                })
+              }
+            >
+              + Parar no caminho
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -574,7 +588,7 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
 // Bandeja de figurinhas soltas (arrastar até o dia, ou tocar e escolher o dia)
 // ---------------------------------------------------------------------------
 
-function Tray({ stop }: { stop: Stop }) {
+export function Tray({ stop }: { stop: Stop }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)

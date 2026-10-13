@@ -51,7 +51,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
   const setOpenStop = useApp((s) => s.setOpenStop)
   const focusOn = useApp((s) => s.focusOn)
   const it = doc.itinerary
-  const destName = (id: ID) => doc.destinations.find((d) => d.id === id)?.name ?? 'Cidade'
+  const destName = (id: ID) => doc.destinations.find((d) => d.id === id)?.name ?? 'Destino'
 
   switch (sheet.kind) {
     case 'choice':
@@ -67,14 +67,14 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'city': {
       const s = it.stops.find((x) => x.id === sheet.stopId)
-      if (!s) return <h2>Essa cidade saiu do roteiro.</h2>
+      if (!s) return <h2>Esse destino saiu do roteiro.</h2>
       const i = it.stops.indexOf(s)
       const name = cityName(s.id)
       if (!s.destinationId)
         return (
           <>
             <h2>{plural(s.days.length, 'noite em aberto', 'noites em aberto')}</h2>
-            <OptButton o={{ label: 'Ver no roteiro', run: () => focusOn(`c-${s.id}`, 'roteiro') }} />
+            <OptButton o={{ label: 'Ver no roteiro', run: () => focusOn(`c-${s.id}`, 'mapa') }} />
           </>
         )
       return (
@@ -87,7 +87,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
               main: true,
               run: () => {
                 setOpenStop(s.id)
-                focusOn(`c-${s.id}`, 'roteiro')
+                focusOn(`c-${s.id}`, 'mapa')
               },
             }}
           />
@@ -112,19 +112,19 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           <OptButton
             o={{
               label: 'Mudar a ordem',
-              detail: ['Escolha depois de qual cidade ela vem.'],
+              detail: ['Escolha depois de qual destino ele vem.'],
               run: () => openSheet({ kind: 'order', stopId: s.id }),
             }}
           />
           {s.days.length >= 2 ? (
             <OptButton
               o={{
-                label: 'Ir a outra cidade no meio',
-                detail: [`Ex.: 2 noites em outra cidade no meio de ${name}.`],
+                label: 'Ir a outro destino no meio',
+                detail: [`Ex.: 2 noites em outro lugar no meio de ${name}.`],
                 run: () =>
                   openSheet({
                     kind: 'dest',
-                    title: `Qual cidade no meio de ${name}?`,
+                    title: `Que destino no meio de ${name}?`,
                     pick: (destId) =>
                       openSheet({
                         kind: 'split',
@@ -150,7 +150,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           <OptButton
             o={{
               label: 'Tirar do roteiro',
-              detail: ['As noites ficam em aberto, com as mesmas datas. A mochila da cidade fica guardada.'],
+              detail: ['As noites ficam em aberto, com as mesmas datas. A mochila dele fica guardada.'],
               run: () =>
                 act({ type: 'engine', command: { type: 'removeStop', stopId: s.id } }, { burst: true }),
             }}
@@ -161,7 +161,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'order': {
       const s = it.stops.find((x) => x.id === sheet.stopId)
-      if (!s) return <h2>Essa cidade saiu do roteiro.</h2>
+      if (!s) return <h2>Esse destino saiu do roteiro.</h2>
       const others = it.stops.filter((x) => x.id !== s.id)
       const cur = it.stops.indexOf(s)
       return (
@@ -237,12 +237,12 @@ function Body({ sheet }: { sheet: SheetSpec }) {
           )}
           <OptButton
             o={{
-              label: '+ Cidade aqui',
-              detail: ['Uma parada nova entre essas duas.'],
+              label: '+ Destino aqui',
+              detail: ['Um lugar novo entre esses dois.'],
               run: () =>
                 openSheet({
                   kind: 'dest',
-                  title: 'Qual cidade entra aqui?',
+                  title: 'Que destino entra aqui?',
                   pick: (destId) => openSheet({ kind: 'insert', index: toIdx, destId, nights: 1 }),
                 }),
             }}
@@ -309,7 +309,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'split': {
       const s = it.stops.find((x) => x.id === sheet.stopId)
-      if (!s) return <h2>Essa cidade saiu do roteiro.</h2>
+      if (!s) return <h2>Esse destino saiu do roteiro.</h2>
       const ds = allDays(it).filter((d) => d.stopId === s.id && d.kind === 'stop')
       return (
         <>
@@ -795,11 +795,11 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
           </button>
         ))}
       </div>
-      <label className="field" htmlFor="busca-cidade">
-        <span>Outra cidade</span>
+      <label className="field" htmlFor="busca-destino">
+        <span>Outro destino</span>
         <input
           className="input"
-          id="busca-cidade"
+          id="busca-destino"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Busque: Lisboa, Cusco, Seul…"

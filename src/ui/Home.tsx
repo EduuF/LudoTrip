@@ -33,8 +33,8 @@ export function Home() {
           Ludo<em>Trip</em>
         </h1>
         <p className="note">
-          Planeje a viagem como quem joga: arraste cidades na trilha, cole figurinhas nos dias, cumpra as
-          quests.
+          Planeje a viagem como quem joga: veja o mapa do lugar, arraste os destinos na trilha, cole
+          figurinhas nos dias e resolva as tarefas.
         </p>
       </header>
       <button type="button" className="btn big main" onClick={goCreate} style={{ marginTop: 12 }}>

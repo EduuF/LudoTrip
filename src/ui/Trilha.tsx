@@ -3,6 +3,7 @@ import type { CSSProperties, PointerEvent as RPointerEvent } from 'react'
 import {
   addDays,
   bookingStatus,
+  days as allDays,
   ddmm,
   lodgingGaps,
   MODE_NAMES,
@@ -57,6 +58,8 @@ export function Trilha() {
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const say = useApp((s) => s.say)
+  const cursor = useApp((s) => s.cursorDay)
+  const setCursorDay = useApp((s) => s.setCursorDay)
   const it = doc.itinerary
   const total = timeline(it).total
 
@@ -140,6 +143,13 @@ export function Trilha() {
   const today = todayISO()
   const phase = tripPhase(it, today)
 
+  // Bate-voltas por dia (bandeirinha na régua), pela prévia quando há arraste.
+  const dayTrips = useMemo(() => {
+    const m = new Map<number, ID[]>()
+    for (const d of allDays(view, doc.places)) if (d.dayTrips.length) m.set(d.index, d.dayTrips)
+    return m
+  }, [view, doc.places])
+
   // Alertas na própria trilha: hotel fora das datas ou noites sem hospedagem em parte.
   const warned = useMemo(() => {
     const out = new Set<ID>()
@@ -181,10 +191,10 @@ export function Trilha() {
         }
       }
       if (intent.reason === 'first')
-        return { text: 'É a primeira cidade: para chegar antes, mude a data de ida.', bad: true }
+        return { text: 'É o primeiro destino: para chegar antes, mude a data de ida.', bad: true }
       if (intent.reason === 'last')
-        return { text: 'É a última cidade: para chegar depois, mude a volta.', bad: true }
-      if (intent.reason === 'short') return { text: 'Arraste mais para passar a cidade ao lado.', bad: true }
+        return { text: 'É o último destino: para chegar depois, mude a volta.', bad: true }
+      if (intent.reason === 'short') return { text: 'Arraste mais para passar o destino ao lado.', bad: true }
       return { text: 'Arraste para mudar a data ou a ordem. Solte na lixeira para tirar.' }
     },
     [it],
@@ -192,9 +202,9 @@ export function Trilha() {
 
   const shelfText = useCallback(
     (destId: ID, intent: ShelfIntent | null): string => {
-      const dest = doc.destinations.find((d) => d.id === destId)?.name ?? 'A cidade'
+      const dest = doc.destinations.find((d) => d.id === destId)?.name ?? 'O destino'
       if (!intent)
-        return `Solte ${dest} na trilha: no meio de uma cidade, entre duas ou nas noites em aberto.`
+        return `Solte ${dest} na trilha: no meio de um destino, entre dois ou nas noites em aberto.`
       if (intent.kind === 'fill') return `${dest} nas noites em aberto.`
       if (intent.kind === 'split') {
         const start = stopStart(intent.stopId)
@@ -353,8 +363,11 @@ export function Trilha() {
     if (!d) {
       // Toque simples: abre as ações em palavras.
       if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= MOVE_TOLERANCE) {
-        if (kind === 'block') openSheet({ kind: 'city', stopId: id })
-        else openSheet({ kind: 'where', destId: id })
+        if (kind === 'block') {
+          // Como na v1: tocar num destino leva o cursor de dias para o primeiro dia dele.
+          setCursorDay(stopStart(id))
+          openSheet({ kind: 'city', stopId: id })
+        } else openSheet({ kind: 'where', destId: id })
       }
       return
     }
@@ -630,18 +643,36 @@ export function Trilha() {
             />
           ) : null}
 
-          <div className="tr-ruler" aria-hidden="true">
+          <div className="tr-ruler" role="group" aria-label="Dias da viagem: toque num dia para vê-lo">
             {Array.from({ length: tl.total + 1 }, (_, i) => {
               const date = view.start ? addDays(view.start, i) : null
               const wd = date ? weekday(date) : ''
               const isWeekend = wd === 'sáb' || wd === 'dom'
               const isToday = phase.kind === 'during' && phase.day - 1 === i
               const newMonth = date && (i === 0 || date.slice(8) === '01')
+              const trips = dayTrips.get(i) ?? []
+              const tripNames = trips
+                .map((id) => doc.destinations.find((d) => d.id === id)?.name)
+                .filter(Boolean)
+                .join(', ')
+              const cls = [
+                'tr-day',
+                isWeekend ? 'we' : '',
+                isToday ? 'today' : '',
+                i === tl.total ? 'ret' : '',
+                cursor === i ? 'cur' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')
               return (
-                <span
+                <button
                   key={i}
-                  className={`tr-day${isWeekend ? ' we' : ''}${isToday ? ' today' : ''}${i === tl.total ? ' ret' : ''}`}
+                  type="button"
+                  className={cls}
                   style={{ width: dw }}
+                  aria-label={`${date ? `${wd} ${ddmm(date)}` : `dia ${i + 1}`}${tripNames ? `, bate-volta: ${tripNames}` : ''}`}
+                  aria-pressed={cursor === i}
+                  onClick={() => setCursorDay(i)}
                 >
                   <i>
                     {date
@@ -653,7 +684,14 @@ export function Trilha() {
                       : 'D'}
                   </i>
                   <b>{date ? (dw >= 18 || i % 2 === 0 ? date.slice(8) : '') : i + 1}</b>
-                </span>
+                  {trips.length ? (
+                    <span className="tr-trips" aria-hidden="true">
+                      {trips.map((id) => (
+                        <em key={id} className="tr-trip" style={{ background: colorOf(doc.destinations, id) }} />
+                      ))}
+                    </span>
+                  ) : null}
+                </button>
               )
             })}
           </div>
@@ -687,16 +725,17 @@ export function Trilha() {
           onClick={() =>
             openSheet({
               kind: 'dest',
-              title: 'Qual cidade entra na viagem?',
+              title: 'Que destino entra na viagem?',
               pick: (destId) => openSheet({ kind: 'where', destId }),
             })
           }
         >
-          + Nova cidade
+          + Destino
         </button>
       </div>
       <p className="tr-hint">
-        Arraste ◆ para mudar as noites. Segure uma cidade para mudar a data, a ordem ou tirar do roteiro.
+        Arraste ◆ para mudar as noites. Segure um destino para mudar a data, a ordem ou tirar do roteiro.
+        Toque num dia para vê-lo no cartão.
       </p>
 
       {lifted ? (

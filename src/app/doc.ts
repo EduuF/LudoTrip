@@ -24,9 +24,23 @@ export interface TripMeta {
   updatedAt: number
 }
 
+/** Para onde é a viagem (país, região ou cidade): enquadra o mapa e dá o tema, mesmo sem nenhuma parada decidida. */
+export interface Scope {
+  name: string
+  localName?: string
+  kind: 'country' | 'region' | 'city'
+  /** ISO 3166-1 alpha-2. */
+  country?: string
+  lat?: number
+  lon?: number
+  /** [oeste, sul, leste, norte] em graus. */
+  bbox?: [number, number, number, number]
+}
+
 export interface TripDoc {
   meta: TripMeta
   itinerary: Itinerary
+  scope?: Scope
   destinations: Destination[]
   places: Place[]
   bookings: Booking[]
