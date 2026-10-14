@@ -35,6 +35,8 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, estrelas); **navegação e ações em palavras comuns** (Mapa, Atividades, Tarefas, Destino, Atividade, Hospedagem). Nada de "Quest", "Mundo", "LV", "Fase", "Mochila" ou "figurinha" em rótulos ("mochila" só no motor).
 - **Não inventar problema:** toda ação visível responde a uma frase de quem viaja; se não há frase, não há botão.
 - **Painéis-editores ficam abertos** (trecho, atividade, visita, hospedagem, "Sua viagem"): mudar um campo não fecha o painel (`act(..., { keep: true })`); painéis de escolha fecham ao escolher. Ao corrigir um bug num painel, auditar todos os `act(` dos outros.
+- **Escolhas que escalam:** nenhum painel lista uma frase por destino ou por dia. Onde/quando: `TimelinePicker` / `DayPicker` (`src/ui/TimelinePicker.tsx`); "de onde sai a noite": `nearest()` (3 + "Outro destino…"). Testar com `italiaLonga()` (50 destinos, 120 noites).
+- **Atividade × dia:** anotações, turno, horário e "feita" são da visita (`Visit`); nome, tipo, prioridade, mapa e anotações gerais são da atividade (`Place`). Agendar do catálogo sempre cria mais uma visita (`scheduleOnce`).
 - **Revelar progressivamente:** um lugar aberto por vez, uma ação primária por bloco, sem duplicatas na mesma tela; dicas somem depois de usadas. Medida: contar os controles da página do exemplo antes e depois.
 - **"Destino" é a palavra genérica** (país, região, cidade, parque, ilha, navio); "cidade" só quando é mesmo uma cidade.
 

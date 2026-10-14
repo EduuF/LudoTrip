@@ -123,7 +123,51 @@ test('"+ Atividade" num dia do roteiro cria a atividade já naquele dia', async 
   await dialog.getByRole('button', { name: /Imperdível/ }).click()
   await dialog.getByRole('button', { name: 'Criar atividade' }).click()
   await expect(page.getByText('Atividade nova: Ginkaku-ji.')).toBeVisible()
-  await expect(card.getByRole('button', { name: /Ginkaku-ji/ })).toBeVisible()
+  await expect(card.locator('.days').getByRole('button', { name: /Ginkaku-ji/ })).toBeVisible()
+})
+
+test('a mesma atividade em dois dias, cada um com a sua anotação ("✎" na ficha)', async ({ page }) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
+  const card = page.locator('#c-s8')
+  const dias = card.locator('[data-dayref]')
+  // Arrastar Gion do catálogo (mouse) até o último dia de Kyoto (logo acima): entra em mais um dia.
+  const chip = card.locator('.loose-row').getByRole('button', { name: /^Gion/ })
+  await chip.scrollIntoViewIfNeeded()
+  const a = (await chip.boundingBox())!
+  const b = (await dias.nth(6).boundingBox())!
+  expect(b.y).toBeGreaterThan(0)
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(a.x + a.width / 2 + 10, a.y + a.height / 2 - 10, { steps: 3 })
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 })
+  await page.mouse.up()
+  await expect(page.getByText('Gion marcada no dia.')).toBeVisible()
+  await expect(card.locator('.days').getByRole('button', { name: /Gion/ })).toHaveCount(2)
+  // Anotação no primeiro dia: salva, "✎" na ficha; o segundo dia continua limpo.
+  await card.locator('.days').getByRole('button', { name: /Gion/ }).first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel(/Anotações deste dia/).fill('Ir no fim da tarde')
+  await dialog.getByLabel('Horário (opcional)').click()
+  await expect(page.getByText('Anotação do dia salva.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await expect(card.locator('.days').getByRole('button', { name: /Gion.*com anotações/ })).toHaveCount(1)
+  await card.locator('.days').getByRole('button', { name: /Gion/ }).nth(1).click()
+  await expect(dialog.getByLabel(/Anotações deste dia/)).toHaveValue('')
+  await expect(dialog.getByRole('button', { name: 'Copiar de sáb 13/04' })).toBeVisible()
+})
+
+test('adicionar destino pela linha do tempo: a sugestão "no caminho" e as noites', async ({ page }) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: '+ Adicionar destino' }).first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: /Nara/ }).first().click()
+  await expect(dialog).toContainText('Onde Nara entra?')
+  await expect(dialog.locator('.tl-suggest')).toContainText('Osaka')
+  await dialog.getByRole('button', { name: 'Pôr aqui' }).click()
+  await expect(dialog.getByRole('heading')).toContainText(/Nara entre .*Osaka/)
+  await dialog.locator('.opt').first().click()
+  await expect(page.getByRole('button', { name: /^Nara, 1 noite/ })).toBeVisible()
 })
 
 test('no mouse: arrastar um destino muda a data sem segurar; arrastar a régua rola a faixa', async ({

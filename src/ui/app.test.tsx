@@ -65,6 +65,11 @@ const abrirKyoto = () => {
   if (b) fireEvent.click(b)
 }
 
+/** Os dias do cartão de Kyoto (sem o catálogo, onde as atividades também aparecem). */
+const kyotoDays = () => within(document.querySelector<HTMLElement>('#c-s8 .days')!)
+/** O catálogo de atividades do cartão de Kyoto. */
+const kyotoCatalog = () => within(document.querySelector<HTMLElement>('#c-s8 .loose-row')!)
+
 /** Preenche o painel "Nova atividade" aberto: nome, prioridade e "Criar atividade". */
 async function preencherAtividade(name: string, rarity: RegExp) {
   const dialog = await screen.findByRole('dialog')
@@ -152,14 +157,14 @@ describe('app', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     abrirKyoto()
-    fireEvent.click(kyotoCard().getByRole('button', { name: /Gion/ }))
+    fireEvent.click(kyotoDays().getByRole('button', { name: /Gion/ }))
     const visit = await screen.findByRole('dialog')
     fireEvent.click(within(visit).getByRole('button', { name: 'tarde' }))
     await waitFor(() =>
       expect(within(visit).getByRole('button', { name: 'tarde' }).getAttribute('aria-pressed')).toBe('true'),
     )
     expect(screen.getByRole('dialog')).toBeTruthy()
-    fireEvent.click(within(visit).getByText('Detalhes da atividade'))
+    fireEvent.click(within(visit).getByRole('button', { name: /^Sobre a atividade/ }))
     const sticker = await screen.findByRole('dialog')
     fireEvent.click(
       within(within(sticker).getByRole('group', { name: 'Prioridade' })).getByRole('button', {
@@ -196,7 +201,7 @@ describe('app', () => {
     expect(within(dialog).getByText('Nova atividade em Kyoto')).toBeTruthy()
     expect(within(dialog).getByText(/Entra em sáb 13\/04/)).toBeTruthy()
     await preencherAtividade('Ginkaku-ji', /Quero/)
-    expect(kyotoCard().getByRole('button', { name: /Ginkaku-ji/ })).toBeTruthy()
+    expect(kyotoDays().getByRole('button', { name: /Ginkaku-ji/ })).toBeTruthy()
     const p = useApp.getState().doc!.places.find((x) => x.name === 'Ginkaku-ji')!
     expect(p.rarity).toBe('want')
   })
@@ -296,7 +301,7 @@ describe('app', () => {
 
   it('arrastar uma atividade de um dia para outro muda o dia (mouse)', async () => {
     abrirKyoto()
-    const gion = kyotoCard().getByRole('button', { name: /Gion/ })
+    const gion = kyotoDays().getByRole('button', { name: /Gion/ })
     const rows = document.querySelectorAll<HTMLElement>('#c-s8 [data-dayref]')
     const target = rows[1]!
     // O jsdom não sabe o que há sob o ponteiro: o segundo dia de Kyoto fica "embaixo" do arraste.
@@ -309,6 +314,116 @@ describe('app', () => {
     expect(await screen.findByText('Atividade mudou de dia.')).toBeTruthy()
     expect(within(target).getByRole('button', { name: /Gion/ })).toBeTruthy()
     delete (document as { elementFromPoint?: unknown }).elementFromPoint
+  })
+
+  it('catálogo: uma atividade com dia continua no catálogo e arrastar põe em mais um dia; o mesmo dia só avisa', async () => {
+    abrirKyoto()
+    // Gion já está em sáb 13/04 e continua no catálogo, com o dia; Sanjūsangen-dō (sem dia) vem primeiro.
+    const chips = kyotoCatalog().getAllByRole('button')
+    expect(chips[0]!.getAttribute('aria-label')).toMatch(/^Sanjūsangen-dō, sem dia/)
+    const gion = kyotoCatalog().getByRole('button', { name: /^Gion, em sáb 13\/04/ })
+    const rows = document.querySelectorAll<HTMLElement>('#c-s8 [data-dayref]')
+    document.elementFromPoint = () => rows[1]!
+    fireEvent.pointerDown(gion, { ...mouse, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(gion, { ...mouse, clientX: 30, clientY: 40 })
+    fireEvent.pointerUp(gion, { ...mouse, clientX: 30, clientY: 40 })
+    expect(await screen.findByText('Gion marcada no dia.')).toBeTruthy()
+    expect(within(rows[0]!).getByRole('button', { name: /Gion/ })).toBeTruthy()
+    expect(within(rows[1]!).getByRole('button', { name: /Gion/ })).toBeTruthy()
+    expect(kyotoCatalog().getByRole('button', { name: /^Gion, em 2 dias/ })).toBeTruthy()
+    // De novo no mesmo dia: só o aviso, nada duplica.
+    const again = kyotoCatalog().getByRole('button', { name: /^Gion/ })
+    fireEvent.pointerDown(again, { ...mouse, clientX: 10, clientY: 10 })
+    fireEvent.pointerMove(again, { ...mouse, clientX: 30, clientY: 40 })
+    fireEvent.pointerUp(again, { ...mouse, clientX: 30, clientY: 40 })
+    expect(await screen.findByText('Gion já está em dom 14/04.')).toBeTruthy()
+    expect(within(rows[1]!).getAllByRole('button', { name: /Gion/ }).length).toBe(1)
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint
+  })
+
+  it('anotações são de cada dia: salvar, "✎" na ficha, o outro dia limpo e "Copiar de"', async () => {
+    abrirKyoto()
+    fireEvent.click(kyotoDays().getByRole('button', { name: /Gion/ }))
+    let dialog = await screen.findByRole('dialog')
+    const box = within(dialog).getByLabelText(/Anotações deste dia/)
+    fireEvent.change(box, { target: { value: 'Ir no fim da tarde' } })
+    fireEvent.blur(box)
+    expect(await screen.findByText('Anotação do dia salva.')).toBeTruthy()
+    // Fica aberto (é um editor) e a ficha mostra "✎".
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(kyotoDays().getByRole('button', { name: /Gion.*com anotações/ })).toBeTruthy()
+    // Repetir em outro dia: o dia em que já está vem desligado; o novo começa limpo.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Repetir em outro dia' }))
+    dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('button', { name: /^sáb 13\/04: já está aqui/ })).toHaveProperty(
+      'disabled',
+      true,
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: /^seg 15\/04/ }))
+    expect(await screen.findByText('Gion marcada no dia.')).toBeTruthy()
+    const second = within(document.querySelectorAll<HTMLElement>('#c-s8 [data-dayref]')[2]!)
+    fireEvent.click(second.getByRole('button', { name: /Gion/ }))
+    dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByLabelText(/Anotações deste dia/) as HTMLTextAreaElement).value).toBe('')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Copiar de sáb 13/04' }))
+    await waitFor(() =>
+      expect((within(dialog).getByLabelText(/Anotações deste dia/) as HTMLTextAreaElement).value).toBe(
+        'Ir no fim da tarde',
+      ),
+    )
+  })
+
+  it('horário do dia: a ficha mostra a hora; "Sobre a atividade" guarda as anotações gerais', async () => {
+    abrirKyoto()
+    fireEvent.click(kyotoDays().getByRole('button', { name: /Gion/ }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Horário (opcional)'), { target: { value: '18:30' } })
+    expect(await screen.findByText('Horário salvo.')).toBeTruthy()
+    expect(kyotoDays().getByRole('button', { name: /Gion/ }).textContent).toMatch(/18:30/)
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Sobre a atividade/ }))
+    const about = await screen.findByRole('dialog')
+    const box = within(about).getByLabelText(/Anotações gerais/)
+    fireEvent.change(box, { target: { value: 'Gueixas perto de Hanamikoji' } })
+    fireEvent.blur(box)
+    expect(await screen.findByText('Anotação geral salva.')).toBeTruthy()
+    expect(useApp.getState().doc!.places.find((x) => x.name === 'Gion')!.note).toBe(
+      'Gueixas perto de Hanamikoji',
+    )
+    // O dia aparece na lista e abre o painel daquele dia, que mostra a anotação geral.
+    fireEvent.click(within(about).getByRole('button', { name: /^sáb 13\/04 · 18:30/ }))
+    expect(await screen.findByText('Gueixas perto de Hanamikoji')).toBeTruthy()
+  })
+
+  it('"Onde X entra?": linha do tempo com a sugestão no caminho; a fresta abre as noites', async () => {
+    fireEvent.click(screen.getAllByRole('button', { name: /Adicionar destino/ })[0]!)
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: /Nara/ }))
+    dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText(/^Entre /)).toBeNull()
+    expect(within(dialog).getByText(/No caminho/).textContent).toMatch(/Osaka/)
+    // Kyoto (7 noites) aceita "no meio"; a fresta atual fica marcada.
+    expect(within(dialog).getByRole('button', { name: 'Kyoto: no meio' })).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pôr aqui' }))
+    dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/^Nara entre .*Osaka/)).toBeTruthy()
+  })
+
+  it('pôr em qual dia: os destinos em acordeão, só o preferido aberto', async () => {
+    abrirKyoto()
+    fireEvent.click(kyotoCatalog().getByRole('button', { name: /^Sanjūsangen-dō/ }))
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pôr num dia' }))
+    dialog = await screen.findByRole('dialog')
+    const kyoto = within(dialog).getByRole('button', { name: /^Kyoto/ })
+    expect(kyoto.getAttribute('aria-expanded')).toBe('true')
+    const osaka = within(dialog).getByRole('button', { name: /^Osaka/ })
+    expect(osaka.getAttribute('aria-expanded')).toBe('false')
+    // 7 dias de Kyoto à vista (e nenhum de Osaka).
+    expect(within(dialog).getAllByRole('button', { name: /^(sáb|dom|seg|ter|qua|qui|sex) \d/ }).length).toBe(
+      7,
+    )
+    fireEvent.click(within(dialog).getByRole('button', { name: /^ter 16\/04/ }))
+    expect(await screen.findByText('Sanjūsangen-dō marcada no dia.')).toBeTruthy()
   })
 
   it('tocar num dia da régua mostra o cartão daquele dia (chegada em Kyoto)', async () => {
@@ -410,12 +525,14 @@ describe('app', () => {
     expect(await screen.findByRole('button', { name: 'Ginkaku-ji, sem dia' })).toBeTruthy()
   })
 
-  it('"+ Adicionar destino" põe um lugar antes da volta, escolhendo de onde saem as noites', async () => {
+  it('"+ Adicionar destino" (cartão do fim) escolhe onde entra na linha do tempo e de onde saem as noites', async () => {
     const before = useApp.getState().doc!.itinerary.stops.length
-    fireEvent.click(screen.getByRole('button', { name: /Mais um lugar antes da volta/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Mais um lugar na viagem/ }))
     let dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Que destino entra no fim da viagem?')).toBeTruthy()
+    expect(within(dialog).getByText('Que destino entra na viagem?')).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: /Nara/ }))
+    dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pôr no fim da viagem' }))
     dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Nara no fim')).toBeTruthy()
     fireEvent.click(within(dialog).getAllByText(/^Tirar de Tóquio/)[0]!)

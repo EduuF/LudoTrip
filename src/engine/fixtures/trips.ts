@@ -380,3 +380,29 @@ export const caminho = (): BuiltTrip =>
   })
 
 export const ALL_TRIPS = { japao, rio, portugal, europa, cruzeiro, caminho }
+
+/** Viagem longa de propósito (spec §17.10): 50 destinos e 120 noites pela Itália, para medir as escolhas
+ *  que crescem com a viagem. Não entra em "Explorar exemplos". */
+export const italiaLonga = (): BuiltTrip => {
+  const destinations: Record<string, { name: string; country: string; lat: number; lon: number }> = {}
+  const stops: [string, number][] = []
+  for (let i = 0; i < 50; i++) {
+    // Um caminho de sul a norte, com zigue-zague de leste a oeste.
+    destinations[`c${i}`] = {
+      name: `Cidade ${i + 1}`,
+      country: 'IT',
+      lat: 38 + i * 0.15,
+      lon: 9 + (i % 7) * 0.9,
+    }
+    stops.push([`c${i}`, i < 30 ? 2 : 3])
+  }
+  return buildTrip({
+    name: 'Itália: 120 dias',
+    start: '2031-03-01',
+    lock: 'fixed',
+    defaultMode: 'train',
+    destinations,
+    stops,
+    places: { c10: [['Museu', 'want']] },
+  })
+}

@@ -27,6 +27,8 @@ export function PlaceSearch({
   kinds,
   within,
   exclude,
+  mine,
+  onMine,
   onPick,
   free = true,
   online = true,
@@ -40,6 +42,9 @@ export function PlaceSearch({
   within?: string
   /** Nomes já escolhidos (não aparecem de novo). */
   exclude?: string[]
+  /** Os que já existem na viagem (aparecem primeiro, pelo nome). */
+  mine?: { id: string; name: string; detail: string }[]
+  onMine?: (id: string) => void
   onPick: (p: PlacePick) => void
   /** Permite "Usar 'xxx'" sem lugar no mapa. */
   free?: boolean
@@ -138,6 +143,22 @@ export function PlaceSearch({
       />
       {t.length >= 2 ? (
         <div className="suggest">
+          {(mine ?? [])
+            .filter((m) => fold(m.name).includes(fold(t)))
+            .slice(0, 6)
+            .map((m) => (
+              <button
+                key={`m-${m.id}`}
+                type="button"
+                onClick={() => {
+                  onMine?.(m.id)
+                  setQ('')
+                }}
+              >
+                <span>{m.name}</span>
+                <small>{m.detail}</small>
+              </button>
+            ))}
           {countries.map((c) => (
             <button
               key={`c-${c.iso2}`}

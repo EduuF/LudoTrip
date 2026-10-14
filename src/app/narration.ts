@@ -57,7 +57,15 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
     case 'moveVisit':
       return 'Atividade mudou de dia.'
     case 'setVisitMeta':
-      return 'Salvo.'
+      return cmd.note !== undefined
+        ? cmd.note
+          ? 'Anotação do dia salva.'
+          : 'Anotação do dia apagada.'
+        : cmd.time !== undefined
+          ? cmd.time
+            ? 'Horário salvo.'
+            : 'Sem horário.'
+          : 'Salvo.'
     case 'setLock':
       return cmd.lock === 'fixed' ? 'Volta marcada 🔒.' : 'Volta livre.'
     case 'setTripStart':
@@ -88,7 +96,9 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
           ? 'Prioridade trocada.'
           : action.patch.kind
             ? 'Tipo do lugar salvo.'
-            : 'Atividade salva.'
+            : action.patch.note !== undefined
+              ? 'Anotação geral salva.'
+              : 'Atividade salva.'
     case 'removePlace': {
       const p = doc.places.find((x) => x.id === action.id)
       return `${p?.name ?? 'Atividade'} apagada.`

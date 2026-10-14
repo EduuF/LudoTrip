@@ -424,16 +424,16 @@ _Retorno do M3.2: "a tela inicial assusta o usuário novo" e "Editar trecho fech
 
 _Retorno do M3.3 (spec §17.10). Sem migração: `Visit.note`, `Visit.time` e `Place.note` já existem; `setPlace` passa a aceitar `note`._
 
-- [ ] **A1** `doc.ts`: `setPlace.patch.note` (string vazia apaga). Teste do reducer com Desfazer.
-- [ ] **A2** Catálogo (`Roteiro.tsx`: `LooseRow` → `CatalogRow`): sem dia primeiro, com dia apagadas com o rótulo do dia; corte em 10 + "+ N com dia"; tocar abre "Sobre a atividade". `chipDrag.tsx`: ficha do catálogo sempre agenda; mesmo dia → aviso, nada muda. "Nova atividade" de um dia: "DO CATÁLOGO". Testes jsdom: agendar duas vezes; mesmo dia bloqueado; a ficha continua no catálogo.
-- [ ] **A3** Painel da atividade no dia (`Sheets.tsx`, caso `visit`): anotações do dia (textarea, salva no blur, `keep`), "Copiar de …", "Geral: …", turno + horário (`input type=time`, `keep`), feita, Mudar de dia, Repetir em outro dia, Tirar do dia, "Sobre a atividade ▸". Ficha do dia com horário e "✎". Testes: anotação de um dia não aparece no outro; copiar; o painel fica aberto.
-- [ ] **A4** "Sobre a atividade" (caso `sticker`): anotações gerais, dias tocáveis, sem "feita". Testes.
-- [ ] **B1** `suggestGap(it, destinations, destId)` em `choices.ts` (pura): menor desvio por `haversineKm`; sem coordenadas → fim. Testes: Itália sintética (Pisa entre Siena e Florença); sem coordenadas; viagem vazia.
-- [ ] **B2** `TimelinePicker.tsx`: modos `gap` / `stop` / `day`; frestas, sugestão fixada, busca (> 8), rola até a sugestão. Testes de componente com uma viagem gerada de 50 destinos e 120 dias.
-- [ ] **B3** Usar o seletor em `where`, `order`, `days` (`placeId?` marca os dias em que já está), `split` (fichas). Testes dos fluxos (fresta → insert; destino → split; dia já usado desligado).
-- [ ] **B4** Doadores (`insertOptions`, `splitOptions`, `aboardChoice`, `plusNight`, `endOptions`): 3 + "Outro destino…" → seletor em modo destino filtrado. `DestPicker`: até 8 chips; busca acha destinos da viagem. Testes: com 50 destinos, no máximo 4 opções.
-- [ ] **C** Tutorial (uma frase sobre anotações), inventário, aprendizados (medida antes/depois na viagem de 50 destinos; régua da trilha medida), memória.
-- [ ] **V** typecheck, lint, test, build, e2e (+ mesma atividade em 2 dias; anotação com "✎"; adicionar destino pela fresta sugerida); commit; push; CI e Pages.
+- [x] **A1** `doc.ts`: `setPlace.patch.note` (string vazia apaga). Teste do reducer com Desfazer.
+- [x] **A2** Catálogo (`Roteiro.tsx`: `LooseRow` → `CatalogRow`): sem dia primeiro, com dia apagadas com o rótulo do dia; corte em 10 + "+ N com dia"; tocar abre "Sobre a atividade". `chipDrag.tsx`: ficha do catálogo sempre agenda; mesmo dia → aviso, nada muda. "Nova atividade" de um dia: "DO CATÁLOGO". Testes jsdom: agendar duas vezes; mesmo dia bloqueado; a ficha continua no catálogo.
+- [x] **A3** Painel da atividade no dia (`Sheets.tsx`, caso `visit`): anotações do dia (textarea, salva no blur, `keep`), "Copiar de …", "Geral: …", turno + horário (`input type=time`, `keep`), feita, Mudar de dia, Repetir em outro dia, Tirar do dia, "Sobre a atividade ▸". Ficha do dia com horário e "✎". Testes: anotação de um dia não aparece no outro; copiar; o painel fica aberto.
+- [x] **A4** "Sobre a atividade" (caso `sticker`): anotações gerais, dias tocáveis, sem "feita". Testes.
+- [x] **B1** `suggestGap(it, destinations, destId)` em `choices.ts` (pura): menor desvio por `haversineKm`; sem coordenadas → fim. Testes: Itália sintética (Pisa entre Siena e Florença); sem coordenadas; viagem vazia.
+- [x] **B2** `TimelinePicker.tsx`: modos `gap` / `stop` / `day`; frestas, sugestão fixada, busca (> 8), rola até a sugestão. Testes de componente com uma viagem gerada de 50 destinos e 120 dias.
+- [x] **B3** Usar o seletor em `where`, `order`, `days` (`placeId?` marca os dias em que já está), `split` (fichas). Testes dos fluxos (fresta → insert; destino → split; dia já usado desligado).
+- [x] **B4** Doadores (`insertOptions`, `splitOptions`, `aboardChoice`, `plusNight`, `endOptions`): 3 + "Outro destino…" → seletor em modo destino filtrado. `DestPicker`: até 8 chips; busca acha destinos da viagem. Testes: com 50 destinos, no máximo 4 opções.
+- [x] **C** Tutorial (uma frase sobre anotações), inventário, aprendizados (medida antes/depois na viagem de 50 destinos; régua da trilha medida), memória.
+- [x] **V** typecheck, lint, test, build, e2e (+ mesma atividade em 2 dias; anotação com "✎"; adicionar destino pela fresta sugerida); commit; push; CI e Pages.
 
 **Ponto de revisão M3.4:** o mantenedor repete uma atividade em dois dias com anotações diferentes e adiciona um destino numa viagem longa.
 

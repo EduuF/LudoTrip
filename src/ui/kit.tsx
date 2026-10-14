@@ -324,7 +324,10 @@ export function SheetFrame({ children, onClose }: { children: ReactNode; onClose
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     addEventListener('keydown', onKey)
-    panel.current?.querySelector<HTMLElement>('button, input, select')?.focus({ preventScroll: true })
+    // A busca da linha do tempo não ganha o foco (no celular abriria o teclado sem pedir).
+    panel.current
+      ?.querySelector<HTMLElement>('button, input:not([type=search]), select')
+      ?.focus({ preventScroll: true })
     return () => removeEventListener('keydown', onKey)
   }, [onClose])
   return (

@@ -45,7 +45,8 @@ export type DocAction =
   | {
       type: 'setPlace'
       id: ID
-      patch: { rarity?: Rarity; name?: string; lat?: number; lon?: number; kind?: PlaceKind }
+      /** `note: ''` apaga as anotações gerais. */
+      patch: { rarity?: Rarity; name?: string; lat?: number; lon?: number; kind?: PlaceKind; note?: string }
     }
   | { type: 'removePlace'; id: ID }
   | { type: 'addDestination'; destination: Destination }
@@ -105,7 +106,12 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
         const i = draft.places.findIndex((p) => p.id === a.id)
         if (i < 0) throw new DocFail({ code: 'NOT_FOUND', data: { placeId: a.id } })
         snapshot('places')
-        draft.places = draft.places.map((p) => (p.id === a.id ? { ...p, ...a.patch } : p))
+        draft.places = draft.places.map((p) => {
+          if (p.id !== a.id) return p
+          const next = { ...p, ...a.patch }
+          if (!next.note) delete next.note
+          return next
+        })
         return
       }
       case 'removePlace': {

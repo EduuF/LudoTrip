@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   addDays,
@@ -16,11 +16,11 @@ import {
   stopWindows,
   tripPhase,
 } from '../engine'
-import type { Booking, Day, DayRef, ID, Leg, LegMode, Stop } from '../engine'
+import type { Booking, Day, DayRef, ID, Leg, LegMode, Stop, Visit } from '../engine'
 import { todayISO, uid, useApp } from '../app/store'
 import type { DocAction } from '../app/doc'
 import {
-  addDestinationAtEnd,
+  addDestination,
   cityName,
   minusNight,
   plusNight,
@@ -37,12 +37,20 @@ import { Seal, Stepper, Vehicle } from './kit'
 
 // Roteiro (spec §17.4): a lista na ordem da viagem, em acordeão: um destino aberto por vez (o do dia
 // escolhido), os outros em uma linha. Aberto, o cartão mostra os dias com as atividades e "+ Atividade",
-// onde se dorme, as atividades ainda sem dia (arrastáveis até o dia) e um "⋯" com o raro (ordem,
+// onde se dorme, o catálogo de atividades do destino (arrastáveis até um dia) e um "⋯" com o raro (ordem,
 // chegar antes ou depois, tirar). Entre os destinos, o trecho em uma linha, com a passagem.
 
 const NEEDS_TICKET = new Set<LegMode>(['flight', 'train', 'bus', 'boat'])
 const SLOT_LABEL = { morning: 'manhã', afternoon: 'tarde', evening: 'noite', any: '' } as const
 const SLOT_ORDER = { morning: 0, afternoon: 1, evening: 2, any: 3 } as const
+/** Ordem no dia: pelo horário quando há (em minutos), senão pelo turno (qualquer hora por último). */
+const visitKey = (v: Visit) => {
+  if (v.time) {
+    const [h, m] = v.time.split(':').map(Number) as [number, number]
+    return h * 60 + m
+  }
+  return [8 * 60, 13 * 60, 19 * 60, 24 * 60][SLOT_ORDER[v.slot]]! + 0.5
+}
 
 export function RoteiroList() {
   const doc = useApp((s) => s.doc)!
@@ -82,15 +90,13 @@ export function RoteiroList() {
 /** "… Adicionar destino … Volta": mais um lugar antes de voltar para casa. */
 function AddDestCard() {
   return (
-    <button type="button" className="card add-dest" onClick={addDestinationAtEnd}>
+    <button type="button" className="card add-dest" onClick={addDestination}>
       <span className="plus" aria-hidden="true">
         +
       </span>
       <span className="txt">
         <b>Adicionar destino</b>
-        <span>
-          Mais um lugar antes da volta. Para pôr no meio, toque num trecho e use "+ Parar no caminho".
-        </span>
+        <span>Mais um lugar na viagem: você escolhe onde ele entra, com uma sugestão no caminho.</span>
       </span>
     </button>
   )
@@ -251,7 +257,7 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
               <DayRow key="dep" day={d} destId={stop.destinationId} title="dia da volta" />
             ))}
           </div>
-          <LooseRow destId={stop.destinationId!} />
+          <CatalogRow destId={stop.destinationId!} />
         </>
       ) : null}
     </article>
@@ -302,7 +308,7 @@ export function DayRow({
   const openSheet = useApp((s) => s.openSheet)
   const drag = useChipDrag()
   const trips = day.dayTrips.map((x) => doc.destinations.find((d) => d.id === x)?.name).filter(Boolean)
-  const visits = [...day.visits].sort((a, b) => SLOT_ORDER[a.slot] - SLOT_ORDER[b.slot])
+  const visits = [...day.visits].sort((a, b) => visitKey(a) - visitKey(b))
   const add = () =>
     openSheet({ kind: 'newActivity', destId: destId!, day: day.ref as DayRef, dayLabel: day.label })
   return (
@@ -329,8 +335,15 @@ export function DayRow({
               className={`mini r-${p?.rarity ?? 'want'}${v.visited ? ' visited' : ''}${lifted ? ' lifted' : ''}`}
               {...chipHandlers(drag, item, () => openSheet({ kind: 'visit', visitId: v.id }))}
             >
-              {SLOT_LABEL[v.slot] ? <span className="slot">{SLOT_LABEL[v.slot]}</span> : null}
+              {v.time || SLOT_LABEL[v.slot] ? (
+                <span className="slot">{v.time ?? SLOT_LABEL[v.slot]}</span>
+              ) : null}
               {p?.name ?? 'Atividade'}
+              {v.note ? (
+                <span className="memo" aria-label="com anotações">
+                  ✎
+                </span>
+              ) : null}
               {v.visited ? ' 済' : ''}
             </button>
           )
@@ -364,60 +377,71 @@ export function DayRow({
 }
 
 // ---------------------------------------------------------------------------
-// Atividades ainda sem dia, dentro do cartão (arrastar até o dia, ou tocar e escolher o dia).
-// Também é onde se solta uma atividade para tirá-la do dia.
+// Catálogo do destino (spec §17.10): todas as atividades, as sem dia primeiro. Arrastar uma ficha até
+// um dia sempre põe a atividade em mais um dia; tocar abre "Sobre a atividade". Também é onde se solta
+// uma atividade de um dia para tirá-la do dia.
 // ---------------------------------------------------------------------------
 
-function LooseRow({ destId }: { destId: ID }) {
+/** Quantas fichas com dia aparecem antes do "+ N com dia". */
+const CATALOG_PLACED = 4
+
+function CatalogRow({ destId }: { destId: ID }) {
   const doc = useApp((s) => s.doc)!
-  const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const drag = useChipDrag()
+  const [all, setAll] = useState(false)
   const it = doc.itinerary
   const states = placeStates(it, doc.places)
   const inTrip = new Set(it.stops.map((s) => s.destinationId))
-  const loose = (id: ID) => doc.places.filter((p) => p.destinationId === id && !states.get(p.id)?.days.length)
-  const mine = loose(destId)
-  const nearby = doc.destinations.filter((d) => !inTrip.has(d.id)).flatMap((d) => loose(d.id))
+  const daysOf = (id: ID) => states.get(id)?.days ?? []
+  const mine = doc.places.filter((p) => p.destinationId === destId)
+  const loose = mine.filter((p) => !daysOf(p.id).length)
+  const placed = mine.filter((p) => daysOf(p.id).length)
+  const nearby = doc.destinations
+    .filter((d) => !inTrip.has(d.id))
+    .flatMap((d) => doc.places.filter((p) => p.destinationId === d.id && !daysOf(p.id).length))
   const dropZone = drag?.lifted?.kind === 'visit'
   if (!mine.length && !nearby.length && !dropZone) return null
   const coarse = isCoarse()
+  const name = doc.destinations.find((d) => d.id === destId)?.name ?? 'destino'
+  const shown = all ? placed : placed.slice(0, CATALOG_PLACED)
 
   const chip = (placeId: ID, tag?: string) => {
     const p = doc.places.find((x) => x.id === placeId)!
+    const ds = daysOf(p.id)
     const item: ChipItem = { kind: 'loose', placeId }
-    const tap = () =>
-      openSheet({
-        kind: 'days',
-        title: `Pôr ${p.name} em qual dia?`,
-        prefer: destId,
-        pick: (ref) =>
-          act({ type: 'engine', command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day: ref } }),
-      })
     const lifted = drag?.lifted?.kind === 'loose' && drag.lifted.placeId === p.id
+    const when = ds.length === 1 ? ds[0]!.label : ds.length ? `${ds.length} dias` : ''
     return (
       <button
         key={p.id}
         type="button"
-        className={`mini r-${p.rarity} loose${lifted ? ' lifted' : ''}`}
-        aria-label={`${p.name}: ${coarse ? 'toque para escolher o dia, ou segure e arraste até o dia' : 'clique para escolher o dia, ou arraste até o dia'}`}
-        {...chipHandlers(drag, item, tap)}
+        className={`mini r-${p.rarity} loose${ds.length ? ' placed' : ''}${lifted ? ' lifted' : ''}`}
+        aria-label={`${p.name}${when ? `, em ${when}` : ', sem dia'}: ${coarse ? 'toque para ver, ou segure e arraste até um dia' : 'clique para ver, ou arraste até um dia'}`}
+        {...chipHandlers(drag, item, () => openSheet({ kind: 'sticker', placeId: p.id }))}
       >
         <span className="gems">{RARITY[p.rarity].gems}</span>
         {p.name}
-        {tag ? <span className="slot">{tag}</span> : null}
+        {tag || when ? <span className="slot">{tag ?? when}</span> : null}
       </button>
     )
   }
   return (
     <div className="loose-row" data-loose="">
       <span className="loose-t">
-        SEM DIA AINDA · {coarse ? 'segure e arraste até o dia, ou toque' : 'arraste até o dia, ou clique'}
+        {dropZone
+          ? 'SOLTE AQUI PARA TIRAR DO DIA'
+          : `ATIVIDADES DE ${name.toUpperCase()} · ${coarse ? 'segure e arraste até um dia' : 'arraste até um dia'}`}
       </span>
       <div className="slots">
-        {mine.map((p) => chip(p.id))}
+        {loose.map((p) => chip(p.id))}
         {nearby.map((p) => chip(p.id, 'bate-volta'))}
-        {!mine.length && !nearby.length ? <span className="note">Solte aqui para tirar do dia.</span> : null}
+        {shown.map((p) => chip(p.id))}
+        {placed.length > shown.length ? (
+          <button type="button" className="mini add" onClick={() => setAll(true)}>
+            + {placed.length - shown.length} com dia
+          </button>
+        ) : null}
       </div>
     </div>
   )

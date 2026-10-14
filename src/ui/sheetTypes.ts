@@ -17,7 +17,10 @@ export type SheetSpec =
   | { kind: 'split'; stopId: ID; destId: ID; nights: number; after: number }
   | { kind: 'insert'; index: number; destId: ID; nights: number }
   | { kind: 'fill'; stopId: ID; destId: ID; nights: number; side: 'start' | 'end' }
-  | { kind: 'days'; title: string; prefer?: ID | null; pick: (ref: DayRef) => void }
+  /** Escolher um dia; com `placeId`, os dias em que a atividade já está ficam marcados e desligados. */
+  | { kind: 'days'; title: string; prefer?: ID | null; placeId?: ID; pick: (ref: DayRef) => void }
+  /** Escolher um destino da viagem na linha do tempo (só os de `ok`); `tag` diz o que o toque faz. */
+  | { kind: 'pickStop'; title: string; tag: string; ok: ID[]; pick: (stopId: ID) => void }
   | { kind: 'sticker'; placeId: ID }
   | { kind: 'visit'; visitId: ID }
   | { kind: 'times'; legId: ID }

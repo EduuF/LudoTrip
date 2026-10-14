@@ -5,6 +5,26 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M3.4: atividade repetível, anotações do dia e escolhas que escalam
+
+### O motor já sabia; a interface escondia
+
+- `Place` (atividade) e `Visit` (atividade num dia) já eram separados, e a mesma atividade já podia estar em vários dias; `Visit.note` existia sem tela. Os três primeiros pontos do retorno eram só interface: **antes de mudar o modelo, conferir se o modelo já resolve.**
+- A lista "sem dia" sumia com a atividade ao agendar, o que ensinava "agendar = mover". Virou catálogo (as com dia continuam, apagadas). Primeira versão com até 10 fichas com dia dobrava a altura do cartão; no celular ficou em **4 compactas + "+ N com dia"**.
+
+### Listas que escalam: padrão esperto + lista navegável
+
+- Numa Itália gerada (50 destinos, 120 noites): "Onde X entra?" tinha **101 frases**; "Pôr em qual dia?", **121 botões**; "de onde sai a noite", **49 opções**. Agora: uma sugestão fixada ("Pôr aqui", 1 toque) + a linha do tempo (uma linha por destino, frestas "+", busca); dias em **50 linhas com 1 grupo aberto**; doadores em **3 + "Outro destino…"**.
+- A sugestão é o menor desvio em linha reta (`d(a,x) + d(x,b) − d(a,b)`). Ela acerta a geografia, não a intenção: Nara sai "entre Kamakura e Osaka" (está mesmo no caminho), e Pisa sai "entre Florença e Bolonha" por 3 km de diferença. Por isso é só destaque, com a lista inteira embaixo.
+- Exemplo do Japão no celular (dia 1): roteiro de 50 para 54 botões (as atividades com dia no catálogo aberto), página de 3.369 para 3.410 px — sem regredir o M3.3.
+- A régua da trilha numa viagem de 120 dias não mudou (tem zoom); fica medida para o mantenedor dizer se incomoda.
+
+### Bugs evitados
+
+- `.wrap` já era uma classe de página: um `row wrap` no painel ganhou 278 px de altura. Nomes de classe novos: conferir no CSS antes.
+- O foco automático do painel ia para o primeiro `input`; com a busca no topo, o teclado do celular abriria sozinho. A busca (`type=search`) não recebe o foco inicial.
+- Fechar o painel com texto digitado e sem sair do campo perderia a anotação: a caixa salva também ao desmontar.
+
 ## 2026-10-13 — M3.3: primeira impressão e painéis que fechavam cedo
 
 ### A tela não tinha coisa demais; tinha coisa demais aberta

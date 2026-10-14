@@ -5,6 +5,7 @@ import {
   ddmm,
   describeEffects,
   describeError,
+  haversineKm,
   legName,
   lodgingGaps,
   plural,
@@ -15,7 +16,7 @@ import {
   suggestReceivers,
   tripRange,
 } from '../engine'
-import type { Command, ID, ISODate, Itinerary, Leg, Stop, Via } from '../engine'
+import type { Command, DayRef, Destination, ID, ISODate, Itinerary, Leg, Slot, Stop, Via } from '../engine'
 import type { TripDoc } from './doc'
 import { uid, useApp } from './store'
 import type { Opt } from '../ui/sheetTypes'
@@ -104,6 +105,42 @@ const donorLabel = (it: Itinerary, s: Stop) =>
     ? `Tirar de ${cityName(s.id)} (${windowText(it, s.id)})`
     : `Usar as noites em aberto (${windowText(it, s.id)})`
 
+/** Quantos destinos aparecem por extenso numa escolha de "de onde sai a noite" (spec §17.10). */
+export const NEAREST_SHOWN = 3
+
+/** As opções dos 3 destinos mais próximos e, se houver mais, "Outro destino…": a linha do tempo só
+ *  com os que servem. `after` roda depois da escolha feita pela linha do tempo. */
+export function nearest(
+  stops: Stop[],
+  make: (s: Stop, k: number) => Opt,
+  pick: { title: string; tag: string },
+  after?: () => void,
+): Opt[] {
+  const top = stops.slice(0, NEAREST_SHOWN).map(make)
+  if (stops.length <= NEAREST_SHOWN) return top
+  return [
+    ...top,
+    {
+      label: 'Outro destino…',
+      detail: [`Mais ${stops.length - NEAREST_SHOWN}: escolha na linha da viagem.`],
+      run: () =>
+        S().openSheet({
+          kind: 'pickStop',
+          title: pick.title,
+          tag: pick.tag,
+          ok: stops.map((x) => x.id),
+          pick: (id) => {
+            const k = stops.findIndex((x) => x.id === id)
+            if (k >= 0) make(stops[k]!, k).run()
+            after?.()
+          },
+        }),
+    },
+  ]
+}
+
+const DONOR_PICK = { title: 'De qual destino sai?', tag: 'cede' }
+
 // ---------------------------------------------------------------------------
 // Hospedagem
 // ---------------------------------------------------------------------------
@@ -145,15 +182,15 @@ export function plusNight(stopId: ID) {
   const n = s.days.length
   const back: Command = { type: 'setNights', stopId, nights: n + 1, via: { kind: 'return' } }
   if (it.lock === 'free') return S().act({ type: 'engine', command: back })
-  const donors = suggestDonors(it, stopId, 1).map((o, k) =>
-    cmdOpt(
-      donorLabel(
-        it,
-        it.stops.find((x) => x.id === o.stopId)!,
+  const donors = nearest(
+    suggestDonors(it, stopId, 1).map((o) => it.stops.find((x) => x.id === o.stopId)!),
+    (d, k) =>
+      cmdOpt(
+        donorLabel(it, d),
+        { type: 'setNights', stopId, nights: n + 1, via: { kind: 'stop', stopId: d.id } },
+        { main: k === 0 },
       ),
-      { type: 'setNights', stopId, nights: n + 1, via: o.via },
-      { main: k === 0 },
-    ),
+    DONOR_PICK,
   )
   S().openSheet({
     kind: 'choice',
@@ -267,16 +304,23 @@ export function aboardChoice(leg: Leg, delta: 1 | -1) {
   const back: Command = { type: 'setLegNightsAboard', legId: leg.id, nights: n, via: { kind: 'return' } }
   const toIdx = leg.to === 'home' ? it.stops.length : it.stops.findIndex((s) => s.id === leg.to)
   const options: Opt[] = []
+  const reopen = () => S().openSheet({ kind: 'leg', legId: leg.id })
   if (delta > 0) {
     if (it.lock === 'free') options.push(cmdOpt(`Adiar a volta (${newEnd(1)})`, back, { main: true }))
-    for (const s of donorStops(it, null, toIdx - 0.5, 1))
-      options.push(
-        cmdOpt(
-          donorLabel(it, s),
-          { type: 'setLegNightsAboard', legId: leg.id, nights: n, via: { kind: 'stop', stopId: s.id } },
-          { main: !options.length },
-        ),
-      )
+    const first = !options.length
+    options.push(
+      ...nearest(
+        donorStops(it, null, toIdx - 0.5, 1),
+        (s, k) =>
+          cmdOpt(
+            donorLabel(it, s),
+            { type: 'setLegNightsAboard', legId: leg.id, nights: n, via: { kind: 'stop', stopId: s.id } },
+            { main: first && k === 0 },
+          ),
+        DONOR_PICK,
+        reopen,
+      ),
+    )
     if (it.lock === 'fixed') options.push(cmdOpt(`Adiar a volta (${newEnd(1)})`, back))
   } else {
     if (it.lock === 'free') options.push(cmdOpt('Antecipar a volta', back, { main: true }))
@@ -296,13 +340,18 @@ export function aboardChoice(leg: Leg, delta: 1 | -1) {
     title: delta > 0 ? 'De onde sai a noite a bordo?' : 'Para onde vai essa noite?',
     sub: `${legName(it, leg, names(doc()))}: ${plural(n, 'noite', 'noites')} a bordo.`,
     // Escolhido, volta ao painel do trecho (é um editor; a escolha é só um passo dele).
-    options: options.map((o) => ({
-      ...o,
-      run: () => {
-        o.run()
-        S().openSheet({ kind: 'leg', legId: leg.id })
-      },
-    })),
+    // ("Outro destino…" abre a linha do tempo, que volta ao trecho depois da escolha.)
+    options: options.map((o) =>
+      o.label === 'Outro destino…'
+        ? o
+        : {
+            ...o,
+            run: () => {
+              o.run()
+              reopen()
+            },
+          },
+    ),
   })
 }
 
@@ -328,8 +377,13 @@ export function splitOptions(stopId: ID, destId: ID, nights: number, after: numb
       { main: it.lock === 'fixed' },
     ),
   )
-  for (const d of donorStops(it, stopId, i, nights))
-    out.push(cmdOpt(donorLabel(it, d), { ...base, via: { kind: 'stop', stopId: d.id } }))
+  out.push(
+    ...nearest(
+      donorStops(it, stopId, i, nights),
+      (d) => cmdOpt(donorLabel(it, d), { ...base, via: { kind: 'stop', stopId: d.id } }),
+      DONOR_PICK,
+    ),
+  )
   if (it.lock === 'fixed')
     out.push(cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }))
   return out
@@ -343,10 +397,19 @@ export function insertOptions(index: number, destId: ID, nights: number): Opt[] 
     out.push(
       cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }, { main: true }),
     )
-  for (const d of donorStops(it, null, index - 0.5, nights))
-    out.push(
-      cmdOpt(donorLabel(it, d), { ...base, via: { kind: 'stop', stopId: d.id } }, { main: !out.length }),
-    )
+  const first = !out.length
+  out.push(
+    ...nearest(
+      donorStops(it, null, index - 0.5, nights),
+      (d, k) =>
+        cmdOpt(
+          donorLabel(it, d),
+          { ...base, via: { kind: 'stop', stopId: d.id } },
+          { main: first && k === 0 },
+        ),
+      DONOR_PICK,
+    ),
+  )
   if (it.lock === 'fixed')
     out.push(cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }))
   return out
@@ -361,16 +424,16 @@ export function endOptions(target: ISODate): Opt[] {
   const delta = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 864e5)
   const base = { type: 'setTripEnd' as const, date: target }
   if (delta < 0) {
-    const opts = [...it.stops]
-      .filter((s) => s.days.length + delta >= 1)
-      .sort((a, b) => b.days.length - a.days.length)
-      .map((s, k) =>
+    const opts = nearest(
+      [...it.stops].filter((s) => s.days.length + delta >= 1).sort((a, b) => b.days.length - a.days.length),
+      (s, k) =>
         cmdOpt(
           `Tirar ${plural(-delta, 'noite', 'noites')} de ${cityName(s.id)} (${windowText(it, s.id)})`,
           { ...base, takeFrom: [{ stopId: s.id, nights: -delta }] },
           { main: k === 0 },
         ),
-      )
+      { title: 'De qual destino saem as noites?', tag: 'cede' },
+    )
     return opts.length
       ? opts
       : [
@@ -383,26 +446,96 @@ export function endOptions(target: ISODate): Opt[] {
         ]
   }
   if (delta > 0)
-    return [...it.stops]
-      .reverse()
-      .filter((s) => s.destinationId)
-      .map((s, k) =>
+    return nearest(
+      [...it.stops].reverse().filter((s) => s.destinationId),
+      (s, k) =>
         cmdOpt(
           `${cityName(s.id)} ganha ${plural(delta, 'noite', 'noites')}`,
           { ...base, takeFrom: [{ stopId: s.id, nights: 0 }] },
           { main: k === 0 },
         ),
-      )
+      { title: 'Qual destino ganha as noites?', tag: 'ganha' },
+    )
   return []
 }
 
-/** "+ Adicionar destino": a escolha do destino novo para o fim da viagem (cartão, cabeçalho do roteiro). */
-export function addDestinationAtEnd() {
-  const st = S()
-  const count = st.doc?.itinerary.stops.length ?? 0
-  st.openSheet({
+/** "+ Adicionar destino" (cartão do fim do roteiro): o destino e, na linha do tempo, onde ele entra. */
+export function addDestination() {
+  S().openSheet({
     kind: 'dest',
-    title: 'Que destino entra no fim da viagem?',
-    pick: (destId) => S().openSheet({ kind: 'insert', index: count, destId, nights: 1 }),
+    title: 'Que destino entra na viagem?',
+    pick: (destId) => S().openSheet({ kind: 'where', destId }),
   })
+}
+
+// ---------------------------------------------------------------------------
+// Atividade em vários dias (spec §17.10)
+// ---------------------------------------------------------------------------
+
+export const sameDay = (a: DayRef | null | undefined, b: DayRef) =>
+  !!a &&
+  a.kind === b.kind &&
+  (a.kind === 'departure' ||
+    (a.kind === 'stop' && b.kind === 'stop' && a.stopId === b.stopId && a.ordinal === b.ordinal) ||
+    (a.kind === 'leg' && b.kind === 'leg' && a.legId === b.legId && a.ordinal === b.ordinal))
+
+/** Se a atividade já está nesse dia, avisa e devolve o rótulo do dia; senão null. */
+function alreadyThere(placeId: ID, day: DayRef, exceptVisit?: ID): boolean {
+  const d = doc()
+  const hit = allDays(d.itinerary).find((x) => sameDay(x.ref, day))
+  if (!hit?.visits.some((v) => v.placeId === placeId && v.id !== exceptVisit)) return false
+  const name = d.places.find((p) => p.id === placeId)?.name ?? 'Essa atividade'
+  S().say(`${name} já está em ${hit.label}.`, true)
+  return true
+}
+
+/** Põe a atividade em mais um dia (o dia novo começa limpo). No mesmo dia duas vezes, só avisa. */
+export function scheduleOnce(placeId: ID, day: DayRef, slot?: Slot): boolean {
+  if (alreadyThere(placeId, day)) return false
+  return S().act({
+    type: 'engine',
+    command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day, ...(slot ? { slot } : {}) },
+  })
+}
+
+/** Muda a atividade de dia (com as anotações dela). No dia em que ela já está, só avisa. */
+export function moveOnce(visitId: ID, placeId: ID, to: DayRef): boolean {
+  if (alreadyThere(placeId, to, visitId)) return false
+  return S().act({ type: 'engine', command: { type: 'moveVisit', visitId, to } })
+}
+
+// ---------------------------------------------------------------------------
+// Sugestão "no caminho": onde um destino entra com o menor desvio (spec §17.10)
+// ---------------------------------------------------------------------------
+
+type Pt = { lat: number; lon: number }
+const pt = (o: { lat?: number; lon?: number } | null | undefined): Pt | null =>
+  o && o.lat !== undefined && o.lon !== undefined ? { lat: o.lat, lon: o.lon } : null
+
+/** A fresta (índice de inserção, 0..stops.length) de menor desvio em linha reta; sem coordenadas, o fim. */
+export function suggestGap(it: Itinerary, destinations: Destination[], destId: ID): number {
+  const end = it.stops.length
+  const x = pt(destinations.find((d) => d.id === destId))
+  if (!x || !end) return end
+  const at = it.stops.map((s) => pt(destinations.find((d) => d.id === s.destinationId)))
+  const home = pt(it.home)
+  if (!at.some(Boolean)) return end
+  let best = end
+  let bestCost = Infinity
+  for (let i = 0; i <= end; i++) {
+    let a: Pt | null = null
+    for (let k = i - 1; k >= 0 && !a; k--) a = at[k] ?? null
+    let b: Pt | null = null
+    for (let k = i; k < end && !b; k++) b = at[k] ?? null
+    a ??= home
+    b ??= home
+    if (!a && !b) continue
+    const cost =
+      a && b ? haversineKm(a, x) + haversineKm(x, b) - haversineKm(a, b) : haversineKm((a ?? b)!, x)
+    if (cost < bestCost - 1e-6) {
+      bestCost = cost
+      best = i
+    }
+  }
+  return best
 }

@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as RPointerEvent, ReactNode } from 'react'
 import type { DayRef } from '../engine'
-import { uid, useApp } from '../app/store'
+import { useApp } from '../app/store'
+import { moveOnce, sameDay, scheduleOnce } from '../app/choices'
 import { ChipDragCtx } from './chipDragCtx'
 import type { ChipItem } from './chipDragCtx'
 import { MOUSE_DISTANCE } from './pointer'
 import { RARITY } from './rarity'
 
-// Arrastar atividades no roteiro (spec §17.4): uma sem dia até um dia, uma de um dia para outro, ou de
-// um dia para a área "sem dia" (tira do dia). Mouse arrasta depois de 6 px; o dedo segura 300 ms. Um
+// Arrastar atividades no roteiro (spec §17.4, §17.10): uma do catálogo até um dia (mais um dia), uma de
+// um dia para outro, ou de um dia para o catálogo (tira do dia). Mouse arrasta depois de 6 px; o dedo segura 300 ms. Um
 // provedor só para a tela do Mapa: dá para levar do cartão do dia a qualquer dia do roteiro.
 
 const TOUCH_HOLD_MS = 300
@@ -89,13 +90,9 @@ export function ChipDragProvider({ children }: { children: ReactNode }) {
     const ref = target.dataset.dayref
     if (ref) {
       const day = JSON.parse(ref) as DayRef
-      if (item.kind === 'loose')
-        act({
-          type: 'engine',
-          command: { type: 'scheduleVisit', visitId: uid('v'), placeId: item.placeId, day },
-        })
-      else if (JSON.stringify(item.from) !== JSON.stringify(day))
-        act({ type: 'engine', command: { type: 'moveVisit', visitId: item.visitId, to: day } })
+      // Do catálogo, sempre mais um dia; de um dia, muda de dia. O mesmo dia duas vezes só avisa.
+      if (item.kind === 'loose') scheduleOnce(item.placeId, day)
+      else if (!sameDay(item.from, day)) moveOnce(item.visitId, item.placeId, day)
       return
     }
     if (target.dataset.loose !== undefined && item.kind === 'visit')

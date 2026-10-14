@@ -38,6 +38,11 @@ describe('documento da viagem: tudo tem Desfazer', () => {
     })
     expect(d.places.at(-1)).toMatchObject({ name: 'Ginkaku-ji', rarity: 'must', id: 'u1' })
     roundTrip(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { rarity: 'maybe' } })
+    // Anotações gerais: salvar e apagar (texto vazio), com Desfazer.
+    const n = roundTrip(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'Ingresso online' } })
+    expect(n.places.find((p) => p.id === 'p-kyoto-1')!.note).toBe('Ingresso online')
+    const e = roundTrip(n, { type: 'setPlace', id: 'p-kyoto-1', patch: { note: '' } })
+    expect('note' in e.places.find((p) => p.id === 'p-kyoto-1')!).toBe(false)
   })
 
   it('tirar uma figurinha do álbum tira dos dias também', () => {
