@@ -58,6 +58,12 @@ export interface AppState {
   toast: ToastState | null
   celebrations: Celebration[]
   sheet: SheetSpec | null
+  /** Painéis por baixo do aberto (spec §17.13): "‹ voltar" desempilha; fechar limpa. */
+  sheetBack: SheetSpec[]
+  /** Direção da última troca de painel (para a animação). */
+  sheetDir: 'in' | 'back'
+  /** Painel de criar com texto digitado e não criado: sair pergunta "Criar ou Descartar". */
+  sheetGuard: SheetGuard | null
   /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
   cursorDay: number | null
   /** Cartão do roteiro aberto (acordeão); null segue o dia do cursor. */
@@ -82,9 +88,15 @@ export interface AppState {
   act(action: DocAction, opts?: ActOptions): boolean
   undo(): void
   say(text: string, warn?: boolean): void
-  openSheet(sheet: SheetSpec): void
+  /** Com um painel aberto, empilha o atual (ou troca, com `replace`). */
+  openSheet(sheet: SheetSpec, opts?: { replace?: boolean }): void
   patchSheet(patch: Partial<SheetSpec>): void
   closeSheet(): void
+  /** Volta ao painel de baixo; com `kind`, ao último painel daquele tipo. */
+  backSheet(kind?: SheetSpec['kind']): void
+  setSheetGuard(guard: SheetGuard | null): void
+  /** Um passo terminou: volta ao painel de origem pela pilha (mantendo o "‹ voltar" dele), ou o abre. */
+  returnToSheet(spec: SheetSpec): void
   setCursorDay(index: number | null): void
   /** Entra no mapa da cidade; o cursor de dias vai para o primeiro dia dela, como na v1. */
   enterCity(destId: ID): void
@@ -160,6 +172,13 @@ function completedPages(doc: TripDoc): Set<ID> {
 
 let saveWarned = false
 
+/** O que perguntar ao sair de um painel de criar com algo digitado. */
+export interface SheetGuard {
+  /** "Comprar o JR Pass" (o que foi digitado). */
+  text: string
+  create: () => void
+}
+
 export const useApp = create<AppState>((set, get) => {
   const save = (doc: TripDoc) => {
     const stamped = { ...doc, meta: { ...doc.meta, updatedAt: Date.now() } }
@@ -201,6 +220,9 @@ export const useApp = create<AppState>((set, get) => {
     toast: null,
     celebrations: [],
     sheet: null,
+    sheetBack: [],
+    sheetDir: 'in',
+    sheetGuard: null,
     cursorDay: null,
     openStop: null,
     stopCollapsed: false,
@@ -318,8 +340,25 @@ export const useApp = create<AppState>((set, get) => {
       toast(text, warn)
     },
 
-    openSheet(sheet) {
-      set({ sheet })
+    openSheet(sheet, opts = {}) {
+      const cur = get().sheet
+      if (!cur || opts.replace) return set({ sheet, sheetDir: 'in', sheetGuard: null })
+      set((s) => ({ sheet, sheetBack: [...s.sheetBack, cur].slice(-10), sheetDir: 'in', sheetGuard: null }))
+    },
+    backSheet(kind) {
+      const stack = get().sheetBack
+      let i = stack.length - 1
+      if (kind) while (i >= 0 && stack[i]!.kind !== kind) i--
+      if (i < 0) return set({ sheet: null })
+      set({ sheet: stack[i]!, sheetBack: stack.slice(0, i), sheetDir: 'back', sheetGuard: null })
+    },
+    returnToSheet(spec) {
+      const { sheet, sheetBack } = get()
+      if (sheet && sheetBack.some((x) => x.kind === spec.kind)) return get().backSheet(spec.kind)
+      set({ sheet: spec, sheetBack: [], sheetDir: 'back', sheetGuard: null })
+    },
+    setSheetGuard(guard) {
+      set({ sheetGuard: guard })
     },
     patchSheet(patch) {
       const s = get().sheet
@@ -469,3 +508,8 @@ export function countdownTo(
     ss: pad(Math.floor(ms / 1e3) % 60),
   }
 }
+
+// Painel fechado (por qualquer caminho: fechar, ação concluída, trocar de aba): a pilha e o guarda saem junto.
+useApp.subscribe((s) => {
+  if (!s.sheet && (s.sheetBack.length || s.sheetGuard)) useApp.setState({ sheetBack: [], sheetGuard: null })
+})

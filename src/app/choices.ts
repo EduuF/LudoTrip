@@ -552,18 +552,21 @@ function alreadyThere(placeId: ID, day: DayRef, exceptVisit?: ID): boolean {
 }
 
 /** Põe a atividade em mais um dia (o dia novo começa limpo). No mesmo dia duas vezes, só avisa. */
-export function scheduleOnce(placeId: ID, day: DayRef, slot?: Slot): boolean {
+export function scheduleOnce(placeId: ID, day: DayRef, slot?: Slot, opts?: { keep?: boolean }): boolean {
   if (alreadyThere(placeId, day)) return false
-  return S().act({
-    type: 'engine',
-    command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day, ...(slot ? { slot } : {}) },
-  })
+  return S().act(
+    {
+      type: 'engine',
+      command: { type: 'scheduleVisit', visitId: uid('v'), placeId, day, ...(slot ? { slot } : {}) },
+    },
+    opts,
+  )
 }
 
 /** Muda a atividade de dia (com as anotações dela). No dia em que ela já está, só avisa. */
-export function moveOnce(visitId: ID, placeId: ID, to: DayRef): boolean {
+export function moveOnce(visitId: ID, placeId: ID, to: DayRef, opts?: { keep?: boolean }): boolean {
   if (alreadyThere(placeId, to, visitId)) return false
-  return S().act({ type: 'engine', command: { type: 'moveVisit', visitId, to } })
+  return S().act({ type: 'engine', command: { type: 'moveVisit', visitId, to } }, opts)
 }
 
 // ---------------------------------------------------------------------------

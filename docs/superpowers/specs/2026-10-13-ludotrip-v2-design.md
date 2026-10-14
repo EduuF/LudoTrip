@@ -782,6 +782,16 @@ _Retorno do M3.4: "busca bem detalhada por bugs, corner cases, jornadas, deadend
 - **Futuro:** `schemaVersion` no documento e `migrate()` ao abrir.
 - **Registrado, não agora:** casos raros de fuso (âncora no dia de saída, linha de data), dois passes seguidos, o mesmo par de cidades em dois trechos, paradas de trechos arquivados, várias abas abertas (vai com a nuvem, M4), dia sem ano no Ano-Novo, "Misturado" no criar viagem.
 
+### 17.13 Painéis empilhados (M3.7)
+
+_Retorno do M3.6: "cliquei em + Tarefa e achei que tinha voltado para a atividade"._ Um painel que abria outro trocava no mesmo lugar, sem animação nem cabeçalho (cerca de 25 passagens).
+
+- **Todo painel diz o que é:** faixa fixa no topo com o tipo em letras pequenas (ATIVIDADE, ATIVIDADE NO DIA, NOVA TAREFA, TAREFA, TRECHO, HORÁRIOS, ESCOLHER O DIA, ONDE ENTRA…).
+- **Painel aberto de outro empilha:** desliza da direita e mostra "‹ {painel anterior}" ("‹ Gion"), que volta deslizando da esquerda; fechar (tocar fora, "Fechar", Escape) fecha a pilha toda. Um passo concluído (escolher o dia, salvar horários, "Presa a") volta pela pilha ao painel de origem, que mantém o "‹" dele; criar a tarefa troca "Nova tarefa" pelo painel da tarefa no mesmo lugar da pilha.
+- **Criar ou Descartar:** nos painéis de criar (tarefa, atividade, nome da hospedagem), sair com o nome digitado e não criado mostra "Criar “…”?" com [Criar] e [Descartar]; sem nada digitado, sai direto.
+- Campos de texto dos editores (anotações, título e link da tarefa) salvam também ao sair do painel sem tirar o foco.
+- "Reduzir movimento": sem deslizar.
+
 ## 18. Persistência, concorrência e offline
 
 - **Online:** cada operação roda numa transação do Firestore, que lê o itinerário atual do servidor, **reaplica a operação** e grava com `version + 1`. Duas pessoas editando ao mesmo tempo não se sobrescrevem; a operação é reaplicada sobre o estado mais novo.

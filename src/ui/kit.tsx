@@ -332,12 +332,30 @@ export function SheetFrame({
   children,
   onClose,
   focusKey,
+  label,
+  back,
+  depth = 0,
+  dir = 'in',
 }: {
   children: ReactNode
   onClose: () => void
   focusKey?: unknown
+  /** O que este painel é ("NOVA TAREFA"), no cabeçalho (spec §17.13). */
+  label?: string
+  /** "‹ Gion": o painel de baixo, quando este foi aberto a partir de outro. */
+  back?: { name: string; go: () => void }
+  /** Profundidade na pilha: troca a chave do conteúdo para a animação repetir. */
+  depth?: number
+  dir?: 'in' | 'back'
 }) {
   const panel = useRef<HTMLDivElement>(null)
+  const guard = useApp((s) => s.sheetGuard)
+  const setGuard = useApp((s) => s.setSheetGuard)
+  const [asking, setAsking] = useState<(() => void) | null>(null)
+  // Sair com algo digitado e não criado pergunta antes (Criar ou Descartar).
+  const leave = (then: () => void) => (guard ? setAsking(() => then) : then())
+  const close = () => leave(onClose)
+  const goBack = back ? () => leave(back.go) : undefined
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     return () => {
@@ -346,7 +364,7 @@ export function SheetFrame({
   }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onClose()
+      if (e.key === 'Escape') return close()
       if (e.key !== 'Tab' || !panel.current) return
       const all = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
       if (!all.length) return
@@ -362,11 +380,12 @@ export function SheetFrame({
     }
     addEventListener('keydown', onKey)
     return () => removeEventListener('keydown', onKey)
-  }, [onClose])
+  })
   useEffect(() => {
+    setAsking(null)
     const all = [
       ...(panel.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([type=search]):not([disabled]), select',
+        '.sheet-body button:not([disabled]), .sheet-body input:not([type=search]):not([disabled]), .sheet-body select',
       ) ?? []),
     ]
     const safe = all.find((el) => !DESTRUCTIVE.test(el.textContent?.trim() ?? ''))
@@ -374,12 +393,62 @@ export function SheetFrame({
   }, [focusKey])
   return (
     <>
-      <button type="button" className="scrim" aria-label="Fechar" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" ref={panel}>
+      <button type="button" className="scrim" aria-label="Fechar" onClick={close} />
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={label} ref={panel}>
         <div className="sheet-in">
           <div className="grip" />
-          {children}
-          <button type="button" className="btn ghost" onClick={onClose}>
+          {label || back ? (
+            <div className="sheet-head">
+              {back ? (
+                <button
+                  type="button"
+                  className="sheet-back"
+                  onClick={goBack}
+                  aria-label={`Voltar para ${back.name}`}
+                >
+                  ‹ <span>{back.name}</span>
+                </button>
+              ) : (
+                <span />
+              )}
+              {label ? <span className="sheet-kind">{label}</span> : null}
+            </div>
+          ) : null}
+          {asking && guard ? (
+            <div className="sheet-ask" role="alert">
+              <span>
+                Criar “<b>{guard.text}</b>”?
+              </span>
+              <button
+                type="button"
+                className="btn small main"
+                onClick={() => {
+                  const then = asking
+                  guard.create()
+                  setAsking(null)
+                  then()
+                }}
+              >
+                Criar
+              </button>
+              <button
+                type="button"
+                className="btn small ghost"
+                onClick={() => {
+                  const then = asking
+                  setGuard(null)
+                  setAsking(null)
+                  then()
+                }}
+              >
+                Descartar
+              </button>
+            </div>
+          ) : null}
+          <div key={`${depth}:${String(focusKey)}`} className={`sheet-body slide-${dir}`}>
+            {children}
+          </div>
+          <button type="button" className="btn ghost" onClick={close}>
             Fechar
           </button>
         </div>
@@ -514,12 +583,20 @@ export function NoteBox({
   value,
   placeholder,
   save,
+  line,
+  inputMode,
+  after,
 }: {
   id: string
   label: string
   value: string
   placeholder: string
   save: (text: string) => void
+  /** Uma linha (título, link) em vez da caixa de várias linhas; Enter confirma. */
+  line?: boolean
+  inputMode?: 'url' | 'text'
+  /** Ao lado do campo (ex.: "Abrir ↗"). */
+  after?: ReactNode
 }) {
   const [text, setText] = useState(value)
   const latest = useRef({ text, value, save })
@@ -534,6 +611,27 @@ export function NoteBox({
     },
     [],
   )
+  const commit = () => text.trim() !== value && save(text.trim())
+  if (line)
+    return (
+      <div className="field">
+        <label htmlFor={id}>{label}</label>
+        <div className="row">
+          <input
+            className="input"
+            id={id}
+            style={{ flex: 1 }}
+            inputMode={inputMode}
+            value={text}
+            placeholder={placeholder}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+          {after}
+        </div>
+      </div>
+    )
   return (
     <label className="field" htmlFor={id}>
       <span>{label}</span>
@@ -544,7 +642,7 @@ export function NoteBox({
         value={text}
         placeholder={placeholder}
         onChange={(e) => setText(e.target.value)}
-        onBlur={() => text.trim() !== value && save(text.trim())}
+        onBlur={commit}
       />
     </label>
   )

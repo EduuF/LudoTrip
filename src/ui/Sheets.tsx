@@ -40,6 +40,7 @@ import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import type { SheetSpec } from './sheetTypes'
+import { sheetLabel } from './sheetLabel'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
 // e os painéis de criar: atividade, hospedagem e "Sua viagem".
@@ -48,11 +49,23 @@ const MODES: LegMode[] = ['flight', 'train', 'bus', 'car', 'boat', 'walk', 'bike
 
 export function Sheets() {
   const sheet = useApp((s) => s.sheet)
+  const stack = useApp((s) => s.sheetBack)
+  const dir = useApp((s) => s.sheetDir)
+  const doc = useApp((s) => s.doc)
   const close = useApp((s) => s.closeSheet)
-  if (!sheet) return null
+  const backSheet = useApp((s) => s.backSheet)
+  if (!sheet || !doc) return null
+  const under = stack[stack.length - 1]
   return (
     // Refaz o foco quando o painel troca por outro (não quando um campo do mesmo painel muda).
-    <SheetFrame onClose={close} focusKey={`${sheet.kind}:${'title' in sheet ? sheet.title : ''}`}>
+    <SheetFrame
+      onClose={close}
+      focusKey={`${sheet.kind}:${'title' in sheet ? sheet.title : ''}:${stack.length}`}
+      label={sheetLabel(sheet, doc).kind}
+      back={under ? { name: sheetLabel(under, doc).name, go: () => backSheet() } : undefined}
+      depth={stack.length}
+      dir={dir}
+    >
       <Body sheet={sheet} />
     </SheetFrame>
   )
@@ -490,7 +503,9 @@ function VisitSheet({ visitId }: { visitId: ID }) {
               title: 'Para qual dia?',
               prefer: p?.destinationId,
               placeId: v.placeId,
-              pick: (ref) => moveOnce(v.id, v.placeId, ref) && openSheet({ kind: 'visit', visitId: v.id }),
+              pick: (ref) =>
+                moveOnce(v.id, v.placeId, ref, { keep: true }) &&
+                useApp.getState().returnToSheet({ kind: 'visit', visitId: v.id }),
             })
           }
         >
@@ -505,7 +520,9 @@ function VisitSheet({ visitId }: { visitId: ID }) {
               title: `Repetir ${p?.name ?? 'a atividade'} em qual dia?`,
               prefer: p?.destinationId,
               placeId: v.placeId,
-              pick: (ref) => scheduleOnce(v.placeId, ref) && openSheet({ kind: 'visit', visitId: v.id }),
+              pick: (ref) =>
+                scheduleOnce(v.placeId, ref, undefined, { keep: true }) &&
+                useApp.getState().returnToSheet({ kind: 'visit', visitId: v.id }),
             })
           }
         >
@@ -617,7 +634,9 @@ function AboutActivity({ placeId }: { placeId: ID }) {
               title: `Pôr ${p.name} em qual dia?`,
               prefer: p.destinationId,
               placeId: p.id,
-              pick: (ref) => scheduleOnce(p.id, ref) && openSheet({ kind: 'sticker', placeId: p.id }),
+              pick: (ref) =>
+                scheduleOnce(p.id, ref, undefined, { keep: true }) &&
+                useApp.getState().returnToSheet({ kind: 'sticker', placeId: p.id }),
             }),
         }}
       />
@@ -737,6 +756,12 @@ function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' 
         : add,
     )
   }
+  // Sair com o nome digitado e sem criar pergunta "Criar ou Descartar" (spec §17.13).
+  const setGuard = useApp((s) => s.setSheetGuard)
+  useEffect(() => {
+    setGuard(t ? { text: t, create } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, kind, rarity, picked])
   return (
     <>
       <h2>Nova atividade em {dest?.name ?? 'destino'}</h2>
@@ -853,6 +878,11 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
   const t = name.trim()
   const [web, setWeb] = useNearby(t, dest?.lat, dest?.lon, true)
   const hotels = web.filter((o) => o.placeKind === 'lodging')
+  const setGuard = useApp((s) => s.setSheetGuard)
+  // O nome da hospedagem digitado e não anotado: sair pergunta "Criar ou Descartar".
+  useEffect(() => {
+    setGuard(t ? { text: t, create: () => markLodging(stopId, t, booked ? 'booked' : 'planned') } : null)
+  }, [t, booked, stopId, setGuard])
   if (!stop || !dest) return <h2>Esse destino saiu do roteiro.</h2>
   const missing = gap?.missing ?? []
   const setLodging = (lodging: Lodging) =>
@@ -1166,11 +1196,10 @@ function ArchivedBookings() {
 
 function Times({ legId }: { legId: ID }) {
   const doc = useApp((s) => s.doc)!
-  const openSheet = useApp((s) => s.openSheet)
   // Os horários são um passo do editor do trecho: salvar ou limpar volta a ele.
   const act = (a: DocAction) => {
-    const ok = useApp.getState().act(a)
-    if (ok) openSheet({ kind: 'leg', legId })
+    const ok = useApp.getState().act(a, { keep: true })
+    if (ok) useApp.getState().returnToSheet({ kind: 'leg', legId })
     return ok
   }
   const leg = doc.itinerary.legs.find((l) => l.id === legId)

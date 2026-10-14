@@ -2866,3 +2866,97 @@ button.tl-stop:active {
     height: 44px;
   }
 }
+
+/* M3.7 (spec §17.13): painéis empilhados — o cabeçalho diz o que é o painel e de onde se veio */
+.sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -4px 0 2px;
+  padding: 4px 0 8px;
+  background: var(--washi);
+  border-bottom: 1.5px solid var(--line);
+}
+.sheet-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  max-width: 60%;
+  padding: 0 10px 0 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sheet-back span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.sheet-back:hover,
+.sheet-back:focus-visible {
+  background: var(--shade);
+}
+.sheet-kind {
+  font: 11px var(--f-pixel);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sheet-body.slide-in {
+  animation: sheet-in 180ms ease-out;
+}
+.sheet-body.slide-back {
+  animation: sheet-back 180ms ease-out;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes sheet-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-body.slide-in,
+  .sheet-body.slide-back {
+    animation: none;
+  }
+}
+.sheet-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 18%, var(--paper));
+  border: 1.5px solid color-mix(in srgb, var(--gold) 60%, transparent);
+}
+.sheet-ask span {
+  flex: 1 1 100%;
+}
+@media (pointer: coarse) {
+  .sheet-back {
+    min-height: 44px;
+  }
+}

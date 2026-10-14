@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { addDays, dayLabel, describeIssue, health } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, uid, useApp } from '../app/store'
@@ -128,19 +128,16 @@ export function TaskSheet({ taskId, about }: { taskId?: ID; about?: TaskAbout })
   const items = t.items ?? []
   return (
     <>
-      <label className="field" htmlFor="titulo-tarefa">
-        <span>Tarefa</span>
-        <input
-          className="input"
-          id="titulo-tarefa"
-          defaultValue={t.title}
-          key={t.title}
-          onBlur={(e) =>
-            e.target.value.trim() && e.target.value.trim() !== t.title && set({ title: e.target.value })
-          }
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
-      </label>
+      <h2>{t.done ? `✓ ${t.title}` : t.title}</h2>
+      <NoteBox
+        line
+        key={`titulo-${t.id}`}
+        id="titulo-tarefa"
+        label="Tarefa"
+        value={t.title}
+        placeholder="O que precisa fazer?"
+        save={(title) => title && set({ title })}
+      />
       <button
         type="button"
         className="btn small ghost"
@@ -152,26 +149,23 @@ export function TaskSheet({ taskId, about }: { taskId?: ID; about?: TaskAbout })
       {t.wasAbout ? <p className="note">Era de {t.wasAbout}, que saiu da viagem.</p> : null}
       <DueField key={`due-${t.due ?? ''}`} value={t.due} onChange={(due) => set({ due })} />
       <WhoField value={t.who} onChange={(who) => set({ who })} />
-      <div className="field">
-        <label htmlFor="link-tarefa">Link (site, fila, reserva)</label>
-        <div className="row">
-          <input
-            className="input"
-            id="link-tarefa"
-            style={{ flex: 1 }}
-            inputMode="url"
-            placeholder="ex.: sankan.kunaicho.go.jp"
-            defaultValue={t.link ?? ''}
-            key={`link-${t.link ?? ''}`}
-            onBlur={(e) => e.target.value.trim() !== (t.link ?? '') && set({ link: e.target.value.trim() })}
-          />
-          {href ? (
+      <NoteBox
+        line
+        key={`link-${t.id}`}
+        id="link-tarefa"
+        label="Link (site, fila, reserva)"
+        inputMode="url"
+        value={t.link ?? ''}
+        placeholder="ex.: sankan.kunaicho.go.jp"
+        save={(link) => set({ link })}
+        after={
+          href ? (
             <a className="btn small" href={href} target="_blank" rel="noreferrer">
               Abrir ↗
             </a>
-          ) : null}
-        </div>
-      </div>
+          ) : null
+        }
+      />
       <div className="field">
         <span>Itens {items.length ? `· ${items.filter((i) => i.done).length}/${items.length}` : ''}</span>
         {items.map((i) => (
@@ -251,12 +245,20 @@ function NewTask({ about }: { about: TaskAbout }) {
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const [title, setTitle] = useState('')
+  const setGuard = useApp((s) => s.setSheetGuard)
+  // Sair com o nome digitado e sem criar pergunta "Criar ou Descartar" (spec §17.13).
+  useEffect(() => {
+    const t = title.trim()
+    setGuard(t ? { text: t, create: () => create() } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title])
   const create = () => {
     const t = title.trim()
     if (!t) return
     const id = uid('t')
-    if (act({ type: 'addTask', task: { id, title: t, about, createdAt: Date.now() } }))
-      openSheet({ kind: 'task', taskId: id })
+    // Criada, o painel "Nova tarefa" vira o da tarefa (o "‹ voltar" continua indo para onde se veio).
+    if (act({ type: 'addTask', task: { id, title: t, about, createdAt: Date.now() } }, { keep: true }))
+      openSheet({ kind: 'task', taskId: id }, { replace: true })
   }
   return (
     <>
@@ -299,8 +301,8 @@ export function TaskAboutSheet({
   const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
   const pick = (about: TaskAbout) => {
-    act({ type: 'setTask', id: taskId, patch: { about } })
-    openSheet({ kind: 'task', taskId })
+    act({ type: 'setTask', id: taskId, patch: { about } }, { keep: true })
+    useApp.getState().returnToSheet({ kind: 'task', taskId })
   }
   const go = (s: typeof step, d?: ID) =>
     openSheet({ kind: 'taskAbout', taskId, step: s, ...(d ? { destId: d } : {}) })

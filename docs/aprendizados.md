@@ -5,6 +5,12 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M3.7: painéis empilhados
+
+- **Trocar de painel sem pista é se perder:** o painel novo no mesmo lugar, sem título nem movimento, parecia o anterior ("demorei 3 segundos"). Cada painel diz o que é; um painel aberto de outro tem "‹ voltar" e desliza.
+- **Pilha e "voltar ao painel":** um passo concluído volta pela pilha (`returnToSheet`) em vez de reabrir do zero, senão o "‹" do painel de origem se perde. Criar troca o topo da pilha (`openSheet(..., { replace: true })`).
+- **Nada digitado se perde calado:** a mesma ideia do "nada some calado" aplicada ao que ainda não foi criado.
+
 ## 2026-10-14 — M3.6: tarefas de verdade
 
 - **Uma lista só, por prazo**, juntando o que o app calcula (`health()`) e o que se escreve. As automáticas continuam calculadas; o que se acrescenta a elas (prazo, quem faz, anotações, "Não preciso") fica numa tabela pela chave `tipo:alvo` (`taskMeta`). Nada duplicado, nada que fique velho.

@@ -335,3 +335,23 @@ test('tarefa da atividade: entrar na fila online do Gion até uma data, e achar 
   await expect(group).toContainText('Gion')
   await expect(group).toContainText('0/1 itens')
 })
+
+test('painéis empilhados: "+ Tarefa" mostra "‹ Gion" e volta; nome digitado e toque fora pergunta', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
+  await page.locator('#c-s8 .loose-row').getByRole('button', { name: /^Gion/ }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.locator('.sheet-kind')).toHaveText('ATIVIDADE')
+  await dialog.getByRole('button', { name: '+ Tarefa' }).click()
+  await expect(dialog.locator('.sheet-kind')).toHaveText('NOVA TAREFA')
+  await dialog.getByRole('button', { name: 'Voltar para Gion' }).click()
+  await expect(dialog.locator('.sheet-kind')).toHaveText('ATIVIDADE')
+  await dialog.getByRole('button', { name: '+ Tarefa' }).click()
+  await dialog.getByLabel('O que precisa fazer').fill('Comprar o JR Pass')
+  await page.keyboard.press('Escape')
+  await expect(dialog.getByRole('alert')).toContainText('Comprar o JR Pass')
+  await dialog.getByRole('button', { name: 'Descartar' }).click()
+  await expect(dialog).toHaveCount(0)
+})

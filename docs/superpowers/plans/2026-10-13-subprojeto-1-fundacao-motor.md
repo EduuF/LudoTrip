@@ -463,6 +463,17 @@ _Spec §17.11. Começa depois da revisão do M3.5._
 
 **Ponto de revisão M3.6:** o mantenedor cria a tarefa da fila online numa atividade e a encontra na aba Tarefas pelo prazo.
 
+## M3.7 — Painéis empilhados
+
+_Retorno do M3.6 (spec §17.13)._
+
+- [x] Pilha no store (`sheetBack`, `backSheet`, `returnToSheet`, `replace`), limpa ao fechar.
+- [x] Cabeçalho com o tipo e "‹ voltar" (`sheetLabel`), animação de entrar/voltar, "reduzir movimento".
+- [x] "Criar ou Descartar" (`sheetGuard`) em nova tarefa, nova atividade e hospedagem; título e link da tarefa salvam ao sair.
+- [x] Testes (store, jsdom, e2e) e docs.
+
+**Ponto de revisão M3.7:** o mantenedor cria uma tarefa a partir de uma atividade e percorre trecho → horários.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**
