@@ -5,6 +5,22 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M3.5: varredura de bugs, becos sem saída e clareza
+
+### Como foi feita
+
+- Duas auditorias de leitura de código em paralelo: interface (becos, textos, acessibilidade: 40 achados) e motor/estado (casos de canto: 26). Os graves foram conferidos no código antes de entrar no plano; os raros ficaram registrados na spec §17.12, com o porquê.
+- **Um teste que falhava antes de cada correção** (`src/ui/varredura.test.tsx`, `repo.test.ts`, `doc.test.ts`, `progress.test.ts`).
+
+### O que mais apareceu
+
+- **Viagem sem datas era o maior beco:** botões de hospedagem e passagem sem efeito, progresso travado em 0/N. Regra: onde a data é indispensável, o botão leva a "Escolher a data de ida" (`askStartDate`), nunca fica desligado ou mudo.
+- **Caminhos equivalentes divergiam:** a mesma ação feita por dois lugares (Tarefas × Roteiro) com código copiado. Agora `buyTicket`, `scheduleOnce`, `fillOpenChoice` e `askStartDate` em `choices.ts`.
+- **Estado local que não acompanha o documento:** campos de data e "+ Mais uma pessoa" guardavam cópia própria. Regra: campo de painel-editor sincroniza com o documento (`useEffect` no valor) e salva na hora.
+- **Falha calada do armazenamento:** um erro do IndexedDB desligava o salvar para sempre. Agora cada operação tenta de novo e o app avisa uma vez.
+- **Selo que apaga:** "Passagem comprada 済" desmarcava num toque. O que parece selo abre um painel.
+- **Teclado:** blocos e pegadores da trilha só tinham ponteiro. `onClick` com `detail === 0` é o caminho do teclado sem conflitar com o toque.
+
 ## 2026-10-14 — M3.4: atividade repetível, anotações do dia e escolhas que escalam
 
 ### O motor já sabia; a interface escondia

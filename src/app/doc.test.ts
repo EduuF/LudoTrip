@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { japao } from '../engine/fixtures/trips'
 import { deepEqual, findVisit } from '../engine'
-import { runDoc, undoDoc } from './doc'
+import { migrate, runDoc, SCHEMA_VERSION, undoDoc } from './doc'
 import type { DocAction, TripDoc } from './doc'
 
 const docOf = (): TripDoc => {
@@ -170,5 +170,19 @@ describe('documento da viagem: tudo tem Desfazer', () => {
     })
     if (!b.ok) throw new Error()
     expect(undoDoc(b.doc, a.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
+  })
+})
+
+describe('formato salvo (M3.5)', () => {
+  it('migrate() completa uma viagem salva antes das listas novas e marca a versão', () => {
+    const d = docOf()
+    const old = structuredClone(d) as TripDoc & { itinerary: Record<string, unknown> }
+    delete (old.itinerary as Record<string, unknown>).returned
+    delete (old.itinerary as Record<string, unknown>).anchors
+    const m = migrate(old as TripDoc)
+    expect(m.itinerary.returned).toEqual([])
+    expect(m.itinerary.anchors).toEqual([])
+    expect(m.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(migrate(m)).toBe(m)
   })
 })

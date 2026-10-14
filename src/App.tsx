@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { health } from './engine'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
@@ -7,7 +7,7 @@ import { resetTrilhaHint } from './app/tutorial'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
-import { Celebrations, Petals, Toast } from './ui/kit'
+import { Celebrations, Petals, PopMenu, Toast } from './ui/kit'
 import { Mapa } from './ui/Mapa'
 import { Sheets } from './ui/Sheets'
 import { Tarefas } from './ui/Tarefas'
@@ -31,6 +31,7 @@ function Hud() {
   const setTab = useApp((s) => s.setTab)
   const openSheet = useApp((s) => s.openSheet)
   const [menu, setMenu] = useState(false)
+  const closeMenu = useCallback(() => setMenu(false), [])
   return (
     <header className="hud">
       <div className="hud-in">
@@ -69,7 +70,7 @@ function Hud() {
               ⋯
             </button>
             {menu ? (
-              <div className="popmenu" role="menu">
+              <PopMenu onClose={closeMenu}>
                 <button
                   type="button"
                   role="menuitem"
@@ -92,7 +93,7 @@ function Hud() {
                 >
                   {sound ? '♪ Desligar sons' : '♪ Ligar sons'}
                 </button>
-              </div>
+              </PopMenu>
             ) : null}
           </div>
         </div>

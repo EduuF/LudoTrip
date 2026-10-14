@@ -103,7 +103,7 @@ describe('app', () => {
     expect(screen.getByRole('region', { name: 'Trilha da viagem' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Dia escolhido' })).toBeTruthy()
     // O resumo da viagem fica no cabeçalho da trilha; o nível fica na contagem do mapa.
-    expect(document.querySelector('.tr-month')!.textContent).toMatch(/23 noites · 6 lugares/)
+    expect(document.querySelector('.tr-month')!.textContent).toMatch(/23 noites · 6 destinos/)
     expect(document.querySelector('.map-head .level')!.textContent).toMatch(/NÍVEL \d/)
     // HUD: voltar, nome, tema, Desfazer e o menu "Mais"; sem contagem nem XP duplicados.
     expect(document.querySelectorAll('.hud button').length).toBe(5)
@@ -463,7 +463,7 @@ describe('app', () => {
     fireEvent.change(within(dialog).getByLabelText('Nome da hospedagem'), {
       target: { value: 'Ryokan Sakura' },
     })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar reservada 済' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar reservada' }))
     await waitFor(() =>
       expect(
         useApp.getState().doc!.bookings.find((b) => b.kind === 'lodging' && b.title === 'Ryokan Sakura'),
@@ -577,7 +577,10 @@ describe('app', () => {
     expect(await screen.findByText('Suas viagens')).toBeTruthy()
     expect(tripNames()).toEqual([name])
     fireEvent.click(screen.getByRole('button', { name: `Mais opções de ${name}` }))
+    // Segundo toque para apagar (M3.5): o primeiro só pede confirmação.
     fireEvent.click(screen.getByRole('menuitem', { name: 'Apagar' }))
+    expect(useApp.getState().trips.length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Toque de novo para apagar' }))
     expect(await screen.findByText(`${name} apagada.`)).toBeTruthy()
     await waitFor(() => expect(tripNames()).toEqual([]))
     fireEvent.click(within(screen.getByRole('status')).getByText('Desfazer'))

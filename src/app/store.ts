@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { days as allDays, describeError, describeUndoRefusal, placeStates, progress } from '../engine'
 import type { ID } from '../engine'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
-import { runDoc, undoDoc } from './doc'
+import { migrate, runDoc, undoDoc } from './doc'
 import type { DocAction, TripDoc, TripMeta, UndoStep } from './doc'
 import { narrate } from './narration'
 import { localRepo } from './repo'
@@ -221,7 +221,7 @@ export const useApp = create<AppState>((set, get) => {
     async openTrip(id) {
       const loaded = await repo.load(id)
       if (!loaded) return toast('Essa viagem não está mais aqui.', true)
-      const doc = refreshExample(loaded)
+      const doc = refreshExample(migrate(loaded))
       if (doc !== loaded) void persist(doc)
       set({
         doc,

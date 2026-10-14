@@ -197,7 +197,7 @@ export function MapCanvas() {
         <div className="note-box">
           <p className="note">
             O mapa aparece quando a viagem tem destinos com localização. Toque em "+ Adicionar destino" e
-            escolha da lista.
+            escolha uma das sugestões da busca.
           </p>
         </div>
       ) : null}

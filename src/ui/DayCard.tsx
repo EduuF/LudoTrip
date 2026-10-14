@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { bookingStatus, days as allDays, legName, lodgingGaps, tripPhase } from '../engine'
 import type { Booking, ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
+import { fillOpenChoice } from '../app/choices'
 import { colorOf } from './colors'
 import { DayRow } from './Roteiro'
 
@@ -115,6 +116,13 @@ export function DayCard() {
         </button>
       </div>
       {night ? <div className="pills">{night}</div> : null}
+      {d.kind === 'open' && d.stopId ? (
+        <div className="row">
+          <button type="button" className="btn small main" onClick={() => fillOpenChoice(d.stopId!)}>
+            + Escolher destino
+          </button>
+        </div>
+      ) : null}
       <DayRow day={d} destId={actDest} compact />
     </section>
   )

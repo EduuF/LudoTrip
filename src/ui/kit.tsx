@@ -319,17 +319,59 @@ export function OptButton({ o }: { o: Opt }) {
   )
 }
 
-export function SheetFrame({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select, textarea, a[href]'
+/** Ações que não devem receber o foco inicial (Enter não pode apagar nada sem querer). */
+const DESTRUCTIVE = /^(Tirar|Apagar|Desmarcar|Encurtar)/
+
+/**
+ * Painel que sobe de baixo (spec §17.9, §17.12): Escape fecha, Tab fica dentro dele, o foco inicial
+ * evita a busca (no celular abriria o teclado) e as ações destrutivas, é refeito quando um painel
+ * troca por outro (`focusKey`) e volta ao botão que abriu ao fechar.
+ */
+export function SheetFrame({
+  children,
+  onClose,
+  focusKey,
+}: {
+  children: ReactNode
+  onClose: () => void
+  focusKey?: unknown
+}) {
   const panel = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const opener = document.activeElement as HTMLElement | null
+    return () => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true })
+    }
+  }, [])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab' || !panel.current) return
+      const all = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
+      if (!all.length) return
+      const first = all[0]!
+      const last = all[all.length - 1]!
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     addEventListener('keydown', onKey)
-    // A busca da linha do tempo não ganha o foco (no celular abriria o teclado sem pedir).
-    panel.current
-      ?.querySelector<HTMLElement>('button, input:not([type=search]), select')
-      ?.focus({ preventScroll: true })
     return () => removeEventListener('keydown', onKey)
   }, [onClose])
+  useEffect(() => {
+    const all = [
+      ...(panel.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([type=search]):not([disabled]), select',
+      ) ?? []),
+    ]
+    const safe = all.find((el) => !DESTRUCTIVE.test(el.textContent?.trim() ?? ''))
+    ;(safe ?? all[0])?.focus({ preventScroll: true })
+  }, [focusKey])
   return (
     <>
       <button type="button" className="scrim" aria-label="Fechar" onClick={onClose} />
@@ -343,6 +385,31 @@ export function SheetFrame({ children, onClose }: { children: ReactNode; onClose
         </div>
       </div>
     </>
+  )
+}
+
+/** Menu "⋯": Escape e toque fora fecham; o foco vai ao primeiro item. */
+export function PopMenu({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    box.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onDown = (e: PointerEvent) => {
+      // O botão "⋯" que abriu fica de fora: ele mesmo fecha.
+      const t = e.target as Node
+      if (!box.current?.contains(t) && !box.current?.parentElement?.contains(t)) onClose()
+    }
+    addEventListener('keydown', onKey)
+    addEventListener('pointerdown', onDown)
+    return () => {
+      removeEventListener('keydown', onKey)
+      removeEventListener('pointerdown', onDown)
+    }
+  }, [onClose])
+  return (
+    <div className="popmenu" role="menu" ref={box}>
+      {children}
+    </div>
   )
 }
 

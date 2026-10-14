@@ -50,7 +50,8 @@ export function Sheets() {
   const close = useApp((s) => s.closeSheet)
   if (!sheet) return null
   return (
-    <SheetFrame onClose={close}>
+    // Refaz o foco quando o painel troca por outro (não quando um campo do mesmo painel muda).
+    <SheetFrame onClose={close} focusKey={`${sheet.kind}:${'title' in sheet ? sheet.title : ''}`}>
       <Body sheet={sheet} />
     </SheetFrame>
   )
@@ -510,7 +511,7 @@ function VisitSheet({ visitId }: { visitId: ID }) {
       </div>
       <OptButton
         o={{
-          label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita 済',
+          label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita',
           run: () => meta({ visited: !v.visited }),
         }}
       />
@@ -571,6 +572,7 @@ function VisitSheet({ visitId }: { visitId: ID }) {
 // ---------------------------------------------------------------------------
 
 function AboutActivity({ placeId }: { placeId: ID }) {
+  const [confirmDel, setConfirmDel] = useState(false)
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
@@ -583,6 +585,7 @@ function AboutActivity({ placeId }: { placeId: ID }) {
   const destName = doc.destinations.find((d) => d.id === p.destinationId)?.name ?? 'Destino'
   const ds = allDays(it, doc.places)
   const visits = ds.flatMap((d) => d.visits.filter((v) => v.placeId === p.id).map((v) => ({ d, v })))
+  const hasNotes = !!p.note || visits.some(({ v }) => v.note)
   const setPlace = (patch: { rarity?: Rarity; kind?: PlaceKind; note?: string }) =>
     useApp.getState().doc!.places.some((x) => x.id === p.id) &&
     act({ type: 'setPlace', id: p.id, patch }, { keep: true })
@@ -679,9 +682,14 @@ function AboutActivity({ placeId }: { placeId: ID }) {
       )}
       <OptButton
         o={{
-          label: 'Apagar atividade',
-          detail: ['Sai de todos os dias também. Dá para desfazer.'],
-          run: () => act({ type: 'removePlace', id: p.id }),
+          // Com anotações, um segundo toque (as anotações de cada dia iriam junto).
+          label: confirmDel ? 'Toque de novo para apagar' : 'Apagar atividade',
+          detail: [
+            hasNotes
+              ? 'Sai de todos os dias, com as anotações. Dá para desfazer.'
+              : 'Sai de todos os dias também. Dá para desfazer.',
+          ],
+          run: () => (hasNotes && !confirmDel ? setConfirmDel(true) : act({ type: 'removePlace', id: p.id })),
         }}
       />
     </>
@@ -782,6 +790,7 @@ function NewActivity({ spec }: { spec: Extract<SheetSpec, { kind: 'newActivity' 
         }}
         placeholder="O que vocês querem fazer? Ex.: Fushimi Inari"
         aria-label="Nome da atividade"
+        onKeyDown={(e) => e.key === 'Enter' && create()}
         autoComplete="off"
       />
       {web.length ? (
@@ -933,7 +942,7 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
                   )
                 }
               >
-                Já reservei 済
+                Já reservei <span aria-hidden="true">済</span>
               </button>
             )}
             <button
@@ -1004,7 +1013,13 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
             className="btn main"
             onClick={() => markLodging(stopId, name, booked ? 'booked' : 'planned')}
           >
-            {booked ? 'Marcar reservada 済' : 'Anotar hospedagem'}
+            {booked ? (
+              <>
+                Marcar reservada <span aria-hidden="true">済</span>
+              </>
+            ) : (
+              'Anotar hospedagem'
+            )}
           </button>
         </>
       ) : mine.length ? (
@@ -1132,14 +1147,52 @@ function TripSheet() {
       <div className="field">
         <span>De onde saem (e para onde voltam)</span>
         {it.home ? (
-          <button type="button" className="pill" onClick={() => setHome(null)}>
-            ✈ {it.home.name} ×
-          </button>
+          <span className="row">
+            <span className="pill">✈ {it.home.name}</span>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`Trocar ${it.home.name}`}
+              onClick={() => setHome(null)}
+            >
+              ×
+            </button>
+          </span>
         ) : (
           <PlaceSearch id="casa" placeholder="Sua cidade" kinds={['city']} onPick={setHome} free={false} />
         )}
       </div>
       <Dates />
+      <ArchivedBookings />
+    </>
+  )
+}
+
+/** Reservas tiradas do roteiro: nada some calado; "Voltar" põe de novo nas conferências. */
+function ArchivedBookings() {
+  const doc = useApp((s) => s.doc)!
+  const act = useApp((s) => s.act)
+  const archived = doc.bookings.filter((b) => b.archived)
+  if (!archived.length) return null
+  return (
+    <>
+      <div className="group-t">RESERVAS TIRADAS DO ROTEIRO</div>
+      {archived.map((b) => (
+        <div key={b.id} className="row">
+          <span className="note" style={{ flex: 1 }}>
+            {b.title}
+            {'date' in b && b.date ? ` · ${dayLabel(b.date)}` : ''}
+            {b.kind === 'lodging' ? ` · ${dayLabel(b.checkin)} → ${dayLabel(b.checkout)}` : ''}
+          </span>
+          <button
+            type="button"
+            className="btn small ghost"
+            onClick={() => act({ type: 'setBooking', id: b.id, patch: { archived: false } }, { keep: true })}
+          >
+            Voltar
+          </button>
+        </div>
+      ))}
     </>
   )
 }
@@ -1275,9 +1328,13 @@ function Dates() {
       ) : null}
       <div className="row">
         <span className="note" style={{ flex: 1 }}>
-          {fixed
-            ? 'Volta marcada 🔒: ao mudar noites, outro destino cede.'
-            : 'Volta livre: mudar noites muda a volta.'}
+          {it.start
+            ? fixed
+              ? 'Volta marcada 🔒: ao mudar noites, outro destino cede.'
+              : 'Volta livre: mudar noites muda a volta.'
+            : fixed
+              ? 'Duração marcada 🔒: ao mudar noites, outro destino cede.'
+              : 'Duração livre: mudar noites muda o total da viagem.'}
         </span>
         <button
           type="button"
@@ -1290,7 +1347,13 @@ function Dates() {
             )
           }
         >
-          {fixed ? '🔒 Volta marcada' : 'Marcar a volta'}
+          {it.start
+            ? fixed
+              ? '🔒 Volta marcada'
+              : 'Marcar a volta'
+            : fixed
+              ? '🔒 Duração marcada'
+              : 'Marcar a duração'}
         </button>
       </div>
       {it.start ? (

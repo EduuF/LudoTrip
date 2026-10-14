@@ -22,7 +22,7 @@ const STEPS = [
   {
     target: '.daycard',
     title: 'O cartão do dia',
-    text: 'Onde vocês estão, onde dormem e as atividades do dia, com "+ Atividade". Toque numa atividade para anotar o que quiser sobre aquele dia. Role para baixo: o roteiro, um destino aberto por vez, e as atividades do destino, que dá para pôr em quantos dias quiser. Tudo tem Desfazer.',
+    text: 'Onde vocês estão, onde dormem e as atividades do dia, com "+ Atividade". Toque numa atividade para anotar o que quiser sobre aquele dia. Role para baixo: o roteiro, um destino aberto por vez, e as atividades do destino, que dá para pôr em quantos dias quiser. Os selos: 済 é feito ou reservado; 宿 é onde vocês dormem. Tudo tem Desfazer.',
   },
 ]
 
@@ -56,6 +56,19 @@ export function Tutorial() {
       removeEventListener('scroll', update, true)
     }
   }, [open, step])
+
+  // Escape fecha (como "Pular"); o foco vai para o tutorial ao abrir.
+  useEffect(() => {
+    if (!open) return
+    document.querySelector<HTMLElement>('.tutorial button')?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      markTutorialSeen()
+      setTutorial(false)
+    }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [open, setTutorial])
 
   if (!open) return null
   const close = () => {

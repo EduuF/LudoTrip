@@ -268,3 +268,47 @@ test('passagem: marcar, desmarcar e desfazer, com carimbo e XP', async ({ page }
   await page.getByRole('button', { name: 'Desfazer' }).first().click()
   await expect(page.getByText(/^Desfeito/)).toBeVisible()
 })
+
+test('viagem sem datas: passagem e hospedagem levam a escolher a data; "com amigos" tira a hospedagem', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: /: nome, quem vai e datas$/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Ainda não sei a data' }).click()
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  // A passagem nunca fica desligada: sem data, leva a "Sua viagem".
+  await page
+    .getByRole('button', { name: /Passagem: falta comprar/ })
+    .first()
+    .click()
+  await expect(dialog).toContainText('Sua viagem')
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  // Hospedagem de Osaka: "com amigos" e a tarefa some.
+  await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
+  await expect(page.getByText(/^Osaka: falta hospedagem/)).toBeVisible()
+  await page.getByRole('button', { name: 'Ir para Osaka' }).first().click()
+  await page
+    .locator('[id^="c-"]')
+    .filter({ hasText: 'Osaka' })
+    .getByRole('button', { name: /onde vocês dormem/ })
+    .click()
+  await dialog.getByText('Vamos ficar com amigos ou família').click()
+  await expect(page.getByText('Com amigos: não precisa de reserva.')).toBeVisible()
+  // O painel é um editor: fica aberto, mostrando que não precisa de reserva.
+  await expect(dialog).toContainText('não precisa de reserva')
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
+  await expect(page.getByText(/^Osaka: falta hospedagem/)).toHaveCount(0)
+})
+
+test('apagar uma viagem pede um segundo toque', async ({ page }) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Suas viagens' }).click()
+  await page.getByRole('button', { name: /^Mais opções de Japão/ }).click()
+  await page.getByRole('menuitem', { name: 'Apagar' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Toque de novo para apagar' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(page.locator('.trip-card')).toHaveCount(1)
+})

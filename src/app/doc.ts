@@ -37,6 +37,36 @@ export interface TripDoc {
   bookings: Booking[]
   /** Contador para ids novos (o motor é determinístico; os ids vêm daqui). */
   seq: number
+  /** Versão do formato salvo (ausente = antes do M3.5). `migrate()` atualiza ao abrir. */
+  schemaVersion?: number
+}
+
+export const SCHEMA_VERSION = 1
+
+/**
+ * Atualiza uma viagem salva por uma versão anterior (spec §17.12). Hoje só garante as listas que o
+ * motor percorre; cada formato novo (tarefas no M3.6, nuvem no M4) acrescenta um passo aqui.
+ */
+export function migrate(doc: TripDoc): TripDoc {
+  if ((doc.schemaVersion ?? 0) >= SCHEMA_VERSION) return doc
+  const it = doc.itinerary
+  return {
+    ...doc,
+    destinations: doc.destinations ?? [],
+    places: doc.places ?? [],
+    bookings: doc.bookings ?? [],
+    itinerary: {
+      ...it,
+      travelers: it.travelers ?? [],
+      legs: it.legs ?? [],
+      archivedLegs: it.archivedLegs ?? [],
+      departurePlan: it.departurePlan ?? [],
+      resources: it.resources ?? [],
+      anchors: it.anchors ?? [],
+      returned: it.returned ?? [],
+    },
+    schemaVersion: SCHEMA_VERSION,
+  }
 }
 
 export type DocAction =
@@ -50,6 +80,8 @@ export type DocAction =
     }
   | { type: 'removePlace'; id: ID }
   | { type: 'addDestination'; destination: Destination }
+  /** Só destinos fora do roteiro; leva as atividades deles (e as visitas de bate-volta), com Desfazer. */
+  | { type: 'removeDestination'; id: ID }
   | { type: 'addBooking'; booking: Booking }
   | {
       type: 'setBooking'
@@ -138,6 +170,17 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
         if (draft.destinations.some((d) => d.id === a.destination.id)) return
         snapshot('destinations')
         draft.destinations = [...draft.destinations, a.destination]
+        return
+      }
+      case 'removeDestination': {
+        if (!draft.destinations.some((d) => d.id === a.id))
+          throw new DocFail({ code: 'NOT_FOUND', data: { destinationId: a.id } })
+        if (draft.itinerary.stops.some((s) => s.destinationId === a.id))
+          throw new DocFail({ code: 'INVALID', data: { reason: 'destination-in-trip' } })
+        for (const p of draft.places.filter((x) => x.destinationId === a.id))
+          apply({ type: 'removePlace', id: p.id })
+        snapshot('destinations')
+        draft.destinations = draft.destinations.filter((d) => d.id !== a.id)
         return
       }
       case 'addBooking': {

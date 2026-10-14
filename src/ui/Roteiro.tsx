@@ -21,6 +21,7 @@ import { todayISO, useApp } from '../app/store'
 import {
   addDestination,
   buyTicket,
+  fillOpenChoice,
   cityName,
   minusNight,
   plusNight,
@@ -178,11 +179,16 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
       kind: 'choice',
       title: `${name} · ${plural(n, 'noite', 'noites')}`,
       options: [
-        {
-          label: 'Mudar a ordem',
-          detail: ['Escolha depois de qual destino ele vem.'],
-          run: () => openSheet({ kind: 'order', stopId: stop.id }),
-        },
+        // Com um destino só, não há ordem para mudar.
+        ...(it.stops.length > 1
+          ? [
+              {
+                label: 'Mudar a ordem',
+                detail: ['Escolha entre quais destinos ele fica.'],
+                run: () => openSheet({ kind: 'order', stopId: stop.id }),
+              },
+            ]
+          : []),
         ...(index > 0 && index < it.stops.length - 1
           ? [
               {
@@ -456,7 +462,6 @@ function CatalogRow({ destId }: { destId: ID }) {
 function OpenCard({ stop, index }: { stop: Stop; index: number }) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
-  const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
   const n = stop.days.length
   const prev = it.stops[index - 1]
@@ -475,23 +480,7 @@ function OpenCard({ stop, index }: { stop: Stop; index: number }) {
         <div className="dates">{when}</div>
       </div>
       <div className="row">
-        <button
-          type="button"
-          className="btn small main"
-          onClick={() =>
-            openSheet({
-              kind: 'dest',
-              title: 'Que destino fica nessas noites?',
-              pick: (destId) =>
-                n === 1
-                  ? act({
-                      type: 'engine',
-                      command: { type: 'fillOpen', stopId: stop.id, destinationId: destId },
-                    })
-                  : openSheet({ kind: 'fill', stopId: stop.id, destId, nights: n, side: 'start' }),
-            })
-          }
-        >
+        <button type="button" className="btn small main" onClick={() => fillOpenChoice(stop.id)}>
           + Escolher destino
         </button>
         {same ? (
@@ -631,7 +620,7 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
               className="btn small ghost"
               onClick={() => act({ type: 'setBooking', id: b.id, patch: { archived: true } })}
             >
-              Guardar a passagem
+              Tirar a passagem do roteiro
             </button>
           </div>,
         )
@@ -647,7 +636,7 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
               className="btn small ghost"
               onClick={() => act({ type: 'setBooking', id: b.id, patch: { archived: true } })}
             >
-              Guardar a passagem
+              Tirar a passagem do roteiro
             </button>
           </div>,
         )

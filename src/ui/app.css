@@ -2746,3 +2746,31 @@ button.tl-stop:active {
   opacity: 0.55;
   cursor: default;
 }
+
+/* M3.5 (spec §17.12): no toque, todo alvo tem pelo menos 44 px (a área cresce; o desenho quase não muda) */
+@media (pointer: coarse) {
+  .icon-btn,
+  .mini,
+  .mini.add.icon,
+  .ticket,
+  .tl-gap,
+  .city-days button,
+  .kind-row button,
+  .btn.small,
+  button.pill,
+  .map-hint button,
+  .segs button {
+    min-height: 44px;
+  }
+  .icon-btn,
+  .mini.add.icon {
+    min-width: 44px;
+  }
+  .mini.loose.placed {
+    min-height: 40px;
+  }
+  .tr-handle {
+    min-width: 44px;
+    min-height: 40px;
+  }
+}

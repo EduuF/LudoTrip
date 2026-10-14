@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
+import { PopMenu } from './kit'
 import type { ExampleKey } from '../app/store'
 
 // Suas viagens (com renomear e apagar), exemplos para explorar e criar viagem (spec §17.7).
@@ -23,6 +24,11 @@ export function Home() {
   const renameTrip = useApp((s) => s.renameTrip)
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<string | null>(null)
+  const closeMenu = useCallback(() => {
+    setMenu(null)
+    setConfirm(null)
+  }, [])
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   useEffect(() => {
     document.title = 'LudoTrip'
@@ -100,7 +106,7 @@ export function Home() {
                     ⋯
                   </button>
                   {menu === t.id ? (
-                    <div className="popmenu" role="menu">
+                    <PopMenu onClose={closeMenu}>
                       <button
                         type="button"
                         role="menuitem"
@@ -115,14 +121,16 @@ export function Home() {
                         type="button"
                         role="menuitem"
                         className="danger"
+                        // Segundo toque para apagar a viagem inteira (spec §17.12).
                         onClick={() => {
+                          if (confirm !== t.id) return setConfirm(t.id)
                           setMenu(null)
                           void removeTrip(t.id)
                         }}
                       >
-                        Apagar
+                        {confirm === t.id ? 'Toque de novo para apagar' : 'Apagar'}
                       </button>
-                    </div>
+                    </PopMenu>
                   ) : null}
                 </div>
               </div>

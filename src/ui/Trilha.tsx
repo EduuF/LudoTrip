@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, PointerEvent as RPointerEvent } from 'react'
+import type { CSSProperties, KeyboardEvent, PointerEvent as RPointerEvent } from 'react'
 import {
   addDays,
   bookingStatus,
@@ -264,13 +264,13 @@ export function Trilha() {
     return out
   }, [it, doc.bookings])
 
-  // Resumo da viagem no cabeçalho ("23 noites · 6 lugares · 2 países"); o nome do lugar é a marca-d'água do mapa.
+  // Resumo da viagem no cabeçalho ("23 noites · 6 destinos · 2 países"); o nome do lugar é a marca-d'água do mapa.
   const summary = useMemo(() => {
     const places = new Set(it.stops.map((s) => s.destinationId).filter(Boolean)).size
     const countries = worlds(it, doc.destinations).length
     return [
       plural(total, 'noite', 'noites'),
-      places ? plural(places, 'lugar', 'lugares') : null,
+      places ? plural(places, 'destino', 'destinos') : null,
       countries > 1 ? plural(countries, 'país', 'países') : null,
     ]
       .filter(Boolean)
@@ -391,6 +391,21 @@ export function Trilha() {
     const head = `${cityName(l.id)} ${l.days.length + cmd.k} · ${cityName(r.id)} ${r.days.length - cmd.k}.`
     const p = previewLines(cmd)
     setDrag({ ...d, cmd, text: `${head} ${p.lines.join(' ')}`, bad: !p.ok })
+  }
+  /** Teclado (spec §17.12): ← → passam uma noite pela divisa (ou mudam a volta). */
+  const onHandleKey = (e: KeyboardEvent<HTMLElement>, index: number | 'end') => {
+    const k = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+    if (!k) return
+    e.preventDefault()
+    if (index === 'end') {
+      const intent = endIntent(it, k)
+      if (intent.kind === 'locked') return say('A volta está marcada 🔒. Mude em "Sua viagem".', true)
+      if (intent.kind === 'command') act({ type: 'engine', command: intent.command })
+      return
+    }
+    const cmd = boundaryCommand(it, index, k)
+    if (cmd) act({ type: 'engine', command: cmd })
+    else say('Cada destino precisa de pelo menos 1 noite.', true)
   }
   const onHandleUp = () => {
     const d = dragRef.current
@@ -740,6 +755,12 @@ export function Trilha() {
                 className={cls}
                 style={style}
                 aria-label={`${label}. ${blockHint}`}
+                // Teclado (Enter, espaço): abre o destino, como o toque.
+                onClick={(e) => {
+                  if (e.detail !== 0) return
+                  setCursorDay(stopStart(stop.id))
+                  focusOn(`c-${stop.id}`, 'mapa')
+                }}
                 onPointerDown={(e) => onLiftDown(e, 'block', stop.id)}
                 onPointerMove={onLiftMove}
                 onPointerUp={(e) => onLiftUp(e, 'block', stop.id)}
@@ -783,7 +804,8 @@ export function Trilha() {
                 type="button"
                 className={`tr-handle${active ? ' active' : ''}${nudge ? ' nudge' : ''}`}
                 style={{ left: x }}
-                aria-label={`Divisa entre ${cityName(s.id)} e ${cityName(next.id)}: arraste para passar noites`}
+                aria-label={`Divisa entre ${cityName(s.id)} e ${cityName(next.id)}: arraste, ou use as setas ← →, para passar noites`}
+                onKeyDown={(e) => onHandleKey(e, i)}
                 title={`Arraste: noites de ${cityName(s.id)} ⇄ ${cityName(next.id)}`}
                 onPointerDown={(e) => onHandleDown(e, i)}
                 onPointerMove={onHandleMove}
@@ -798,7 +820,10 @@ export function Trilha() {
             type="button"
             className={`tr-handle${it.lock === 'fixed' ? ' locked' : ''}${drag?.kind === 'end' ? ' active' : ''}${nudge ? ' nudge' : ''}`}
             style={{ left: tl.departureIndex * dw }}
-            aria-label={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste para mudar a volta'}
+            aria-label={
+              it.lock === 'fixed' ? 'Volta marcada' : 'Volta: arraste, ou use as setas ← →, para mudar'
+            }
+            onKeyDown={(e) => onHandleKey(e, 'end')}
             title={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste: a volta'}
             onPointerDown={(e) => onHandleDown(e, 'end')}
             onPointerMove={onHandleMove}
@@ -927,6 +952,7 @@ export function Trilha() {
             onPointerDown={(e) => onLiftDown(e, 'shelf', d.id)}
             onPointerMove={onLiftMove}
             onPointerUp={(e) => onLiftUp(e, 'shelf', d.id)}
+            onClick={(e) => e.detail === 0 && openSheet({ kind: 'where', destId: d.id })}
             onPointerCancel={onLiftCancel}
             onContextMenu={(e) => e.preventDefault()}
             aria-label={`${d.name}: ${chipHint}`}

@@ -441,13 +441,13 @@ _Retorno do M3.3 (spec §17.10). Sem migração: `Visit.note`, `Visit.time` e `P
 
 _Retorno do M3.4 (spec §17.12; plano em `~/.claude/plans/excelente-a-ferramenta-est-whimsical-nebula.md`). Um teste que falha antes de cada correção._
 
-- [ ] **A** Bugs: `enterCity` troca para a aba Mapa e `setTab` limpa `placing`; "+ Mais uma pessoa" salva; volta sincronizada; datas completas; `removePlace` com trecho arquivado; `repo` sem desligar e com aviso; horários voltam ao trecho; textos de hospedagem; plurais; `scheduleOnce` em Tarefas; `setPlace` sem mudança.
-- [ ] **B** Becos: sem datas (hospedagem, passagem, progresso, "Escolher a data de ida"); hospedagem com amigos / não precisa; reservas guardadas em "Sua viagem"; "Ir para …" em todos os alvos; "Mudar a ordem" com 1 destino; noite em aberto no cartão do dia; apagar destino guardado; Atividades vazia; volta sem datas; volta sem quem ceda.
-- [ ] **C** Clareza: rótulos das Tarefas; 済/宿 em palavras; resumo do cartão; "destinos"; passagem comprada abre painel; pílula de casa; textos de Atividades e do tutorial.
-- [ ] **D** Acessibilidade: teclado na trilha; alvos de 44 px no toque; foco dos painéis e menus; Enter cria atividade.
-- [ ] **E** Segundo toque para apagar viagem e atividade com anotações.
-- [ ] **F** `schemaVersion` + `migrate()`.
-- [ ] **V** testes, e2e (viagem sem datas, casa de amigos, apagar viagem), navegador nas 6 viagens de exemplo + uma sem datas; docs; commit; push; CI e Pages.
+- [x] **A** Bugs: `enterCity` troca para a aba Mapa e `setTab` limpa `placing`; "+ Mais uma pessoa" salva; volta sincronizada; datas completas; `removePlace` com trecho arquivado; `repo` sem desligar e com aviso; horários voltam ao trecho; textos de hospedagem; plurais; `scheduleOnce` em Tarefas; `setPlace` sem mudança.
+- [x] **B** Becos: sem datas (hospedagem, passagem, progresso, "Escolher a data de ida"); hospedagem com amigos / não precisa; reservas guardadas em "Sua viagem"; "Ir para …" em todos os alvos; "Mudar a ordem" com 1 destino; noite em aberto no cartão do dia; apagar destino guardado; Atividades vazia; volta sem datas; volta sem quem ceda.
+- [x] **C** Clareza: rótulos das Tarefas; 済/宿 em palavras; resumo do cartão; "destinos"; passagem comprada abre painel; pílula de casa; textos de Atividades e do tutorial.
+- [x] **D** Acessibilidade: teclado na trilha; alvos de 44 px no toque; foco dos painéis e menus; Enter cria atividade.
+- [x] **E** Segundo toque para apagar viagem e atividade com anotações.
+- [x] **F** `schemaVersion` + `migrate()`.
+- [x] **V** testes, e2e (viagem sem datas, casa de amigos, apagar viagem), navegador nas 6 viagens de exemplo + uma sem datas; docs; commit; push; CI e Pages.
 
 **Ponto de revisão M3.5:** o mantenedor percorre uma viagem sem datas e uma de exemplo procurando botão sem efeito.
 

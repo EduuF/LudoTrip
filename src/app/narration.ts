@@ -53,7 +53,7 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
       return `${p?.name ?? 'Atividade'} marcada no dia.`
     }
     case 'unscheduleVisit':
-      return 'Atividade tirada do dia; continua na lista.'
+      return 'Atividade tirada do dia; continua no catálogo do destino.'
     case 'moveVisit':
       return 'Atividade mudou de dia.'
     case 'setVisitMeta':
@@ -107,6 +107,10 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
       const p = doc.places.find((x) => x.id === action.id)
       return `${p?.name ?? 'Atividade'} apagada.`
     }
+    case 'removeDestination': {
+      const d = doc.destinations.find((x) => x.id === action.id)
+      return `${d?.name ?? 'Destino'} apagado.`
+    }
     case 'addDestination':
       return `${action.destination.name} entrou nos destinos.`
     case 'addBooking':
@@ -116,7 +120,11 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
           : 'Hospedagem anotada (ainda não reservada).'
       return 'Passagem comprada 済.'
     case 'setBooking':
-      return action.patch.archived ? 'Reserva guardada no arquivo.' : 'Reserva salva.'
+      return action.patch.archived
+        ? 'Reserva tirada do roteiro (fica em "Sua viagem").'
+        : action.patch.archived === false
+          ? 'Reserva de volta ao roteiro.'
+          : 'Reserva salva.'
     case 'removeBooking': {
       const b = doc.bookings.find((x) => x.id === action.id)
       return b?.kind === 'lodging' ? 'Hospedagem desmarcada.' : 'Passagem desmarcada.'

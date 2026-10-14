@@ -116,3 +116,93 @@ describe('varredura M3.5: bugs', () => {
     expect(dialog.getByRole('group', { name: 'Como vão' })).toBeTruthy()
   })
 })
+
+describe('varredura M3.5: becos sem saída', () => {
+  const undated = () =>
+    useApp.getState().act({ type: 'engine', command: { type: 'setTripStart', date: null } })
+
+  it('B1 sem datas: a tarefa de hospedagem leva a "Sua viagem" e o painel de hospedagem explica', async () => {
+    undated()
+    fireEvent.click(nav().getByText('Tarefas'))
+    const btn = screen.getAllByRole('button', { name: 'Escolher a data de ida' })[0]!
+    fireEvent.click(btn)
+    const dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.getByText('Sua viagem')).toBeTruthy()
+    expect(await screen.findByText(/escolha primeiro a data de ida/)).toBeTruthy()
+  })
+
+  it('B1 sem datas: "Passagem: falta comprar" nunca fica desligado', async () => {
+    undated()
+    const t = screen.getAllByRole('button', { name: /Passagem: falta comprar/ })[0]!
+    expect(t).toHaveProperty('disabled', false)
+    fireEvent.click(t)
+    expect(within(await screen.findByRole('dialog')).getByText('Sua viagem')).toBeTruthy()
+  })
+
+  it('B2 "com amigos" tira a hospedagem das tarefas e dá para voltar atrás', async () => {
+    const it0 = useApp.getState().doc!.itinerary
+    const osaka = it0.stops.find((s) => s.days.length === 4 && s.destinationId === 'd-osaka')!
+    useApp.getState().openSheet({ kind: 'lodging', stopId: osaka.id })
+    let dialog = within(await screen.findByRole('dialog'))
+    fireEvent.click(dialog.getByText('Vamos ficar com amigos ou família'))
+    expect(await screen.findByText('Com amigos: não precisa de reserva.')).toBeTruthy()
+    fireEvent.click(nav().getByText('Tarefas'))
+    expect(screen.queryByText(/^Osaka: falta hospedagem/)).toBeNull()
+    useApp.getState().openSheet({ kind: 'lodging', stopId: osaka.id })
+    dialog = within(await screen.findByRole('dialog'))
+    fireEvent.click(dialog.getByText('Mudar: vamos precisar de hospedagem'))
+    expect(await screen.findByText(/^Osaka: falta hospedagem/)).toBeTruthy()
+  })
+
+  it('B3 reserva tirada do roteiro aparece em "Sua viagem" e volta', async () => {
+    const b = useApp.getState().doc!.bookings[0]!
+    useApp.getState().act({ type: 'setBooking', id: b.id, patch: { archived: true } })
+    const sheet = await tripSheet()
+    expect(sheet.getByText('RESERVAS TIRADAS DO ROTEIRO')).toBeTruthy()
+    fireEvent.click(sheet.getByRole('button', { name: 'Voltar' }))
+    await waitFor(() => expect(useApp.getState().doc!.bookings[0]!.archived).toBeFalsy())
+  })
+
+  it('B4 "Ir para Osaka" nas Tarefas abre o cartão de Osaka', async () => {
+    fireEvent.click(nav().getByText('Tarefas'))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ir para Osaka' })[0]!)
+    await waitFor(() => expect(useApp.getState().tab).toBe('mapa'))
+    expect(screen.getByRole('button', { name: 'Osaka: fechar os dias' })).toBeTruthy()
+  })
+
+  it('B7 destino guardado (Hakone) se apaga, com as atividades e Desfazer', async () => {
+    fireEvent.click(nav().getByText('Atividades'))
+    fireEvent.click(screen.getByRole('button', { name: 'Apagar Hakone' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByText('Apagar destino'))
+    expect(await screen.findByText('Hakone apagado.')).toBeTruthy()
+    expect(useApp.getState().doc!.destinations.some((d) => d.name === 'Hakone')).toBe(false)
+    expect(useApp.getState().doc!.places.some((p) => p.name === 'Onsen com vista')).toBe(false)
+  })
+})
+
+describe('varredura M3.5: teclado e proteção', () => {
+  it('D trilha pelo teclado: ← → num pegador passam uma noite; Enter num bloco abre o destino', async () => {
+    const it0 = useApp.getState().doc!.itinerary
+    const handle = screen.getByRole('button', { name: /^Divisa entre Osaka e Kyoto/ })
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    await waitFor(() => {
+      const it1 = useApp.getState().doc!.itinerary
+      expect(it1.stops.find((s) => s.destinationId === 'd-kyoto')!.days.length).toBe(
+        it0.stops.find((s) => s.destinationId === 'd-kyoto')!.days.length - 1,
+      )
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^Kyoto, \d+ noites/ }), { detail: 0 })
+    expect(await screen.findByRole('button', { name: 'Kyoto: fechar os dias' })).toBeTruthy()
+  })
+
+  it('E apagar atividade com anotações pede um segundo toque', async () => {
+    const gion = useApp.getState().doc!.places.find((p) => p.name === 'Gion')!
+    useApp.getState().act({ type: 'setPlace', id: gion.id, patch: { note: 'Ir à noite' } })
+    useApp.getState().openSheet({ kind: 'sticker', placeId: gion.id })
+    const dialog = within(await screen.findByRole('dialog'))
+    fireEvent.click(dialog.getByText('Apagar atividade'))
+    expect(useApp.getState().doc!.places.some((p) => p.id === gion.id)).toBe(true)
+    fireEvent.click(dialog.getByText('Toque de novo para apagar'))
+    await waitFor(() => expect(useApp.getState().doc!.places.some((p) => p.id === gion.id)).toBe(false))
+  })
+})

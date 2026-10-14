@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { placeStates } from '../engine'
 import type { ID, Place, PlaceState } from '../engine'
 import { useApp } from '../app/store'
+import { addDestination } from '../app/choices'
 import { colorOf, sealOf } from './colors'
 import { Seal } from './kit'
 import { PLACE_KINDS } from './placeKinds'
@@ -56,6 +57,7 @@ export function ActivityCard({
 export function Atividades() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
+  const act = useApp((s) => s.act)
   const it = doc.itinerary
   const states = placeStates(it, doc.places)
   const order: ID[] = []
@@ -90,6 +92,27 @@ export function Atividades() {
               </i>
             </div>
           </div>
+          {note === 'guardado' ? (
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label={`Apagar ${d?.name ?? 'destino'}`}
+              onClick={() =>
+                openSheet({
+                  kind: 'choice',
+                  title: `Apagar ${d?.name ?? 'destino'}?`,
+                  sub: mine.length
+                    ? `Leva ${mine.length === 1 ? 'a atividade' : `as ${mine.length} atividades`} dele junto. Dá para desfazer.`
+                    : 'Ele não está no roteiro. Dá para desfazer.',
+                  options: [
+                    { label: 'Apagar destino', run: () => act({ type: 'removeDestination', id: destId }) },
+                  ],
+                })
+              }
+            >
+              ×
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn small"
@@ -124,9 +147,19 @@ export function Atividades() {
         Atividades <em>da viagem</em>
       </h1>
       <p className="note">
-        Tudo o que vocês querem fazer, por destino. Toque numa atividade para pôr num dia, marcar como feita
-        ou ver no mapa. Dourada brilhando é imperdível ainda sem dia.
+        Tudo o que vocês querem fazer, por destino. Toque numa atividade para pôr em um ou mais dias, mudar a
+        prioridade ou ver no mapa; "feita" se marca em cada dia, no roteiro. Dourada brilhando é imperdível
+        ainda sem dia.
       </p>
+      {!order.length && !dayTrips.length && !saved.length ? (
+        <div className="empty">
+          <b>Nenhum destino ainda.</b>
+          As atividades ficam por destino: comece por um.
+          <button type="button" className="btn main" style={{ marginTop: 10 }} onClick={addDestination}>
+            + Adicionar destino
+          </button>
+        </div>
+      ) : null}
       {order.map((id) => page(id))}
       {dayTrips.map((d) => page(d.id, 'bate-volta'))}
       {saved.length ? <h2 className="sec">Destinos guardados</h2> : null}

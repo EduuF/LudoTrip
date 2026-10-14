@@ -85,6 +85,13 @@ export function cmdOpt(
   }
 }
 
+/** "Adiar a volta (sex 26/04)"; sem datas, "Mais 1 noite na viagem" (nada de "mais tarde"). */
+function laterLabel(nights: number): string {
+  return doc().itinerary.start
+    ? `Adiar a volta (${newEnd(nights)})`
+    : `Mais ${plural(nights, 'noite', 'noites')} na viagem`
+}
+
 function newEnd(delta: number): string {
   const end = tripRange(doc().itinerary).end
   return end ? dayLabel(addDays(end, delta)) : 'mais tarde'
@@ -248,7 +255,7 @@ export function plusNight(stopId: ID) {
     kind: 'choice',
     title: 'De onde sai essa noite?',
     sub: `${cityName(stopId)} fica com ${n + 1} noites. A volta está marcada 🔒.`,
-    options: [...donors, cmdOpt(`Adiar a volta (${newEnd(1)})`, back, { extra: returnTicketNote() })],
+    options: [...donors, cmdOpt(laterLabel(1), back, { extra: returnTicketNote() })],
   })
 }
 
@@ -320,8 +327,8 @@ export function removeDayChoice(stopId: ID, ordinal: number) {
   const day = allDays(it).find((d) => d.stopId === stopId && d.ordinal === ordinal)
   S().openSheet({
     kind: 'choice',
-    title: `Remover ${day?.label ?? 'este dia'}?`,
-    sub: 'As atividades desse dia ficam sem dia (continuam na lista).',
+    title: `Tirar a noite de ${day?.label ?? 'este dia'}?`,
+    sub: 'As atividades desse dia continuam no catálogo do destino, sem dia.',
     options: vias.map(([label, via], k) =>
       cmdOpt(label, { type: 'removeDay', stopId, ordinal, via }, { main: k === 0 }),
     ),
@@ -358,7 +365,7 @@ export function aboardChoice(leg: Leg, delta: 1 | -1) {
   const options: Opt[] = []
   const reopen = () => S().openSheet({ kind: 'leg', legId: leg.id })
   if (delta > 0) {
-    if (it.lock === 'free') options.push(cmdOpt(`Adiar a volta (${newEnd(1)})`, back, { main: true }))
+    if (it.lock === 'free') options.push(cmdOpt(laterLabel(1), back, { main: true }))
     const first = !options.length
     options.push(
       ...nearest(
@@ -373,7 +380,7 @@ export function aboardChoice(leg: Leg, delta: 1 | -1) {
         reopen,
       ),
     )
-    if (it.lock === 'fixed') options.push(cmdOpt(`Adiar a volta (${newEnd(1)})`, back))
+    if (it.lock === 'fixed') options.push(cmdOpt(laterLabel(1), back))
   } else {
     if (it.lock === 'free') options.push(cmdOpt('Antecipar a volta', back, { main: true }))
     for (const end of [leg.from, leg.to])
@@ -419,9 +426,7 @@ export function splitOptions(stopId: ID, destId: ID, nights: number, after: numb
   const base = { type: 'splitStopWith' as const, stopId, afterOrdinal: after, destinationId: destId, nights }
   const out: Opt[] = []
   if (it.lock === 'free')
-    out.push(
-      cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }, { main: true }),
-    )
+    out.push(cmdOpt(laterLabel(nights), { ...base, via: { kind: 'return' } }, { main: true }))
   out.push(
     cmdOpt(
       `Tirar de ${cityName(stopId)} mesmo`,
@@ -436,8 +441,7 @@ export function splitOptions(stopId: ID, destId: ID, nights: number, after: numb
       DONOR_PICK,
     ),
   )
-  if (it.lock === 'fixed')
-    out.push(cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }))
+  if (it.lock === 'fixed') out.push(cmdOpt(laterLabel(nights), { ...base, via: { kind: 'return' } }))
   return out
 }
 
@@ -446,9 +450,7 @@ export function insertOptions(index: number, destId: ID, nights: number): Opt[] 
   const base = { type: 'insertStop' as const, index, destinationId: destId, nights }
   const out: Opt[] = []
   if (it.lock === 'free')
-    out.push(
-      cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }, { main: true }),
-    )
+    out.push(cmdOpt(laterLabel(nights), { ...base, via: { kind: 'return' } }, { main: true }))
   const first = !out.length
   out.push(
     ...nearest(
@@ -462,8 +464,7 @@ export function insertOptions(index: number, destId: ID, nights: number): Opt[] 
       DONOR_PICK,
     ),
   )
-  if (it.lock === 'fixed')
-    out.push(cmdOpt(`Adiar a volta (${newEnd(nights)})`, { ...base, via: { kind: 'return' } }))
+  if (it.lock === 'fixed') out.push(cmdOpt(laterLabel(nights), { ...base, via: { kind: 'return' } }))
   return out
 }
 
@@ -497,6 +498,15 @@ export function endOptions(target: ISODate): Opt[] {
           },
         ]
   }
+  if (delta > 0 && !it.stops.some((s) => s.destinationId))
+    return [
+      {
+        label: 'Ainda não há destino para ganhar as noites.',
+        detail: ['Escolha um destino para as noites em aberto e tente de novo.'],
+        run: () => {},
+        disabled: true,
+      },
+    ]
   if (delta > 0)
     return nearest(
       [...it.stops].reverse().filter((s) => s.destinationId),
@@ -590,4 +600,19 @@ export function suggestGap(it: Itinerary, destinations: Destination[], destId: I
     }
   }
   return best
+}
+
+/** "+ Escolher destino" para noites em aberto (cartão do roteiro e cartão do dia). */
+export function fillOpenChoice(stopId: ID) {
+  const s = doc().itinerary.stops.find((x) => x.id === stopId)
+  if (!s) return
+  const n = s.days.length
+  S().openSheet({
+    kind: 'dest',
+    title: 'Que destino fica nessas noites?',
+    pick: (destId) =>
+      n === 1
+        ? S().act({ type: 'engine', command: { type: 'fillOpen', stopId, destinationId: destId } })
+        : S().openSheet({ kind: 'fill', stopId, destId, nights: n, side: 'start' }),
+  })
 }
