@@ -525,7 +525,7 @@ function VisitSheet({ visitId }: { visitId: ID }) {
               title: 'Para qual dia?',
               prefer: p?.destinationId,
               placeId: v.placeId,
-              pick: (ref) => moveOnce(v.id, v.placeId, ref),
+              pick: (ref) => moveOnce(v.id, v.placeId, ref) && openSheet({ kind: 'visit', visitId: v.id }),
             })
           }
         >
@@ -540,7 +540,7 @@ function VisitSheet({ visitId }: { visitId: ID }) {
               title: `Repetir ${p?.name ?? 'a atividade'} em qual dia?`,
               prefer: p?.destinationId,
               placeId: v.placeId,
-              pick: (ref) => scheduleOnce(v.placeId, ref),
+              pick: (ref) => scheduleOnce(v.placeId, ref) && openSheet({ kind: 'visit', visitId: v.id }),
             })
           }
         >
@@ -650,7 +650,7 @@ function AboutActivity({ placeId }: { placeId: ID }) {
               title: `Pôr ${p.name} em qual dia?`,
               prefer: p.destinationId,
               placeId: p.id,
-              pick: (ref) => scheduleOnce(p.id, ref),
+              pick: (ref) => scheduleOnce(p.id, ref) && openSheet({ kind: 'sticker', placeId: p.id }),
             }),
         }}
       />

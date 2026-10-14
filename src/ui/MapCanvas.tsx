@@ -111,7 +111,9 @@ export function MapCanvas() {
     // Sai do modo antes de abrir o painel (sair do modo não mexe no painel).
     setPlacing(null)
     if (what === 'new') openSheet({ kind: 'newActivity', destId: cityId, lon: ll[0], lat: ll[1] })
-    else act({ type: 'setPlace', id: what, patch: { lon: ll[0], lat: ll[1] } })
+    // Marcar no mapa é um passo de "Sobre a atividade": marcado, o painel dela volta (com o lugar já salvo).
+    else if (act({ type: 'setPlace', id: what, patch: { lon: ll[0], lat: ll[1] } }))
+      openSheet({ kind: 'sticker', placeId: what })
   }
   const hold = useRef<{ x: number; y: number; t: number } | null>(null)
   const onPointerDown = (e: RPointerEvent<HTMLDivElement>) => {

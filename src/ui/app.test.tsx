@@ -426,6 +426,10 @@ describe('app', () => {
     )
     fireEvent.click(within(dialog).getByRole('button', { name: /^ter 16\/04/ }))
     expect(await screen.findByText('Sanjūsangen-dō marcada no dia.')).toBeTruthy()
+    // Escolher o dia é um passo de "Sobre a atividade": o painel dela volta, com o dia na lista.
+    expect(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: /^ter 16\/04/ }),
+    ).toBeTruthy()
   })
 
   it('tocar num dia da régua mostra o cartão daquele dia (chegada em Kyoto)', async () => {
@@ -522,6 +526,11 @@ describe('app', () => {
     await waitFor(() => expect(board.className).toContain('placing'))
     fireEvent.click(board, { clientX: 10, clientY: 10 })
     expect(await screen.findByText('Lugar marcado no mapa.')).toBeTruthy()
+    // Volta ao painel da atividade, agora com "Ver no mapa da cidade".
+    const back = within(await screen.findByRole('dialog'))
+    expect(back.getByText('Ginkaku-ji')).toBeTruthy()
+    expect(back.getByText('Ver no mapa da cidade')).toBeTruthy()
+    fireEvent.click(back.getByRole('button', { name: 'Fechar' }))
     const p = useApp.getState().doc!.places.find((x) => x.name === 'Ginkaku-ji')!
     expect(typeof p.lat).toBe('number')
     expect(await screen.findByRole('button', { name: 'Ginkaku-ji, sem dia' })).toBeTruthy()
