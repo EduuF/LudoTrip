@@ -85,7 +85,7 @@ describe('tarefas (M3.6)', () => {
       due: '2030-03-01',
       link: 'sankan.kunaicho.go.jp',
     })
-    fireEvent.click(dialog.getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Pronto ✓' }))
 
     // Na aba: o prazo de 2030 é "mais tarde" (hoje é antes); presa a Gion.
     fireEvent.click(nav().getByText('Tarefas'))
@@ -111,7 +111,7 @@ describe('tarefas (M3.6)', () => {
     fireEvent.change(dialog.getByLabelText('Por quê? (opcional)'), { target: { value: 'casa da tia' } })
     fireEvent.click(dialog.getByRole('button', { name: 'Não preciso' }))
     expect(await screen.findByText('Não precisa: saiu das tarefas.')).toBeTruthy()
-    fireEvent.click(dialog.getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Pronto ✓' }))
     await waitFor(() =>
       expect(screen.queryAllByRole('button', { name: /^Osaka: falta hospedagem/ })).toHaveLength(0),
     )

@@ -97,6 +97,21 @@ describe('painéis empilhados (M3.7)', () => {
     expect(within(await screen.findByRole('dialog')).getByText('ATIVIDADE')).toBeTruthy()
   })
 
+  it('tarefa criada: diz "Criada ✓", e "Pronto ✓" conclui voltando à atividade', async () => {
+    let dialog = await gionSheet()
+    fireEvent.click(dialog.getByRole('button', { name: '+ Tarefa' }))
+    dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.queryByRole('button', { name: 'Pronto ✓' })).toBeNull()
+    fireEvent.change(dialog.getByLabelText('O que precisa fazer'), { target: { value: 'Fila online' } })
+    fireEvent.click(dialog.getByRole('button', { name: 'Criar tarefa' }))
+    dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.getByText(/Criada ✓/)).toBeTruthy()
+    fireEvent.click(dialog.getByRole('button', { name: 'Pronto ✓' }))
+    dialog = within(await screen.findByRole('dialog'))
+    expect(dialog.getByText('ATIVIDADE')).toBeTruthy()
+    expect(dialog.getByText('Fila online')).toBeTruthy()
+  })
+
   it('com o nome digitado, tocar fora pergunta "Criar ou Descartar"', async () => {
     let dialog = await gionSheet()
     fireEvent.click(dialog.getByRole('button', { name: '+ Tarefa' }))

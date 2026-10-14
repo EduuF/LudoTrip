@@ -156,7 +156,7 @@ describe('app', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(group.getByRole('button', { name: /trem/i }).getAttribute('aria-pressed')).toBe('true')
     // Painéis-editores ficam abertos: atividade (prioridade) e visita (turno) também.
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Pronto ✓' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     abrirKyoto()
     fireEvent.click(kyotoDays().getByRole('button', { name: /Gion/ }))
@@ -530,7 +530,7 @@ describe('app', () => {
     const back = within(await screen.findByRole('dialog'))
     expect(back.getByText('Ginkaku-ji')).toBeTruthy()
     expect(back.getByText('Ver no mapa da cidade')).toBeTruthy()
-    fireEvent.click(back.getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(back.getByRole('button', { name: 'Pronto ✓' }))
     const p = useApp.getState().doc!.places.find((x) => x.name === 'Ginkaku-ji')!
     expect(typeof p.lat).toBe('number')
     expect(await screen.findByRole('button', { name: 'Ginkaku-ji, sem dia' })).toBeTruthy()

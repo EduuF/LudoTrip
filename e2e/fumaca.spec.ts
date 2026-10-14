@@ -150,7 +150,7 @@ test('a mesma atividade em dois dias, cada um com a sua anotação ("✎" na fic
   await dialog.getByLabel(/Anotações deste dia/).fill('Ir no fim da tarde')
   await dialog.getByLabel('Horário (opcional)').click()
   await expect(page.getByText('Anotação do dia salva.')).toBeVisible()
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
   await expect(card.locator('.days').getByRole('button', { name: /Gion.*com anotações/ })).toHaveCount(1)
   await card.locator('.days').getByRole('button', { name: /Gion/ }).nth(1).click()
   await expect(dialog.getByLabel(/Anotações deste dia/)).toHaveValue('')
@@ -247,7 +247,7 @@ test('"Editar trecho": trocar o meio não fecha o painel; o roteiro abre um dest
   await dialog.getByRole('button', { name: /trem/i }).click()
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: /trem/i })).toHaveAttribute('aria-pressed', 'true')
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
   // Acordeão: o primeiro Tóquio (dia 1) aberto e Kyoto fechado; abrir Kyoto fecha Tóquio.
   await expect(page.getByRole('button', { name: 'Tóquio: fechar os dias' })).toBeVisible()
   await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
@@ -276,14 +276,14 @@ test('viagem sem datas: passagem e hospedagem levam a escolher a data; "com amig
   await page.getByRole('button', { name: /: nome, quem vai e datas$/ }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('button', { name: 'Ainda não sei a data' }).click()
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
   // A passagem nunca fica desligada: sem data, leva a "Sua viagem".
   await page
     .getByRole('button', { name: /Passagem: falta comprar/ })
     .first()
     .click()
   await expect(dialog).toContainText('Sua viagem')
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
   // Hospedagem de Osaka: "com amigos" e a tarefa some.
   await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
   await expect(page.getByText(/^Osaka: falta hospedagem/)).toBeVisible()
@@ -297,7 +297,7 @@ test('viagem sem datas: passagem e hospedagem levam a escolher a data; "com amig
   await expect(page.getByText('Com amigos: não precisa de reserva.')).toBeVisible()
   // O painel é um editor: fica aberto, mostrando que não precisa de reserva.
   await expect(dialog).toContainText('não precisa de reserva')
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
   await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
   await expect(page.getByText(/^Osaka: falta hospedagem/)).toHaveCount(0)
 })
@@ -328,7 +328,12 @@ test('tarefa da atividade: entrar na fila online do Gion até uma data, e achar 
   await dialog.getByLabel('Novo item').fill('passaporte em mãos')
   await dialog.getByLabel('Novo item').press('Enter')
   await expect(dialog.getByRole('link', { name: 'Abrir ↗' })).toBeVisible()
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  // "Pronto" volta à atividade (de onde se veio), que já mostra a tarefa; outro "Pronto" fecha.
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
+  await expect(dialog.locator('.sheet-kind')).toHaveText('ATIVIDADE')
+  await expect(dialog).toContainText('Entrar na fila online')
+  await dialog.getByRole('button', { name: 'Pronto ✓' }).click()
+  await expect(dialog).toHaveCount(0)
   await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
   const group = page.getByRole('region', { name: 'MAIS TARDE' })
   await expect(group).toContainText('Entrar na fila online')

@@ -336,6 +336,7 @@ export function SheetFrame({
   back,
   depth = 0,
   dir = 'in',
+  editor,
 }: {
   children: ReactNode
   onClose: () => void
@@ -347,6 +348,8 @@ export function SheetFrame({
   /** Profundidade na pilha: troca a chave do conteúdo para a animação repetir. */
   depth?: number
   dir?: 'in' | 'back'
+  /** Painel que edita algo (salva sozinho): termina em "Pronto ✓", que volta ao anterior ou fecha. */
+  editor?: boolean
 }) {
   const panel = useRef<HTMLDivElement>(null)
   const guard = useApp((s) => s.sheetGuard)
@@ -448,9 +451,15 @@ export function SheetFrame({
           <div key={`${depth}:${String(focusKey)}`} className={`sheet-body slide-${dir}`}>
             {children}
           </div>
-          <button type="button" className="btn ghost" onClick={close}>
-            Fechar
-          </button>
+          {editor ? (
+            <button type="button" className="btn main" onClick={goBack ?? close}>
+              Pronto ✓
+            </button>
+          ) : (
+            <button type="button" className="btn ghost" onClick={close}>
+              Fechar
+            </button>
+          )}
         </div>
       </div>
     </>

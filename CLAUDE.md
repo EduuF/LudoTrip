@@ -35,6 +35,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, estrelas); **navegação e ações em palavras comuns** (Mapa, Atividades, Tarefas, Destino, Atividade, Hospedagem). Nada de "Quest", "Mundo", "LV", "Fase", "Mochila" ou "figurinha" em rótulos ("mochila" só no motor).
 - **Não inventar problema:** toda ação visível responde a uma frase de quem viaja; se não há frase, não há botão.
 - **Painéis-editores ficam abertos** (trecho, atividade, visita, hospedagem, "Sua viagem"): mudar um campo não fecha o painel (`act(..., { keep: true })`); painéis de escolha fecham ao escolher. Ao corrigir um bug num painel, auditar todos os `act(` dos outros.
+- **Painel-editor termina em "Pronto ✓"** (lista `EDITORS` em `Sheets.tsx`): salvar sozinho sem um botão de concluir deixa a pessoa sem saber se terminou.
 - **Todo painel diz o que é** (`sheetLabel`); painel aberto de outro empilha, com "‹ voltar"; painel de criar com texto digitado registra `setSheetGuard` ("Criar ou Descartar").
 - **Passo de painel volta ao painel:** escolher o dia, marcar no mapa, horários, noites a bordo — feito o passo, o painel de onde se veio reabre (`openSheet` depois do `act` que deu certo).
 - **Nenhum botão mudo:** sem datas, o que precisa de data leva a "Escolher a data de ida" (`askStartDate`); o que parece selo abre um painel antes de desfazer algo; ação equivalente em dois lugares usa o mesmo helper de `choices.ts`.

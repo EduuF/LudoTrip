@@ -47,6 +47,9 @@ import { sheetLabel } from './sheetLabel'
 
 const MODES: LegMode[] = ['flight', 'train', 'bus', 'car', 'boat', 'walk', 'bike', 'moto']
 
+/** Painéis que editam algo e salvam sozinhos: terminam em "Pronto ✓" (os de escolha, em "Fechar"). */
+const EDITORS = new Set<SheetSpec['kind']>(['task', 'autoTask', 'visit', 'sticker', 'leg', 'lodging', 'trip'])
+
 export function Sheets() {
   const sheet = useApp((s) => s.sheet)
   const stack = useApp((s) => s.sheetBack)
@@ -65,6 +68,7 @@ export function Sheets() {
       back={under ? { name: sheetLabel(under, doc).name, go: () => backSheet() } : undefined}
       depth={stack.length}
       dir={dir}
+      editor={EDITORS.has(sheet.kind) && !(sheet.kind === 'task' && !sheet.taskId)}
     >
       <Body sheet={sheet} />
     </SheetFrame>

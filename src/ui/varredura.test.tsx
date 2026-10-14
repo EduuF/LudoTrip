@@ -77,7 +77,7 @@ describe('varredura M3.5: bugs', () => {
     const n = useApp.getState().doc!.itinerary.travelers.length
     const sheet = await tripSheet()
     fireEvent.click(sheet.getByRole('button', { name: '+ Mais uma pessoa' }))
-    fireEvent.click(sheet.getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(sheet.getByRole('button', { name: 'Pronto ✓' }))
     await waitFor(() => expect(useApp.getState().doc!.itinerary.travelers.length).toBe(n + 1))
   })
 

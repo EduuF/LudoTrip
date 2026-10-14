@@ -791,6 +791,7 @@ _Retorno do M3.6: "cliquei em + Tarefa e achei que tinha voltado para a atividad
 - **Criar ou Descartar:** nos painéis de criar (tarefa, atividade, nome da hospedagem), sair com o nome digitado e não criado mostra "Criar “…”?" com [Criar] e [Descartar]; sem nada digitado, sai direto.
 - Campos de texto dos editores (anotações, título e link da tarefa) salvam também ao sair do painel sem tirar o foco.
 - "Reduzir movimento": sem deslizar.
+- **Painéis que editam terminam em "Pronto ✓"** (tarefa, tarefa do app, atividade, atividade no dia, trecho, hospedagem, "Sua viagem"): salvam sozinhos, e "Pronto" volta ao painel anterior ou fecha; os de escolha terminam em "Fechar". A tarefa recém-criada diz "Criada ✓ · tudo aqui salva sozinho".
 
 ## 18. Persistência, concorrência e offline
 

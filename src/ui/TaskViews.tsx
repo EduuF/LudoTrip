@@ -129,6 +129,9 @@ export function TaskSheet({ taskId, about }: { taskId?: ID; about?: TaskAbout })
   return (
     <>
       <h2>{t.done ? `✓ ${t.title}` : t.title}</h2>
+      <p className="sub">
+        {Date.now() - t.createdAt < 60_000 ? 'Criada ✓ · ' : ''}tudo aqui salva sozinho; "Pronto" volta.
+      </p>
       <NoteBox
         line
         key={`titulo-${t.id}`}
@@ -215,7 +218,6 @@ export function TaskSheet({ taskId, about }: { taskId?: ID; about?: TaskAbout })
       <OptButton
         o={{
           label: t.done ? 'Desmarcar (ainda falta)' : 'Marcar como feita ✓',
-          main: !t.done,
           run: () => set({ done: !t.done }),
         }}
       />
