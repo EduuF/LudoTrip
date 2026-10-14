@@ -6,13 +6,14 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 
 ## Leia antes de trabalhar
 
-| Documento                                                          | Para quê                                                                                                                                  |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md`          | O design: gramática da viagem, regras de edição, Mochila, mapa, permissões, tecnologia                                                    |
-| `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md` | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox)                                                                  |
-| `docs/guia-de-vibe.md`                                             | Identidade visual e de movimento que precisa ser mantida                                                                                  |
-| `docs/aprendizados.md`                                             | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.**                                                               |
-| `docs/inventario-de-experiencia.md`                                | Tudo o que já foi validado com o mantenedor. **Confira antes de mostrar qualquer tela:** nada da lista pode sumir sem decisão registrada. |
+| Documento                                                                   | Para quê                                                                                                                                  |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/superpowers/specs/2026-10-13-ludotrip-v2-design.md`                   | O design: gramática da viagem, regras de edição, Mochila, mapa, permissões, tecnologia                                                    |
+| `docs/superpowers/specs/2026-10-14-publicacao-contas-colaboracao-design.md` | Contas, nuvem, colaboração e publicação (M4–M6): Firebase Auth + Cloudflare                                                               |
+| `docs/superpowers/plans/2026-10-13-subprojeto-1-fundacao-motor.md`          | Plano de implementação em andamento (marcos M0–M4, tarefas com checkbox)                                                                  |
+| `docs/guia-de-vibe.md`                                                      | Identidade visual e de movimento que precisa ser mantida                                                                                  |
+| `docs/aprendizados.md`                                                      | Lições já aprendidas. **Registre novas lições aqui ao fim de cada sessão.**                                                               |
+| `docs/inventario-de-experiencia.md`                                         | Tudo o que já foi validado com o mantenedor. **Confira antes de mostrar qualquer tela:** nada da lista pode sumir sem decisão registrada. |
 
 ## Regras de ouro (vencem qualquer outra coisa)
 
@@ -55,6 +56,9 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
   - nunca reescrever histórico já enviado.
 - **Repositório público:** nada de nomes, datas ou dados pessoais de viagens reais em código, testes ou documentos. Use exemplos anônimos.
 - **Testar no navegador:** o mantenedor costuma deixar o Chrome aberto numa segunda tela. Use Claude in Chrome para validar páginas publicadas, em janela estreita sempre que possível.
+- **Skills e referências:** buscar e usar skills que ajudem (boas práticas primeiro), instaladas **só no projeto** (`.claude/skills`; já há as oficiais da Cloudflare: `durable-objects`, `workers-best-practices`, `wrangler`, `cloudflare-email-service`). Preferir a documentação atual a lembranças; citar as fontes.
+- **Guias do mantenedor:** tudo o que o mantenedor faz num console vira um guia com cliques e campos exatos (`docs/guias/`), escrito só depois de pesquisar a documentação e os relatos mais recentes.
+- **Logs e métricas sempre:** função nova no servidor nasce com log estruturado; jornada nova, com evento de uso.
 - **Custos:** só planos gratuitos até haver uso real. Serviços externos ficam atrás de interfaces trocáveis (`src/providers`), com cache e plano B.
 
 ## Engenharia
@@ -65,7 +69,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
   - **Toda mudança no motor vem com testes, incluindo as invariantes com sequências aleatórias (fast-check).**
 - **A interface só despacha comandos serializáveis** (`dispatch(itinerary, command)`). Isso serve a fila offline e às transações.
 - **Toda ação de quem usa tem Desfazer**, inclusive mochila e reservas (que ficam fora do itinerário): elas também passam por comandos com inverso. Toda marcação (passagem comprada, hospedagem, visitado) desmarca no mesmo lugar.
-- **Persistência atrás de `TripRepo`:** local (IndexedDB) e Firebase.
+- **Persistência atrás de `TripRepo`:** local (IndexedDB) e nuvem (Cloudflare: `TripRoom` por viagem + D1; Firebase só para login).
 - **Comandos do projeto:** `npm run dev`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` e `npm run e2e` (Playwright, 375 × 812, contra o build; sem rede externa).
 - **Mapa:** `src/map` (enquadramento, adaptadores papel e tiles, estilo washi, lugares e posição por dia) é puro ou isolado atrás do adaptador; as camadas SVG (`BoardOverlay`, `CityOverlay`) nunca falam com o MapLibre diretamente. Serviços gratuitos: OpenFreeMap (tiles) e Photon (busca), ambos com plano B sem rede.
 - **Teste de verdade:** https://eduuf.github.io/LudoTrip/ (o workflow Pages publica a cada push na `main`; o mantenedor testa no celular, com internet). A prévia por artifact (`npm run preview:artifact` → `dist-preview/ludotrip.html`, HTML único com React 18 por CDN) é o plano B, em modo papel, sem rede. O laboratório do motor foi aposentado: o que vai para o mantenedor é sempre o app de verdade.

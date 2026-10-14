@@ -486,6 +486,8 @@ _Retorno do M3.7 (spec §17.14)._
 
 ## M4 — Contas, nuvem e compartilhamento
 
+> **Substituído (2026-10-14).** Os antigos M4 e M5 foram trocados pela spec [`publicacao-contas-colaboracao`](../specs/2026-10-14-publicacao-contas-colaboracao-design.md): Firebase só para login e Cloudflare (Worker, Durable Objects, D1) para os dados, em três marcos novos (M4 contas e nuvem · M5 colaboração · M6 publicação). O plano de implementação deles vai num arquivo próprio. O texto abaixo fica só como registro.
+
 **O mantenedor precisa fazer antes deste marco:**
 
 - criar o projeto no console do Firebase (plano Spark gratuito);

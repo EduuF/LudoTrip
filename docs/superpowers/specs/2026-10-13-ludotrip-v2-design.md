@@ -332,6 +332,8 @@ _Como implementado no M3 (`src/map`, `src/ui/MapCanvas.tsx`, `BoardOverlay.tsx`,
 - Firebase: Auth (Google + link por e-mail), Firestore com persistência offline, Storage e Hosting
 - Vitest + fast-check e Playwright
 
+> **Atualizado em 2026-10-14:** login, nuvem, colaboração e publicação seguem a spec [`publicacao-contas-colaboracao`](2026-10-14-publicacao-contas-colaboracao-design.md): Firebase Auth só para login e Cloudflare (Worker, Durable Objects, D1) para os dados. O texto abaixo sobre Firestore fica como registro da decisão anterior.
+
 **Por que Firebase:**
 
 - Funciona offline no navegador de forma madura.
@@ -814,6 +816,8 @@ _Retorno do M3.7: dentro do mapa da cidade, 60% das pessoas levaram mais de 5 s 
   Em "Criar viagem", volta ao passo anterior. Em "Suas viagens", o Voltar sai do app.
 
 ## 18. Persistência, concorrência e offline
+
+> **Substituída (2026-10-14)** pela §5 da spec [`publicacao-contas-colaboracao`](2026-10-14-publicacao-contas-colaboracao-design.md): o mesmo princípio (a ação é reaplicada sobre o estado mais novo, com fila offline), executado num Durable Object por viagem em vez de transações do Firestore.
 
 - **Online:** cada operação roda numa transação do Firestore, que lê o itinerário atual do servidor, **reaplica a operação** e grava com `version + 1`. Duas pessoas editando ao mesmo tempo não se sobrescrevem; a operação é reaplicada sobre o estado mais novo.
 - **Offline:** as transações exigem rede. As operações entram numa **fila local** (IndexedDB) e são aplicadas otimisticamente na tela. Na reconexão, são reaplicadas em ordem. Uma operação que falhar (por exemplo, a parada foi removida por outra pessoa) é mostrada com o motivo.
