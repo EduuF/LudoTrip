@@ -1,4 +1,4 @@
-import { allVisits, applyUndo, dispatch, emptyEffects } from '../engine'
+import { allVisits, applyUndo, deepEqual, dispatch, emptyEffects } from '../engine'
 import type {
   Booking,
   Command,
@@ -123,7 +123,26 @@ export type DocAction =
   | { type: 'batch'; actions: DocAction[] }
 
 type Collection = 'destinations' | 'places' | 'bookings' | 'meta' | 'tasks' | 'taskMeta'
-export type UndoStep = { kind: 'it'; patch: Patch } | { kind: 'col'; key: Collection; before: unknown }
+/** Coleções que são listas de itens com `id`; as outras (`meta`, `taskMeta`) são registros por chave. */
+const LISTS = new Set<Collection>(['destinations', 'places', 'bookings', 'tasks'])
+
+/**
+ * Um passo do Desfazer. Fora do roteiro, o passo é **por item** (spec publicação §5.2): desfazer só
+ * mexe no item que a ação mudou, e só se ele ainda está como a ação o deixou. Assim o Desfazer de uma
+ * pessoa nunca apaga o que outra mudou na mesma lista.
+ */
+export type UndoStep =
+  | { kind: 'it'; patch: Patch }
+  | {
+      kind: 'item'
+      key: Collection
+      /** O `id` do item (listas) ou a chave (registros). */
+      id: string
+      before: unknown
+      after: unknown
+      /** Posição de antes na lista, para reinserir um item apagado no mesmo lugar. */
+      index: number
+    }
 
 export type RunDocResult =
   { ok: true; doc: TripDoc; steps: UndoStep[]; effects: Effects } | { ok: false; error: EngineError }
@@ -155,7 +174,11 @@ export function runDoc(doc: TripDoc, action: DocAction, ctx: RunCtx = {}): RunDo
   let n = 0
   const prefix = ctx.opId ? opPrefix(ctx.opId) : null
   const newId = () => (prefix ? `${prefix}.${++n}` : `u${++draft.seq}`)
-  const snapshot = (key: Collection) => steps.push({ kind: 'col', key, before: structuredClone(draft[key]) })
+  // O primeiro retrato de cada coleção tocada; os passos por item saem da comparação no fim.
+  const originals = new Map<Collection, unknown>()
+  const snapshot = (key: Collection) => {
+    if (!originals.has(key)) originals.set(key, structuredClone(draft[key]))
+  }
 
   const apply = (a: DocAction): void => {
     switch (a.type) {
@@ -309,7 +332,7 @@ export function runDoc(doc: TripDoc, action: DocAction, ctx: RunCtx = {}): RunDo
     throw e
   }
   // Nada some calado: tarefas presas ao que deixou de existir viram "da viagem" (spec §17.11).
-  if (steps.length && doc.tasks?.length) {
+  if ((steps.length || originals.size) && doc.tasks?.length) {
     const moved = rehome(
       draft.tasks ?? [],
       { it: doc.itinerary, names: doc },
@@ -320,22 +343,61 @@ export function runDoc(doc: TripDoc, action: DocAction, ctx: RunCtx = {}): RunDo
       draft.tasks = moved
     }
   }
+  for (const [key, before] of originals) steps.push(...itemSteps(key, before, draft[key]))
   if (!steps.length) return { ok: false, error: { code: 'NO_CHANGE' } }
   return { ok: true, doc: draft, steps, effects }
 }
 
+type Keyed = { id: string }
+const entriesOf = (key: Collection, value: unknown): [string, unknown][] =>
+  LISTS.has(key)
+    ? ((value as Keyed[] | undefined) ?? []).map((x) => [x.id, x])
+    : Object.entries((value as Record<string, unknown> | undefined) ?? {})
+
+/** O que mudou numa coleção, item a item (ou chave a chave). */
+function itemSteps(key: Collection, before: unknown, after: unknown): UndoStep[] {
+  const b = entriesOf(key, before)
+  const a = new Map(entriesOf(key, after))
+  const out: UndoStep[] = []
+  const seen = new Set<string>()
+  b.forEach(([id, item], index) => {
+    seen.add(id)
+    const now = a.get(id)
+    if (!deepEqual(item, now)) out.push({ kind: 'item', key, id, before: item, after: now ?? null, index })
+  })
+  ;[...a].forEach(([id, item], index) => {
+    if (!seen.has(id)) out.push({ kind: 'item', key, id, before: null, after: item, index })
+  })
+  return out
+}
+
 export type UndoDocResult = { ok: true; doc: TripDoc } | { ok: false; code: 'CHANGED_SINCE' }
 
-/** Desfaz os passos de uma ação, do último para o primeiro. */
+/** Desfaz os passos de uma ação, do último para o primeiro. Recusa se alguém mexeu depois. */
 export function undoDoc(doc: TripDoc, steps: UndoStep[]): UndoDocResult {
   const next: TripDoc = { ...doc }
+  const bag = next as unknown as Record<string, unknown>
   for (const step of [...steps].reverse()) {
     if (step.kind === 'it') {
       const u = applyUndo(next.itinerary, step.patch)
       if (!u.ok) return { ok: false, code: 'CHANGED_SINCE' }
       next.itinerary = u.state
+      continue
+    }
+    const before = step.before === null ? undefined : structuredClone(step.before)
+    if (LISTS.has(step.key)) {
+      const list = [...((bag[step.key] as Keyed[] | undefined) ?? [])]
+      const i = list.findIndex((x) => x.id === step.id)
+      if (!deepEqual(i < 0 ? null : list[i], step.after)) return { ok: false, code: 'CHANGED_SINCE' }
+      if (i >= 0) list.splice(i, 1)
+      if (before) list.splice(i >= 0 ? i : Math.min(step.index, list.length), 0, before as Keyed)
+      bag[step.key] = list
     } else {
-      ;(next as unknown as Record<string, unknown>)[step.key] = structuredClone(step.before)
+      const rec = { ...((bag[step.key] as Record<string, unknown> | undefined) ?? {}) }
+      if (!deepEqual(rec[step.id] ?? null, step.after)) return { ok: false, code: 'CHANGED_SINCE' }
+      if (before === undefined) delete rec[step.id]
+      else rec[step.id] = before
+      bag[step.key] = rec
     }
   }
   return { ok: true, doc: next }

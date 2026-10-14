@@ -252,6 +252,78 @@ describe('documento da viagem: tudo tem Desfazer', () => {
   })
 })
 
+describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã£o Â§5.2)', () => {
+  const ok = (r: ReturnType<typeof runDoc>) => {
+    if (!r.ok) throw new Error(r.error.code)
+    return r
+  }
+  const place = (d: TripDoc, id: string) => d.places.find((p) => p.id === id)
+
+  it('desfazer a mudanÃ§a em A mantÃ©m a mudanÃ§a que outra pessoa fez em B', () => {
+    const mine = ok(runDoc(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'minha' } }))
+    const theirs = ok(runDoc(mine.doc, { type: 'setPlace', id: 'p-kyoto-2', patch: { note: 'da Bia' } }))
+    const u = undoDoc(theirs.doc, mine.steps)
+    if (!u.ok) throw new Error(u.code)
+    expect(place(u.doc, 'p-kyoto-1')!.note).toBeUndefined()
+    expect(place(u.doc, 'p-kyoto-2')!.note).toBe('da Bia')
+  })
+
+  it('se o prÃ³prio item mudou depois, recusa em vez de apagar', () => {
+    const mine = ok(runDoc(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'minha' } }))
+    const theirs = ok(runDoc(mine.doc, { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'da Bia' } }))
+    expect(undoDoc(theirs.doc, mine.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
+  })
+
+  it('desfazer um "apagar" pÃµe o item de volta no mesmo lugar, sem tirar o que entrou depois', () => {
+    const d0 = docOf()
+    const index = d0.places.findIndex((p) => p.id === 'p-kyoto-1')
+    const mine = ok(runDoc(d0, { type: 'removeBooking', id: d0.bookings[0]!.id }))
+    const added = ok(
+      runDoc(
+        mine.doc,
+        { type: 'addPlace', place: { destinationId: 'd-kyoto', name: 'Nova', rarity: 'want' } },
+        { opId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' },
+      ),
+    )
+    const u = undoDoc(added.doc, mine.steps)
+    if (!u.ok) throw new Error(u.code)
+    expect(u.doc.bookings[0]).toEqual(d0.bookings[0])
+    expect(u.doc.places.some((p) => p.name === 'Nova')).toBe(true)
+    // Apagar uma atividade e desfazer: volta no mesmo Ã­ndice.
+    const rm = ok(runDoc(d0, { type: 'removePlace', id: 'p-kyoto-1' }))
+    const back = undoDoc(rm.doc, rm.steps)
+    if (!back.ok) throw new Error(back.code)
+    expect(back.doc.places.findIndex((p) => p.id === 'p-kyoto-1')).toBe(index)
+  })
+
+  it('desfazer "criar" recusa se a coisa criada jÃ¡ foi mudada por outra pessoa', () => {
+    const mine = ok(
+      runDoc(
+        docOf(),
+        { type: 'addPlace', place: { destinationId: 'd-kyoto', name: 'Nova', rarity: 'want' } },
+        { opId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' },
+      ),
+    )
+    const id = mine.doc.places.at(-1)!.id
+    const theirs = ok(runDoc(mine.doc, { type: 'setPlace', id, patch: { rarity: 'must' } }))
+    expect(undoDoc(theirs.doc, mine.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
+  })
+
+  it('registros por chave: anotaÃ§Ãµes das tarefas do app e o nome da viagem', () => {
+    const a = ok(runDoc(docOf(), { type: 'setTaskMeta', key: 'k:a', patch: { note: 'minha' } }))
+    const b = ok(runDoc(a.doc, { type: 'setTaskMeta', key: 'k:b', patch: { note: 'da Bia' } }))
+    const u = undoDoc(b.doc, a.steps)
+    if (!u.ok) throw new Error(u.code)
+    expect(u.doc.taskMeta).toEqual({ 'k:b': { note: 'da Bia' } })
+    const r = ok(runDoc(docOf(), { type: 'rename', name: 'Outro nome' }))
+    expect(r.steps).toEqual([
+      expect.objectContaining({ kind: 'item', key: 'meta', id: 'name', after: 'Outro nome' }),
+    ])
+    const renamedAgain = ok(runDoc(r.doc, { type: 'rename', name: 'Terceiro' }))
+    expect(undoDoc(renamedAgain.doc, r.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
+  })
+})
+
 describe('formato salvo (M3.5)', () => {
   it('migrate() completa uma viagem salva antes das listas novas e marca a versão', () => {
     const d = docOf()
