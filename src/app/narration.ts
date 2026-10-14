@@ -73,7 +73,11 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
     case 'setTentative':
       return cmd.tentative ? 'Noites incertas: as datas depois ficam estimadas.' : 'Noites confirmadas.'
     case 'setLodging':
-      return 'Pouso salvo.'
+      return cmd.lodging === 'friends'
+        ? 'Com amigos: não precisa de reserva.'
+        : cmd.lodging === 'onboard'
+          ? 'A bordo: não precisa de reserva.'
+          : 'A hospedagem voltou para as tarefas.'
     case 'setTravelers':
       return 'Quem vai: salvo.'
     case 'setHome':
@@ -106,7 +110,11 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
     case 'addDestination':
       return `${action.destination.name} entrou nos destinos.`
     case 'addBooking':
-      return action.booking.kind === 'lodging' ? 'Hospedagem marcada 済.' : 'Passagem comprada 済.'
+      if (action.booking.kind === 'lodging')
+        return action.booking.status === 'booked'
+          ? 'Hospedagem reservada 済.'
+          : 'Hospedagem anotada (ainda não reservada).'
+      return 'Passagem comprada 済.'
     case 'setBooking':
       return action.patch.archived ? 'Reserva guardada no arquivo.' : 'Reserva salva.'
     case 'removeBooking': {

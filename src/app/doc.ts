@@ -105,6 +105,9 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
       case 'setPlace': {
         const i = draft.places.findIndex((p) => p.id === a.id)
         if (i < 0) throw new DocFail({ code: 'NOT_FOUND', data: { placeId: a.id } })
+        // Nada muda (mesma prioridade, mesma anotação): sem Desfazer nem aviso.
+        const cur = draft.places[i]! as unknown as Record<string, unknown>
+        if (Object.entries(a.patch).every(([k, v]) => (cur[k] ?? '') === (v ?? ''))) return
         snapshot('places')
         draft.places = draft.places.map((p) => {
           if (p.id !== a.id) return p

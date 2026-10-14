@@ -45,14 +45,18 @@ export function DayCard() {
   let night: JSX.Element | null = null
   if (d.kind === 'stop' && stop?.destinationId) {
     const openLodging = () => openSheet({ kind: 'lodging', stopId: stop.id })
-    if (stop.lodging === 'friends') night = <span className="pill">宿 casa de amigos</span>
-    else if (stop.lodging === 'onboard') night = <span className="pill">宿 a bordo</span>
+    if (stop.lodging === 'friends' || stop.lodging === 'onboard')
+      night = (
+        <button type="button" className="pill" onClick={openLodging}>
+          <span aria-hidden="true">宿</span> {stop.lodging === 'friends' ? 'com amigos' : 'a bordo'}
+        </button>
+      )
     else {
       const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === stop.id)
       if (gap?.missing.some((m) => m.ordinal === d.ordinal))
         night = (
           <button type="button" className="pill warn" onClick={openLodging}>
-            宿 onde vocês dormem?
+            <span aria-hidden="true">宿</span> onde vocês dormem?
           </button>
         )
       else {

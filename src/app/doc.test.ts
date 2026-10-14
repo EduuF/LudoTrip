@@ -26,6 +26,33 @@ function roundTrip(doc: TripDoc, action: DocAction): TripDoc {
   return r.doc
 }
 
+describe('mudança que não muda nada (M3.5)', () => {
+  it('setPlace igual ao que já está não cria Desfazer', () => {
+    const d = docOf()
+    const p = d.places[0]!
+    const r = runDoc(d, { type: 'setPlace', id: p.id, patch: { rarity: p.rarity } })
+    expect(r).toMatchObject({ ok: false, error: { code: 'NO_CHANGE' } })
+  })
+})
+
+describe('apagar atividade guardada num trecho arquivado (M3.5)', () => {
+  it('parada no caminho e noite a bordo de um trecho arquivado não travam o apagar', () => {
+    const d = docOf()
+    const it0 = d.itinerary
+    const leg = structuredClone(it0.legs[2]!)
+    const place = d.places.find((p) => p.name === 'Gion')!
+    leg.waypoints = [{ id: 'vw', placeId: place.id, slot: 'any' }]
+    leg.aboard = [[{ id: 'va', placeId: place.id, slot: 'any' }]]
+    const doc: TripDoc = { ...d, itinerary: { ...it0, archivedLegs: [leg] } }
+    const r = runDoc(doc, { type: 'removePlace', id: place.id })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.doc.places.some((p) => p.id === place.id)).toBe(false)
+    const u = undoDoc(r.doc, r.steps)
+    expect(u.ok).toBe(true)
+  })
+})
+
 describe('documento da viagem: tudo tem Desfazer', () => {
   it('comandos do motor', () => {
     roundTrip(docOf(), { type: 'engine', command: { type: 'removeStop', stopId: 's2' } })

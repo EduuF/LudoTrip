@@ -6,6 +6,7 @@ import {
   describeEffects,
   describeError,
   haversineKm,
+  legDayIndex,
   legName,
   lodgingGaps,
   plural,
@@ -16,8 +17,20 @@ import {
   suggestReceivers,
   tripRange,
 } from '../engine'
-import type { Command, DayRef, Destination, ID, ISODate, Itinerary, Leg, Slot, Stop, Via } from '../engine'
-import type { TripDoc } from './doc'
+import type {
+  Booking,
+  Command,
+  DayRef,
+  Destination,
+  ID,
+  ISODate,
+  Itinerary,
+  Leg,
+  Slot,
+  Stop,
+  Via,
+} from '../engine'
+import type { DocAction, TripDoc } from './doc'
 import { uid, useApp } from './store'
 import type { Opt } from '../ui/sheetTypes'
 
@@ -145,6 +158,41 @@ const DONOR_PICK = { title: 'De qual destino sai?', tag: 'cede' }
 // Hospedagem
 // ---------------------------------------------------------------------------
 
+/** Sem data de ida, o que precisa de data abre "Sua viagem" dizendo por quê (nunca um botão sem efeito). */
+export function askStartDate(why: string) {
+  S().openSheet({ kind: 'trip' })
+  S().say(why)
+}
+
+/** Marca a passagem de um trecho como comprada (comprar a volta marca a volta). */
+export function buyTicket(legId: ID) {
+  const d = doc()
+  const it = d.itinerary
+  const leg = it.legs.find((l) => l.id === legId)
+  const idx = leg ? legDayIndex(it, leg.id) : null
+  if (!leg || idx === null) return
+  if (!it.start) return askStartDate('Para marcar a passagem, escolha primeiro a data de ida.')
+  const end = (e: ID | 'home') =>
+    e === 'home' ? 'home' : (it.stops.find((s) => s.id === e)?.destinationId ?? null)
+  const from = end(leg.from)
+  const to = end(leg.to)
+  if (!from || !to) return
+  const booking: Booking = {
+    id: uid('k'),
+    kind: 'transport',
+    title: `Passagem ${legName(it, leg, names(d))}`,
+    fromDestinationId: from,
+    toDestinationId: to,
+    date: addDays(it.start, idx),
+    mode: leg.mode,
+    status: 'booked',
+  }
+  const actions: DocAction[] = [{ type: 'addBooking', booking }]
+  if (leg.to === 'home' && it.lock === 'free')
+    actions.push({ type: 'engine', command: { type: 'setLock', lock: 'fixed' } })
+  S().act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true })
+}
+
 /** Marca como reservada a hospedagem das noites ainda descobertas de um destino (com carimbo). */
 export function markLodging(stopId: ID, title?: string, status: 'planned' | 'booked' = 'booked') {
   const d = doc()
@@ -152,8 +200,12 @@ export function markLodging(stopId: ID, title?: string, status: 'planned' | 'boo
   const s = it.stops.find((x) => x.id === stopId)
   const w = stopWindows(it).find((x) => x.stopId === stopId)
   const gap = lodgingGaps(it, d.bookings).find((g) => g.stopId === stopId)
-  if (!s?.destinationId || !w?.start || !gap?.missing.length) return
+  if (!s?.destinationId || !gap?.missing.length) return
+  if (!w?.start) return askStartDate('Para anotar a hospedagem, escolha primeiro a data de ida.')
   const name = d.destinations.find((x) => x.id === s.destinationId)?.name ?? 'destino'
+  // Só as noites seguidas a partir da primeira que falta (uma reserva não cobre um buraco do meio).
+  const run = [gap.missing[0]!]
+  for (const m of gap.missing.slice(1)) if (m.ordinal === run[run.length - 1]!.ordinal + 1) run.push(m)
   S().act(
     {
       type: 'addBooking',
@@ -162,8 +214,8 @@ export function markLodging(stopId: ID, title?: string, status: 'planned' | 'boo
         kind: 'lodging',
         title: title?.trim() || `Hospedagem em ${name}`,
         destinationId: s.destinationId,
-        checkin: addDays(w.start, gap.missing[0]!.ordinal),
-        checkout: addDays(w.start, gap.missing[gap.missing.length - 1]!.ordinal + 1),
+        checkin: addDays(w.start, run[0]!.ordinal),
+        checkout: addDays(w.start, run[run.length - 1]!.ordinal + 1),
         status,
       },
     },

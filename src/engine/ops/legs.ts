@@ -115,7 +115,8 @@ export function addWaypoint(
 }
 
 export function removeWaypoint(it: Itinerary, _b: Itinerary, a: { legId: ID; visitId: ID }) {
-  const leg = getLeg(it, a.legId)
+  // Também num trecho arquivado (apagar uma atividade tira as paradas guardadas nele).
+  const leg = it.archivedLegs.find((l) => l.id === a.legId) ?? getLeg(it, a.legId)
   const i = leg.waypoints.findIndex((v) => v.id === a.visitId)
   if (i < 0) fail('NOT_FOUND', { visitId: a.visitId })
   leg.waypoints.splice(i, 1)

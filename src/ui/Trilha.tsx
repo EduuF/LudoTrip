@@ -289,7 +289,7 @@ export function Trilha() {
         const lines = previewLines({ type: 'shiftStop', stopId, by: intent.by })
         const n = it.stops.find((s) => s.id === stopId)?.days.length ?? 0
         return {
-          text: `${name} chega ${plural(Math.abs(intent.by), 'dia', 'dias')} ${intent.by > 0 ? 'depois' : 'antes'}, mesmas ${n} noites. ${lines.lines.join(' ')}`,
+          text: `${name} chega ${plural(Math.abs(intent.by), 'dia', 'dias')} ${intent.by > 0 ? 'depois' : 'antes'}, ${n === 1 ? 'a mesma noite' : `as mesmas ${n} noites`}. ${lines.lines.join(' ')}`,
           bad: !lines.ok,
         }
       }
@@ -697,7 +697,7 @@ export function Trilha() {
                   key={seg.id}
                   className="tr-blk aboard"
                   style={{ left, width: w }}
-                  aria-label={`${seg.nights} noite a bordo`}
+                  aria-label={`${plural(seg.nights, 'noite', 'noites')} a bordo`}
                 >
                   <span className="nm">
                     <Vehicle mode={leg.mode} px={1} />

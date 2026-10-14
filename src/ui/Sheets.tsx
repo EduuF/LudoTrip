@@ -12,10 +12,12 @@ import {
   stopWindows,
   tripRange,
 } from '../engine'
-import type { Booking, ID, LegMode, PlaceKind, Rarity, Slot } from '../engine'
+import type { Booking, ID, LegMode, Lodging, PlaceKind, Rarity, Slot } from '../engine'
 import { uid, useApp } from '../app/store'
+import type { DocAction } from '../app/doc'
 import {
   aboardChoice,
+  askStartDate,
   cityName,
   endOptions,
   insertOptions,
@@ -877,6 +879,26 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
   const hotels = web.filter((o) => o.placeKind === 'lodging')
   if (!stop || !dest) return <h2>Esse destino saiu do roteiro.</h2>
   const missing = gap?.missing ?? []
+  const setLodging = (lodging: Lodging) =>
+    act({ type: 'engine', command: { type: 'setLodging', stopId, lodging } }, { keep: true })
+  // Com amigos ou a bordo: não precisa de reserva (a tarefa some); dá para voltar atrás aqui mesmo.
+  if (stop.lodging === 'friends' || stop.lodging === 'onboard')
+    return (
+      <>
+        <h2>Onde vocês dormem em {dest.name}?</h2>
+        <p className="sub">
+          {stop.lodging === 'friends' ? 'Com amigos ou família' : 'A bordo (trem, ônibus, barco, carro)'}: não
+          precisa de reserva.
+        </p>
+        <OptButton
+          o={{
+            label: 'Mudar: vamos precisar de hospedagem',
+            detail: ['A hospedagem volta para as tarefas.'],
+            run: () => setLodging('hotel'),
+          }}
+        />
+      </>
+    )
   return (
     <>
       <h2>Onde vocês dormem em {dest.name}?</h2>
@@ -924,7 +946,20 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
           </div>
         </div>
       ))}
-      {missing.length ? (
+      {missing.length && !w?.start ? (
+        <>
+          <p className="note">
+            Para anotar a hospedagem com as noites certas, escolha primeiro a data de ida.
+          </p>
+          <button
+            type="button"
+            className="btn main"
+            onClick={() => askStartDate('Escolha a data de ida; depois volte para anotar a hospedagem.')}
+          >
+            Escolher a data de ida
+          </button>
+        </>
+      ) : missing.length ? (
         <>
           <div className="group-t">
             {mine.length
@@ -974,9 +1009,26 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
         </>
       ) : mine.length ? (
         <p className="note">Todas as noites têm hospedagem.</p>
-      ) : (
-        <p className="note">Sem datas ainda: escolha a data de ida para anotar a hospedagem.</p>
-      )}
+      ) : null}
+      {!mine.length ? (
+        <>
+          <div className="group-t">OU</div>
+          <OptButton
+            o={{
+              label: 'Vamos ficar com amigos ou família',
+              detail: ['Não precisa de reserva: sai das tarefas.'],
+              run: () => setLodging('friends'),
+            }}
+          />
+          <OptButton
+            o={{
+              label: 'Dormimos a bordo (trem, ônibus, barco, carro)',
+              detail: ['Não precisa de reserva: sai das tarefas.'],
+              run: () => setLodging('onboard'),
+            }}
+          />
+        </>
+      ) : null}
     </>
   )
 }
@@ -1067,7 +1119,12 @@ function TripSheet() {
           type="button"
           className="btn small ghost"
           style={{ alignSelf: 'flex-start' }}
-          onClick={() => setPeople([...people, `Viajante ${people.length + 1}`])}
+          onClick={() => {
+            // Salva na hora: fechar o painel logo depois não perde a pessoa.
+            const next = [...people, `Viajante ${people.length + 1}`]
+            setPeople(next)
+            savePeople(next)
+          }}
         >
           + Mais uma pessoa
         </button>
@@ -1089,7 +1146,13 @@ function TripSheet() {
 
 function Times({ legId }: { legId: ID }) {
   const doc = useApp((s) => s.doc)!
-  const act = useApp((s) => s.act)
+  const openSheet = useApp((s) => s.openSheet)
+  // Os horários são um passo do editor do trecho: salvar ou limpar volta a ele.
+  const act = (a: DocAction) => {
+    const ok = useApp.getState().act(a)
+    if (ok) openSheet({ kind: 'leg', legId })
+    return ok
+  }
   const leg = doc.itinerary.legs.find((l) => l.id === legId)
   const [dep, setDep] = useState(leg?.dep ?? '')
   const [arr, setArr] = useState(leg?.arr ?? '')
@@ -1171,7 +1234,16 @@ function Dates() {
   const it = doc.itinerary
   const r = tripRange(it)
   const [end, setEnd] = useState(r.end ?? '')
+  const [start, setStart] = useState(it.start ?? '')
+  // Os campos acompanham a viagem (mudar a ida move a volta; Desfazer volta os dois).
+  useEffect(() => setEnd(r.end ?? ''), [r.end])
+  useEffect(() => setStart(it.start ?? ''), [it.start])
   const fixed = it.lock === 'fixed'
+  /** Só vale data completa e plausível: digitar o ano aos poucos (0002, 0020, 0202) não move a viagem. */
+  const commitStart = (v: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number(v.slice(0, 4)) < 1900 || v === it.start) return
+    act({ type: 'engine', command: { type: 'setTripStart', date: v } }, { keep: true })
+  }
   return (
     <>
       <div className="group-t">DATAS</div>
@@ -1181,11 +1253,12 @@ function Dates() {
           className="input"
           type="date"
           id="ida"
-          value={it.start ?? ''}
-          onChange={(e) =>
-            e.target.value &&
-            act({ type: 'engine', command: { type: 'setTripStart', date: e.target.value } }, { keep: true })
-          }
+          value={start}
+          onChange={(e) => {
+            setStart(e.target.value)
+            commitStart(e.target.value)
+          }}
+          onBlur={(e) => commitStart(e.target.value)}
         />
       </label>
       {it.start ? (

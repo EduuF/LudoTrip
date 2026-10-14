@@ -699,7 +699,8 @@ export function progress(it: Itinerary, data: { places: Place[]; bookings: Booki
     bookings
       .filter((b) => b.kind === 'transport')
       .map((b) => bookingStatus(b, it))
-      .filter((s) => s.state === 'ok')
+      // Sem datas a passagem não tem como "bater o dia", mas existe: conta (como em health()).
+      .filter((s) => s.state === 'ok' || s.state === 'undated')
       .map((s) => s.legId),
   )
   const ticketLegs = it.legs.filter(

@@ -376,6 +376,11 @@ export function findVisit(it: Itinerary, visitId: ID): { list: Visit[]; index: n
     lists.push(l.waypoints)
   })
   lists.push(it.departurePlan)
+  // Por último os trechos arquivados: guardam visitas que voltam com o trecho (e precisam sair ao apagar).
+  it.archivedLegs.forEach((l) => {
+    l.aboard.forEach((d) => lists.push(d))
+    lists.push(l.waypoints)
+  })
   for (const list of lists) {
     const index = list.findIndex((v) => v.id === visitId)
     if (index >= 0) return { list, index }

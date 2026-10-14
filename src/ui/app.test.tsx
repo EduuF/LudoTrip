@@ -119,7 +119,7 @@ describe('app', () => {
     expect(screen.getByRole('button', { name: 'Tóquio: fechar os dias' })).toBeTruthy()
     expect(screen.queryByRole('group', { name: 'Noites em Kyoto' })).toBeNull()
     expect(kyotoCard().getByRole('button', { name: 'Kyoto: abrir os dias' }).textContent).toMatch(
-      /7 noites · \d+ atividades · 宿 済/,
+      /7 noites · \d+ atividades · hospedagem ok/,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Kyoto: abrir os dias' }))
     expect(screen.getByRole('group', { name: 'Noites em Kyoto' })).toBeTruthy()
@@ -139,7 +139,9 @@ describe('app', () => {
     expect(await screen.findByText('Passagem comprada 済.')).toBeTruthy()
     const on = screen.getAllByRole('button', { name: /Passagem comprada/ })
     expect(on.length).toBeGreaterThanOrEqual(3)
+    // "Comprada" parece selo: abre um painel curto em vez de desmarcar num toque.
     fireEvent.click(on[0]!)
+    fireEvent.click(within(await screen.findByRole('dialog')).getByText('Desmarcar a compra'))
     expect(await screen.findByText('Passagem desmarcada.')).toBeTruthy()
     fireEvent.click(within(screen.getByRole('status')).getByText('Desfazer'))
     await waitFor(() => expect(useApp.getState().toast?.text).toMatch(/^Desfeito/))
@@ -513,8 +515,8 @@ describe('app', () => {
     await novaAtividade('Ginkaku-ji', /Quero/)
     fireEvent.click(await screen.findByRole('button', { name: /^Ginkaku-ji, Quero, sem dia/ }))
     const dialog = await screen.findByRole('dialog')
+    // "Marcar no mapa" já leva à aba Mapa (M3.5).
     fireEvent.click(within(dialog).getByText('Marcar no mapa'))
-    tab('Mapa')
     expect((await screen.findAllByText(/Marque no mapa onde fica Ginkaku-ji\./)).length).toBeGreaterThan(0)
     const board = document.querySelector('.board')!
     await waitFor(() => expect(board.className).toContain('placing'))

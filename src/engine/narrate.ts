@@ -120,7 +120,7 @@ export function describeIssue(issue: Issue, it: Itinerary, names: Names, booking
   const booking = bookings.find((b) => b.id === issue.target.id)
   switch (issue.kind) {
     case 'booking-orphan':
-      return `${booking?.title ?? 'Reserva'}: esse trecho não está mais no roteiro.`
+      return `${booking?.title ?? 'Reserva'}: ${booking?.kind === 'lodging' ? 'esse destino' : 'esse trecho'} não está mais no roteiro.`
     case 'booking-out-of-window': {
       if (booking?.kind === 'lodging') {
         const w = stopWindows(it).find((x) => x.stopId === d.stopId)

@@ -157,12 +157,26 @@ function completedPages(doc: TripDoc): Set<ID> {
   return out
 }
 
+let saveWarned = false
+
 export const useApp = create<AppState>((set, get) => {
   const save = (doc: TripDoc) => {
     const stamped = { ...doc, meta: { ...doc.meta, updatedAt: Date.now() } }
-    void repo.save(stamped).then(() => repo.list().then((trips) => set({ trips })))
+    void persist(stamped).then(() => repo.list().then((trips) => set({ trips })))
     return stamped
   }
+  /** Salva no aparelho; se falhar, avisa uma vez (não a cada toque) e segue com a viagem na memória. */
+  const persist = (doc: TripDoc) =>
+    repo.save(doc).then(
+      () => {
+        saveWarned = false
+      },
+      () => {
+        if (saveWarned) return
+        saveWarned = true
+        toast('Não consegui salvar no aparelho: as mudanças valem só enquanto esta aba estiver aberta.', true)
+      },
+    )
   const toast = (text: string, warn = false, undo = false, action?: () => void) => {
     const id = nextId()
     set({ toast: { id, text, warn, undo, ...(action ? { action } : {}) } })
@@ -208,7 +222,7 @@ export const useApp = create<AppState>((set, get) => {
       const loaded = await repo.load(id)
       if (!loaded) return toast('Essa viagem não está mais aqui.', true)
       const doc = refreshExample(loaded)
-      if (doc !== loaded) void repo.save(doc)
+      if (doc !== loaded) void persist(doc)
       set({
         doc,
         screen: 'trip',
@@ -240,7 +254,8 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     setTab(tab) {
-      set({ tab, sheet: null })
+      // Trocar de aba sai do modo "marcar no mapa" (o mapa some de vista).
+      set({ tab, sheet: null, placing: null })
     },
 
     act(action, opts = {}) {
@@ -331,6 +346,8 @@ export const useApp = create<AppState>((set, get) => {
       const mine = allDays(doc.itinerary, doc.places).filter((d) => d.destinationId === destId)
       const inCity = mine.some((d) => d.index === cursorDay)
       set({
+        // De qualquer aba (ex.: "Ver no mapa da cidade" em Atividades), o mapa aparece.
+        tab: 'mapa',
         mapView: { kind: 'city', destId },
         sheet: null,
         ...(mine.length && !inCity ? { cursorDay: mine[0]!.index } : {}),
@@ -381,13 +398,13 @@ export const useApp = create<AppState>((set, get) => {
       const existing = get().trips.find((t) => t.example === key)
       if (existing) return get().openTrip(existing.id)
       const doc = exampleDoc(key)
-      await repo.save(doc)
+      await persist(doc)
       set({ trips: await repo.list() })
       await get().openTrip(doc.meta.id)
     },
 
     async addTrip(doc) {
-      await repo.save(doc)
+      await persist(doc)
       set({ trips: await repo.list() })
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })
@@ -400,7 +417,7 @@ export const useApp = create<AppState>((set, get) => {
       set({ trips: await repo.list() })
       if (!removed) return
       toast(`${removed.meta.name} apagada.`, false, true, () => {
-        void repo.save(removed).then(async () => set({ trips: await repo.list(), toast: null }))
+        void persist(removed).then(async () => set({ trips: await repo.list(), toast: null }))
       })
     },
 
@@ -409,7 +426,7 @@ export const useApp = create<AppState>((set, get) => {
       if (!d) return
       const r = runDoc(d, { type: 'rename', name })
       if (!r.ok) return
-      await repo.save({ ...r.doc, meta: { ...r.doc.meta, updatedAt: Date.now() } })
+      await persist({ ...r.doc, meta: { ...r.doc.meta, updatedAt: Date.now() } })
       set({ trips: await repo.list() })
     },
 

@@ -17,10 +17,10 @@ import {
   tripPhase,
 } from '../engine'
 import type { Booking, Day, DayRef, ID, Leg, LegMode, Stop, Visit } from '../engine'
-import { todayISO, uid, useApp } from '../app/store'
-import type { DocAction } from '../app/doc'
+import { todayISO, useApp } from '../app/store'
 import {
   addDestination,
+  buyTicket,
   cityName,
   minusNight,
   plusNight,
@@ -136,9 +136,9 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
   const pills: JSX.Element[] = []
   if (stop.lodging === 'friends' || stop.lodging === 'onboard')
     pills.push(
-      <span key="l" className="pill">
-        宿 {stop.lodging === 'friends' ? 'casa de amigos' : 'a bordo'}
-      </span>,
+      <button key="l" type="button" className="pill ok" onClick={openLodging}>
+        <span aria-hidden="true">宿</span> {stop.lodging === 'friends' ? 'com amigos' : 'a bordo'}
+      </button>,
     )
   else {
     for (const b of lodgings)
@@ -153,19 +153,21 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
           宿 {b.title} {b.status === 'booked' ? '済' : '· ainda não reservada'}
         </button>,
       )
-    if (gap && w.start && w.end)
+    // Sem datas também: o painel explica o que falta (a data de ida) e oferece "com amigos".
+    if (gap)
       pills.push(
         <button key="gap" type="button" className="pill warn" onClick={openLodging}>
-          宿 {gap.partial ? `${gap.missing.map((m) => m.label).join(', ')}: ` : ''}onde vocês dormem?
+          <span aria-hidden="true">宿</span>{' '}
+          {gap.partial ? `${gap.missing.map((m) => m.label).join(', ')}: ` : ''}onde vocês dormem?
         </button>,
       )
   }
-  // Fechado, o cartão resume em uma linha: noites, atividades e se há onde dormir.
+  // Fechado, o cartão resume em uma linha, em palavras: noites, atividades e se há onde dormir.
   const lodgingNote =
     stop.lodging === 'friends' || stop.lodging === 'onboard' || (lodgings.length && !gap)
-      ? '宿 済'
-      : gap && w.start && w.end
-        ? '宿 ?'
+      ? 'hospedagem ok'
+      : gap
+        ? 'falta hospedagem'
         : ''
   const summary = [plural(n, 'noite', 'noites'), plural(acts, 'atividade', 'atividades'), lodgingNote]
     .filter(Boolean)
@@ -582,17 +584,33 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
       const st = bookingStatus(b, it)
       if (st.legId !== leg.id) continue
       has = true
-      if (st.state === 'ok')
+      if (st.state === 'ok' || st.state === 'undated')
+        // Parece selo, então não desmarca num toque: abre um painel curto com "Desmarcar".
         ticket = (
           <button
             key={b.id}
             type="button"
             className="ticket on"
-            aria-pressed="true"
-            title="Toque para desmarcar"
-            onClick={() => act({ type: 'removeBooking', id: b.id })}
+            aria-label="Passagem comprada: ver ou desmarcar"
+            onClick={() =>
+              openSheet({
+                kind: 'choice',
+                title: 'Passagem comprada 済',
+                sub: `${b.title}${b.date ? ` · ${ddmm(b.date)}` : ''}`,
+                options: [
+                  {
+                    label: 'Desmarcar a compra',
+                    detail: ['O trecho volta a "falta comprar". Dá para desfazer.'],
+                    run: () => act({ type: 'removeBooking', id: b.id }),
+                  },
+                ],
+              })
+            }
           >
-            Passagem comprada <span className="hanko">済</span>
+            Passagem comprada{' '}
+            <span className="hanko" aria-hidden="true">
+              済
+            </span>
           </button>
         )
       else if (st.state === 'wrong-mode')
@@ -640,27 +658,10 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
           type="button"
           className="ticket"
           aria-pressed="false"
-          disabled={!date}
-          title={date ? 'Toque para marcar comprada' : 'Defina a data de ida para marcar'}
-          onClick={() => {
-            if (!date) return
-            const booking: Booking = {
-              id: uid('k'),
-              kind: 'transport',
-              title: `Passagem ${title}`,
-              fromDestinationId: from,
-              toDestinationId: to,
-              date,
-              mode: leg.mode,
-              status: 'booked',
-            }
-            const actions: DocAction[] = [{ type: 'addBooking', booking }]
-            if (leg.to === 'home' && it.lock === 'free')
-              actions.push({ type: 'engine', command: { type: 'setLock', lock: 'fixed' } })
-            act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true })
-          }}
+          aria-label={date ? 'Passagem: falta comprar. Toque para marcar comprada' : undefined}
+          onClick={() => buyTicket(leg.id)}
         >
-          Passagem: falta comprar{date ? '' : ' · defina a data'}
+          Passagem: falta comprar{date ? '' : ' · escolher a data'}
         </button>
       )
   }

@@ -110,3 +110,13 @@ describe('preparo: XP e nível', () => {
     expect(p).toMatchObject({ level: 5, levelName: 'Pronto pra partir', ratio: 1, inLevel: 1 })
   })
 })
+
+describe('viagem sem datas (M3.5)', () => {
+  it('passagem guardada conta no progresso, como em health(): nada de 0/N sem tarefa', () => {
+    const t = japao()
+    const it0 = { ...t.itinerary, start: null }
+    const p = progress(it0, t)
+    const tickets = p.tasks.find((x) => x.kind === 'ticket')!
+    expect(tickets.done).toBeGreaterThan(0)
+  })
+})
