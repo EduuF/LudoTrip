@@ -80,6 +80,11 @@ export type UndoResult =
   { ok: true; state: Itinerary } | { ok: false; code: 'CHANGED_SINCE' | 'NOTHING_TO_UNDO' }
 
 /** Aplica o Desfazer de uma operação sobre o estado atual (que pode ter outras edições depois). */
+/** O remendo ao contrário: desfazer um Desfazer (refazer). */
+export function invertPatch(patch: Patch): Patch {
+  return { entries: patch.entries.map((e) => ({ ...e, before: e.after, after: e.before }) as PatchEntry) }
+}
+
 export function applyUndo(current: Itinerary, patch: Patch): UndoResult {
   if (!patch.entries.length) return { ok: false, code: 'NOTHING_TO_UNDO' }
   // 1) Conferir: tudo o que a operação tocou continua como ela deixou?

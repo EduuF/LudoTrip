@@ -15,7 +15,7 @@ export {
 export type { OpContext, Effects, ErrorCode, EngineError, ReturnedVisit, Segment } from './core'
 export { dispatch, COMMAND_TYPES } from './commands'
 export type { Command, CommandType, DispatchResult } from './commands'
-export { makePatch, applyUndo, deepEqual } from './patch'
+export { makePatch, applyUndo, invertPatch, deepEqual } from './patch'
 export type { Patch, PatchEntry, UndoResult } from './patch'
 export * from './derive'
 export * from './narrate'

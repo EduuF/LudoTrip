@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { days as allDays, describeError, describeUndoRefusal, placeStates } from '../engine'
 import type { ID } from '../engine'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
-import { migrate, runDoc, undoDoc } from './doc'
+import { migrate, runDoc } from './doc'
 import type { DocAction, TripDoc, TripMeta, UndoStep } from './doc'
 import { narrate } from './narration'
 import { localRepo } from './repo'
@@ -334,9 +334,10 @@ export const useApp = create<AppState>((set, get) => {
       const { doc, undoStack } = get()
       const last = undoStack[undoStack.length - 1]
       if (!doc || !last) return toast(describeUndoRefusal('NOTHING_TO_UNDO'), true)
-      const u = undoDoc(doc, last.steps)
-      if (!u.ok) return toast(describeUndoRefusal(u.code), true)
-      set({ doc: save(u.doc), undoStack: undoStack.slice(0, -1), sheet: null })
+      // O Desfazer é uma ação como as outras (spec publicação §5.2): na nuvem, vai pela mesma fila.
+      const r = runDoc(doc, { type: 'revert', steps: last.steps }, { opId: newOpId() })
+      if (!r.ok) return toast(describeUndoRefusal('CHANGED_SINCE'), true)
+      set({ doc: save(r.doc), undoStack: undoStack.slice(0, -1), sheet: null })
       toast(`Desfeito: ${last.text}`)
     },
 

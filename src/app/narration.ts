@@ -151,6 +151,8 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
           : 'Tarefa salva.'
     case 'batch':
       return action.actions.map((a) => leadFor(a, doc)).find(Boolean) ?? null
+    case 'revert':
+      return 'Desfeito'
   }
 }
 

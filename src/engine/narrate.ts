@@ -186,6 +186,8 @@ export function describeError(error: EngineError, it: Itinerary, names: Names): 
       return null
     case 'NOT_FOUND':
       return 'Isso mudou enquanto você editava. Tente de novo.'
+    case 'CHANGED_SINCE':
+      return describeUndoRefusal('CHANGED_SINCE')
     case 'MIN_ONE_NIGHT':
       return `${stopName(it, d.stopId, names)} precisa de pelo menos 1 noite.`
     case 'DONOR_TOO_SHORT': {

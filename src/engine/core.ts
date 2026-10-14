@@ -49,6 +49,8 @@ export type ErrorCode =
   | 'TAKE_FROM_MISMATCH'
   | 'OUT_OF_RANGE'
   | 'INVALID'
+  /** Desfazer recusado: alguém mexeu depois no que a ação tinha mudado. */
+  | 'CHANGED_SINCE'
 
 export interface EngineError {
   code: ErrorCode

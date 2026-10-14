@@ -1,4 +1,4 @@
-import { allVisits, applyUndo, deepEqual, dispatch, emptyEffects } from '../engine'
+import { allVisits, applyUndo, deepEqual, dispatch, emptyEffects, invertPatch } from '../engine'
 import type {
   Booking,
   Command,
@@ -121,6 +121,11 @@ export type DocAction =
       } | null
     }
   | { type: 'batch'; actions: DocAction[] }
+  /**
+   * Desfazer como ação (spec publicação §5.2): passa pelo mesmo caminho das outras (fila, servidor) e
+   * é recusado com `CHANGED_SINCE` se alguém mexeu depois. Gera os próprios passos (refazer).
+   */
+  | { type: 'revert'; steps: UndoStep[] }
 
 type Collection = 'destinations' | 'places' | 'bookings' | 'meta' | 'tasks' | 'taskMeta'
 /** Coleções que são listas de itens com `id`; as outras (`meta`, `taskMeta`) são registros por chave. */
@@ -322,6 +327,17 @@ export function runDoc(doc: TripDoc, action: DocAction, ctx: RunCtx = {}): RunDo
       case 'batch':
         for (const x of a.actions) apply(x)
         return
+      case 'revert': {
+        for (const s of a.steps) if (s.kind === 'item') snapshot(s.key)
+        const u = undoDoc(draft, a.steps)
+        if (!u.ok) throw new DocFail({ code: 'CHANGED_SINCE' })
+        Object.assign(draft, u.doc)
+        // Os remendos do roteiro foram aplicados do último para o primeiro; o refazer guarda o inverso
+        // de cada um nessa mesma ordem.
+        for (const s of [...a.steps].reverse())
+          if (s.kind === 'it') steps.push({ kind: 'it', patch: invertPatch(s.patch) })
+        return
+      }
     }
   }
 

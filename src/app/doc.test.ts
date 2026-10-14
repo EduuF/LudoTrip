@@ -252,14 +252,14 @@ describe('documento da viagem: tudo tem Desfazer', () => {
   })
 })
 
-describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã£o Â§5.2)', () => {
+describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicação §5.2)', () => {
   const ok = (r: ReturnType<typeof runDoc>) => {
     if (!r.ok) throw new Error(r.error.code)
     return r
   }
   const place = (d: TripDoc, id: string) => d.places.find((p) => p.id === id)
 
-  it('desfazer a mudanÃ§a em A mantÃ©m a mudanÃ§a que outra pessoa fez em B', () => {
+  it('desfazer a mudança em A mantém a mudança que outra pessoa fez em B', () => {
     const mine = ok(runDoc(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'minha' } }))
     const theirs = ok(runDoc(mine.doc, { type: 'setPlace', id: 'p-kyoto-2', patch: { note: 'da Bia' } }))
     const u = undoDoc(theirs.doc, mine.steps)
@@ -268,13 +268,13 @@ describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã
     expect(place(u.doc, 'p-kyoto-2')!.note).toBe('da Bia')
   })
 
-  it('se o prÃ³prio item mudou depois, recusa em vez de apagar', () => {
+  it('se o próprio item mudou depois, recusa em vez de apagar', () => {
     const mine = ok(runDoc(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'minha' } }))
     const theirs = ok(runDoc(mine.doc, { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'da Bia' } }))
     expect(undoDoc(theirs.doc, mine.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
   })
 
-  it('desfazer um "apagar" pÃµe o item de volta no mesmo lugar, sem tirar o que entrou depois', () => {
+  it('desfazer um "apagar" põe o item de volta no mesmo lugar, sem tirar o que entrou depois', () => {
     const d0 = docOf()
     const index = d0.places.findIndex((p) => p.id === 'p-kyoto-1')
     const mine = ok(runDoc(d0, { type: 'removeBooking', id: d0.bookings[0]!.id }))
@@ -289,14 +289,14 @@ describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã
     if (!u.ok) throw new Error(u.code)
     expect(u.doc.bookings[0]).toEqual(d0.bookings[0])
     expect(u.doc.places.some((p) => p.name === 'Nova')).toBe(true)
-    // Apagar uma atividade e desfazer: volta no mesmo Ã­ndice.
+    // Apagar uma atividade e desfazer: volta no mesmo índice.
     const rm = ok(runDoc(d0, { type: 'removePlace', id: 'p-kyoto-1' }))
     const back = undoDoc(rm.doc, rm.steps)
     if (!back.ok) throw new Error(back.code)
     expect(back.doc.places.findIndex((p) => p.id === 'p-kyoto-1')).toBe(index)
   })
 
-  it('desfazer "criar" recusa se a coisa criada jÃ¡ foi mudada por outra pessoa', () => {
+  it('desfazer "criar" recusa se a coisa criada já foi mudada por outra pessoa', () => {
     const mine = ok(
       runDoc(
         docOf(),
@@ -309,7 +309,7 @@ describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã
     expect(undoDoc(theirs.doc, mine.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
   })
 
-  it('registros por chave: anotaÃ§Ãµes das tarefas do app e o nome da viagem', () => {
+  it('registros por chave: anotações das tarefas do app e o nome da viagem', () => {
     const a = ok(runDoc(docOf(), { type: 'setTaskMeta', key: 'k:a', patch: { note: 'minha' } }))
     const b = ok(runDoc(a.doc, { type: 'setTaskMeta', key: 'k:b', patch: { note: 'da Bia' } }))
     const u = undoDoc(b.doc, a.steps)
@@ -321,6 +321,42 @@ describe('Desfazer por item: nunca apaga o que outra pessoa mudou (publicaÃ§Ã
     ])
     const renamedAgain = ok(runDoc(r.doc, { type: 'rename', name: 'Terceiro' }))
     expect(undoDoc(renamedAgain.doc, r.steps)).toEqual({ ok: false, code: 'CHANGED_SINCE' })
+  })
+})
+
+describe('Desfazer como ação: revert (publicação §5.2)', () => {
+  const ok = (r: ReturnType<typeof runDoc>) => {
+    if (!r.ok) throw new Error(r.error.code)
+    return r
+  }
+  const strip = (d: TripDoc) => ({ ...d, itinerary: { ...d.itinerary, version: 0 } })
+
+  it('tem o mesmo efeito do undoDoc, e o revert do revert refaz', () => {
+    const d0 = docOf()
+    const action: DocAction = {
+      type: 'batch',
+      actions: [
+        { type: 'engine', command: { type: 'removeStop', stopId: 's2' } },
+        { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'x' } },
+      ],
+    }
+    const r = ok(runDoc(d0, action))
+    const back = ok(runDoc(r.doc, { type: 'revert', steps: r.steps }))
+    const u = undoDoc(r.doc, r.steps)
+    if (!u.ok) throw new Error(u.code)
+    expect(deepEqual(strip(back.doc), strip(u.doc))).toBe(true)
+    expect(deepEqual(strip(back.doc), strip(d0))).toBe(true)
+    const redo = ok(runDoc(back.doc, { type: 'revert', steps: back.steps }))
+    expect(deepEqual(strip(redo.doc), strip(r.doc))).toBe(true)
+  })
+
+  it('recusa com CHANGED_SINCE quando alguém mexeu depois', () => {
+    const r = ok(runDoc(docOf(), { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'minha' } }))
+    const other = ok(runDoc(r.doc, { type: 'setPlace', id: 'p-kyoto-1', patch: { note: 'da Bia' } }))
+    expect(runDoc(other.doc, { type: 'revert', steps: r.steps })).toMatchObject({
+      ok: false,
+      error: { code: 'CHANGED_SINCE' },
+    })
   })
 })
 
