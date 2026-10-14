@@ -287,7 +287,8 @@ export const useApp = create<AppState>((set, get) => {
     act(action, opts = {}) {
       const before = get().doc
       if (!before) return false
-      const r = runDoc(before, action)
+      const opId = newOpId()
+      const r = runDoc(before, action, { opId })
       if (!r.ok) {
         const text = describeError(r.error, before.itinerary, before)
         if (text) toast(text, true)
@@ -501,7 +502,7 @@ export const useApp = create<AppState>((set, get) => {
     async renameTrip(id, name) {
       const d = await repo.load(id)
       if (!d) return
-      const r = runDoc(d, { type: 'rename', name })
+      const r = runDoc(d, { type: 'rename', name }, { opId: newOpId() })
       if (!r.ok) return
       await persist({ ...r.doc, meta: { ...r.doc.meta, updatedAt: Date.now() } })
       set({ trips: await repo.list() })
@@ -525,9 +526,15 @@ export function todayISO(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/** Id novo para coisas criadas na tela (visitas, reservas, atividades). */
+/** Id de uma ação (spec publicação §5.2): os ids que ela cria derivam dele. */
+export const newOpId = (): string => crypto.randomUUID()
+
+/**
+ * Id novo para coisas criadas na tela (visitas, reservas, atividades). Aleatório de verdade: dois
+ * aparelhos criando ao mesmo tempo nunca colidem.
+ */
 export function uid(prefix: string): string {
-  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  return `${prefix}${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
 }
 
 /** Contagem regressiva até a meia-noite da primeira noite (dias + relógio), como na v1. */

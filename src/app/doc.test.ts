@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import fc from 'fast-check'
+import { toCommand } from '../engine/fixtures/arbitrary'
 import { japao } from '../engine/fixtures/trips'
 import { deepEqual, findVisit } from '../engine'
 import { migrate, runDoc, SCHEMA_VERSION, undoDoc } from './doc'
@@ -25,6 +27,83 @@ function roundTrip(doc: TripDoc, action: DocAction): TripDoc {
   expect(deepEqual(strip(u.doc), strip(doc))).toBe(true)
   return r.doc
 }
+
+describe('ids novos vêm da ação (publicação §5.2)', () => {
+  const add = (name: string): DocAction => ({
+    type: 'addPlace',
+    place: { destinationId: 'd-kyoto', name, rarity: 'want' },
+  })
+
+  it('com opId, os ids são o prefixo da ação + contador, e o seq não muda', () => {
+    const r = runDoc(
+      docOf(),
+      { type: 'batch', actions: [add('A'), add('B')] },
+      { opId: '0f9e8d7c-6b5a-4321-8fed-cba987654321' },
+    )
+    if (!r.ok) throw new Error(r.error.code)
+    expect(r.doc.places.slice(-2).map((p) => p.id)).toEqual(['0f9e8d7c6b5a.1', '0f9e8d7c6b5a.2'])
+    expect(r.doc.seq).toBe(0)
+  })
+
+  it('a mesma ação com o mesmo opId dá o mesmo resultado; opIds diferentes não colidem', () => {
+    const d = docOf()
+    const a = runDoc(d, add('A'), { opId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })
+    const b = runDoc(d, add('A'), { opId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })
+    const c = runDoc(d, add('A'), { opId: 'bbbbbbbb-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })
+    if (!a.ok || !b.ok || !c.ok) throw new Error('falhou')
+    expect(deepEqual(a.doc, b.doc)).toBe(true)
+    expect(a.doc.places.at(-1)!.id).not.toBe(c.doc.places.at(-1)!.id)
+  })
+
+  it('ids criados pelo motor (novas paradas) também vêm do opId', () => {
+    const d = docOf()
+    const r = runDoc(
+      d,
+      {
+        type: 'engine',
+        command: {
+          type: 'insertStop',
+          destinationId: 'd-kyoto',
+          index: 1,
+          nights: 1,
+          via: { kind: 'return' },
+        },
+      },
+      { opId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' },
+    )
+    if (!r.ok) throw new Error(r.error.code)
+    const fresh = r.doc.itinerary.stops.filter((s) => !d.itinerary.stops.some((x) => x.id === s.id))
+    expect(fresh.length).toBeGreaterThan(0)
+    for (const s of fresh) expect(s.id.startsWith('cccccccccccc.')).toBe(true)
+  })
+})
+
+describe('reaplicar as mesmas ações dá a mesma viagem (base da nuvem)', () => {
+  it('sequências aleatórias com opId: duas execuções terminam idênticas', () => {
+    const trip = japao()
+    fc.assert(
+      fc.property(
+        fc.array(fc.tuple(fc.nat(), fc.nat(), fc.nat(), fc.nat(), fc.nat(), fc.uuid()), { maxLength: 15 }),
+        (steps) => {
+          const play = () => {
+            let d = docOf()
+            steps.forEach(([k, a, b, c, e, opId], n) => {
+              const action: DocAction = {
+                type: 'engine',
+                command: toCommand(d.itinerary, trip, [k, a, b, c, e], n),
+              }
+              const r = runDoc(d, action, { opId })
+              if (r.ok) d = r.doc
+            })
+            return d
+          }
+          expect(deepEqual(play(), play())).toBe(true)
+        },
+      ),
+      { numRuns: Number(process.env.INVARIANT_RUNS ?? 200) },
+    )
+  })
+})
 
 describe('mudança que não muda nada (M3.5)', () => {
   it('setPlace igual ao que já está não cria Desfazer', () => {

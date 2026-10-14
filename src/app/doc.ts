@@ -136,11 +136,25 @@ class DocFail extends Error {
   }
 }
 
-export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
+/** De onde vêm os ids novos de uma ação (spec publicação §5.2). */
+export interface RunCtx {
+  /**
+   * Id único da ação (UUID). Os ids criados por ela são `<12 primeiros caracteres>.<n>`: a mesma ação
+   * gera os mesmos ids no aparelho e no servidor, e ações de aparelhos diferentes nunca colidem.
+   * Sem ele (testes antigos), os ids saem do contador `seq` da viagem.
+   */
+  opId?: string
+}
+
+export const opPrefix = (opId: string) => opId.replace(/-/g, '').slice(0, 12)
+
+export function runDoc(doc: TripDoc, action: DocAction, ctx: RunCtx = {}): RunDocResult {
   const draft: TripDoc = { ...doc }
   const steps: UndoStep[] = []
   const effects = emptyEffects()
-  const newId = () => `u${++draft.seq}`
+  let n = 0
+  const prefix = ctx.opId ? opPrefix(ctx.opId) : null
+  const newId = () => (prefix ? `${prefix}.${++n}` : `u${++draft.seq}`)
   const snapshot = (key: Collection) => steps.push({ kind: 'col', key, before: structuredClone(draft[key]) })
 
   const apply = (a: DocAction): void => {
