@@ -35,6 +35,7 @@ import { colorOf, sealOf } from './colors'
 import { isCoarse } from './pointer'
 import { RARITY } from './rarity'
 import { Seal, Stepper, Vehicle } from './kit'
+import { TaskSection } from './TaskViews'
 
 // Roteiro (spec §17.4): a lista na ordem da viagem, em acordeão: um destino aberto por vez (o do dia
 // escolhido), os outros em uma linha. Aberto, o cartão mostra os dias com as atividades e "+ Atividade",
@@ -134,6 +135,8 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
   )
   const gap = lodgingGaps(it, doc.bookings).find((g) => g.stopId === stop.id)
   const openLodging = () => openSheet({ kind: 'lodging', stopId: stop.id })
+  const skipLodging =
+    doc.taskMeta?.[`lodging-missing:${stop.id}`]?.skip ?? doc.taskMeta?.[`lodging-partial:${stop.id}`]?.skip
   const pills: JSX.Element[] = []
   if (stop.lodging === 'friends' || stop.lodging === 'onboard')
     pills.push(
@@ -154,8 +157,27 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
           宿 {b.title} {b.status === 'booked' ? '済' : '· ainda não reservada'}
         </button>,
       )
+    // "Não preciso" fica à vista, com o motivo; tocar abre a tarefa para voltar atrás.
+    if (gap && skipLodging)
+      pills.push(
+        <button
+          key="skip"
+          type="button"
+          className="pill ok"
+          onClick={() =>
+            openSheet({
+              kind: 'autoTask',
+              key: doc.taskMeta?.[`lodging-missing:${stop.id}`]
+                ? `lodging-missing:${stop.id}`
+                : `lodging-partial:${stop.id}`,
+            })
+          }
+        >
+          <span aria-hidden="true">宿</span> não precisa{skipLodging.reason ? ` (${skipLodging.reason})` : ''}
+        </button>,
+      )
     // Sem datas também: o painel explica o que falta (a data de ida) e oferece "com amigos".
-    if (gap)
+    else if (gap)
       pills.push(
         <button key="gap" type="button" className="pill warn" onClick={openLodging}>
           <span aria-hidden="true">宿</span>{' '}
@@ -167,9 +189,11 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
   const lodgingNote =
     stop.lodging === 'friends' || stop.lodging === 'onboard' || (lodgings.length && !gap)
       ? 'hospedagem ok'
-      : gap
+      : gap && !skipLodging
         ? 'falta hospedagem'
-        : ''
+        : gap
+          ? 'hospedagem ok'
+          : ''
   const summary = [plural(n, 'noite', 'noites'), plural(acts, 'atividade', 'atividades'), lodgingNote]
     .filter(Boolean)
     .join(' · ')
@@ -203,6 +227,11 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
               },
             ]
           : []),
+        {
+          label: `+ Tarefa para ${name}`,
+          detail: ['Ex.: confirmar o check-in tardio do hotel.'],
+          run: () => openSheet({ kind: 'task', about: { kind: 'dest', id: stop.destinationId! } }),
+        },
         {
           label: 'Tirar do roteiro',
           detail: ['As noites ficam em aberto, com as mesmas datas. As atividades ficam guardadas.'],
@@ -266,6 +295,11 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
             ))}
           </div>
           <CatalogRow destId={stop.destinationId!} />
+          <TaskSection
+            about={{ kind: 'dest', id: stop.destinationId! }}
+            title={`TAREFAS DE ${name.toUpperCase()}`}
+            compact
+          />
         </>
       ) : null}
     </article>
@@ -276,6 +310,15 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
       kind: 'choice',
       title: d.label,
       options: [
+        ...(d.ref
+          ? [
+              {
+                label: '+ Tarefa para este dia',
+                detail: ['Ex.: levar dinheiro para o mercado.'],
+                run: () => openSheet({ kind: 'task', about: { kind: 'day', ref: d.ref! } }),
+              },
+            ]
+          : []),
         {
           label: 'Tirar esta noite',
           detail: ['Depois você escolhe para onde vai a noite.'],
@@ -641,7 +684,19 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
           </div>,
         )
     }
-    if (!has && NEEDS_TICKET.has(leg.mode))
+    const skipTicket = doc.taskMeta?.[`transport-missing:${leg.id}`]?.skip
+    if (!has && NEEDS_TICKET.has(leg.mode) && skipTicket)
+      // "Não preciso" fica à vista, com o motivo; tocar abre a tarefa para voltar atrás.
+      ticket = (
+        <button
+          type="button"
+          className="ticket on"
+          onClick={() => openSheet({ kind: 'autoTask', key: `transport-missing:${leg.id}` })}
+        >
+          Passagem: não precisa{skipTicket.reason ? ` (${skipTicket.reason})` : ''}
+        </button>
+      )
+    else if (!has && NEEDS_TICKET.has(leg.mode))
       ticket = (
         <button
           type="button"

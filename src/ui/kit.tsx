@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { LegMode } from '../engine'
 import { useApp } from '../app/store'
@@ -501,5 +501,51 @@ export function Celebrations() {
         }
       })}
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Anotações: caixa de texto que salva ao sair (e ao fechar o painel), com Desfazer.
+// ---------------------------------------------------------------------------
+
+export function NoteBox({
+  id,
+  label,
+  value,
+  placeholder,
+  save,
+}: {
+  id: string
+  label: string
+  value: string
+  placeholder: string
+  save: (text: string) => void
+}) {
+  const [text, setText] = useState(value)
+  const latest = useRef({ text, value, save })
+  latest.current = { text, value, save }
+  // Mudou por fora (Copiar de…, Desfazer): a caixa acompanha.
+  useEffect(() => setText(value), [value])
+  // Fechar o painel com algo digitado também salva.
+  useEffect(
+    () => () => {
+      const l = latest.current
+      if (l.text.trim() !== l.value) l.save(l.text.trim())
+    },
+    [],
+  )
+  return (
+    <label className="field" htmlFor={id}>
+      <span>{label}</span>
+      <textarea
+        className="input memo-box"
+        id={id}
+        rows={3}
+        value={text}
+        placeholder={placeholder}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => text.trim() !== value && save(text.trim())}
+      />
+    </label>
   )
 }

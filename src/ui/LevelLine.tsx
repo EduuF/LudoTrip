@@ -1,12 +1,12 @@
-import { progress } from '../engine'
 import { useApp } from '../app/store'
+import { docProgress } from '../app/tasks'
 
 // Nível de preparo e XP (spec §17.1): uma linha com a barra listrada. Mora na contagem do mapa e no
 // topo das Tarefas; o HUD fica só com o essencial para quem chega.
 
 export function LevelLine() {
   const doc = useApp((s) => s.doc)!
-  const p = progress(doc.itinerary, doc)
+  const p = docProgress(doc)
   return (
     <span className="level">
       <span className="lv">

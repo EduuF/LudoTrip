@@ -131,6 +131,24 @@ function leadFor(action: DocAction, doc: TripDoc): string | null {
     }
     case 'rename':
       return `Viagem agora se chama ${action.name.trim()}.`
+    case 'addTask':
+      return `Tarefa nova: ${action.task.title.trim()}.`
+    case 'setTask':
+      return action.patch.done === true
+        ? 'Tarefa feita ✓'
+        : action.patch.done === false
+          ? 'Tarefa de volta à lista.'
+          : 'Tarefa salva.'
+    case 'removeTask': {
+      const t = doc.tasks?.find((x) => x.id === action.id)
+      return `${t?.title ?? 'Tarefa'} apagada.`
+    }
+    case 'setTaskMeta':
+      return action.patch?.skip
+        ? 'Não precisa: saiu das tarefas.'
+        : action.patch?.skip === null
+          ? 'Voltou para as tarefas.'
+          : 'Tarefa salva.'
     case 'batch':
       return action.actions.map((a) => leadFor(a, doc)).find(Boolean) ?? null
   }

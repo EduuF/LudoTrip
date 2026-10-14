@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { days as allDays, describeError, describeUndoRefusal, placeStates, progress } from '../engine'
+import { days as allDays, describeError, describeUndoRefusal, placeStates } from '../engine'
 import type { ID } from '../engine'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { migrate, runDoc, undoDoc } from './doc'
@@ -12,6 +12,7 @@ import type { ThemeChoice } from './theme'
 import { tutorialSeen } from './tutorial'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
+import { docProgress } from './tasks'
 
 export type Tab = 'mapa' | 'atividades' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
@@ -277,8 +278,8 @@ export const useApp = create<AppState>((set, get) => {
       toast(text, false, true)
 
       // Jogo: XP, nível, carimbo, destino completo (spec §17.1).
-      const p0 = progress(before.itinerary, before)
-      const p1 = progress(after.itinerary, after)
+      const p0 = docProgress(before)
+      const p1 = docProgress(after)
       if (opts.stamp) {
         celebrate({ kind: 'stamp' })
         sfx.stamp()

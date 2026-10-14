@@ -6,6 +6,7 @@ import type {
   Effects,
   EngineError,
   ID,
+  ISODate,
   Itinerary,
   Patch,
   Place,
@@ -13,6 +14,9 @@ import type {
   Rarity,
   Scope,
 } from '../engine'
+
+import { rehome } from './tasks'
+import type { Task, TaskMeta } from './tasks'
 
 // O documento da viagem: itinerário (motor) + destinos, mochila e reservas.
 // Toda ação de quem usa passa por runDoc e volta com o seu Desfazer, inclusive mochila e reservas.
@@ -39,6 +43,10 @@ export interface TripDoc {
   seq: number
   /** Versão do formato salvo (ausente = antes do M3.5). `migrate()` atualiza ao abrir. */
   schemaVersion?: number
+  /** Tarefas escritas por quem viaja (spec §17.11). */
+  tasks?: Task[]
+  /** Prazo, quem faz, anotações e "Não preciso" das tarefas automáticas, pela chave `tipo:alvo`. */
+  taskMeta?: Record<string, TaskMeta>
 }
 
 export const SCHEMA_VERSION = 1
@@ -90,9 +98,31 @@ export type DocAction =
     }
   | { type: 'removeBooking'; id: ID }
   | { type: 'rename'; name: string }
+  | { type: 'addTask'; task: Task }
+  /** Textos vazios (`note: ''`, `link: ''`) e `due: null` / `who: null` apagam o campo. */
+  | {
+      type: 'setTask'
+      id: ID
+      patch: Partial<Omit<Task, 'id' | 'createdAt' | 'due' | 'who'>> & {
+        due?: ISODate | null
+        who?: ID | null
+      }
+    }
+  | { type: 'removeTask'; id: ID }
+  /** `patch: null` apaga tudo o que se acrescentou; campos vazios/null apagam aquele campo. */
+  | {
+      type: 'setTaskMeta'
+      key: string
+      patch: {
+        due?: ISODate | null
+        note?: string
+        who?: ID | null
+        skip?: { reason?: string } | null
+      } | null
+    }
   | { type: 'batch'; actions: DocAction[] }
 
-type Collection = 'destinations' | 'places' | 'bookings' | 'meta'
+type Collection = 'destinations' | 'places' | 'bookings' | 'meta' | 'tasks' | 'taskMeta'
 export type UndoStep = { kind: 'it'; patch: Patch } | { kind: 'col'; key: Collection; before: unknown }
 
 export type RunDocResult =
@@ -209,6 +239,49 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
         draft.meta = { ...draft.meta, name }
         return
       }
+      case 'addTask': {
+        const title = a.task.title.trim()
+        if (!title) throw new DocFail({ code: 'INVALID', data: { reason: 'empty-title' } })
+        snapshot('tasks')
+        draft.tasks = [...(draft.tasks ?? []), { ...a.task, title }]
+        return
+      }
+      case 'setTask': {
+        const cur = draft.tasks?.find((t) => t.id === a.id)
+        if (!cur) throw new DocFail({ code: 'NOT_FOUND', data: { taskId: a.id } })
+        const next = { ...cur } as Record<string, unknown>
+        for (const [k, v] of Object.entries(a.patch)) {
+          if (v === null || v === '' || (Array.isArray(v) && !v.length)) delete next[k]
+          else next[k] = k === 'title' ? String(v).trim() || cur.title : v
+        }
+        if (JSON.stringify(next) === JSON.stringify(cur)) return
+        snapshot('tasks')
+        draft.tasks = draft.tasks!.map((t) => (t.id === a.id ? (next as unknown as Task) : t))
+        return
+      }
+      case 'removeTask': {
+        if (!draft.tasks?.some((t) => t.id === a.id))
+          throw new DocFail({ code: 'NOT_FOUND', data: { taskId: a.id } })
+        snapshot('tasks')
+        draft.tasks = draft.tasks.filter((t) => t.id !== a.id)
+        return
+      }
+      case 'setTaskMeta': {
+        const all = { ...(draft.taskMeta ?? {}) }
+        const cur = all[a.key] ?? {}
+        const next: Record<string, unknown> = a.patch === null ? {} : { ...cur }
+        if (a.patch)
+          for (const [k, v] of Object.entries(a.patch)) {
+            if (v === null || v === '') delete next[k]
+            else next[k] = v
+          }
+        if (JSON.stringify(next) === JSON.stringify(cur)) return
+        snapshot('taskMeta')
+        if (Object.keys(next).length) all[a.key] = next as TaskMeta
+        else delete all[a.key]
+        draft.taskMeta = all
+        return
+      }
       case 'batch':
         for (const x of a.actions) apply(x)
         return
@@ -220,6 +293,18 @@ export function runDoc(doc: TripDoc, action: DocAction): RunDocResult {
   } catch (e) {
     if (e instanceof DocFail) return { ok: false, error: e.error }
     throw e
+  }
+  // Nada some calado: tarefas presas ao que deixou de existir viram "da viagem" (spec §17.11).
+  if (steps.length && doc.tasks?.length) {
+    const moved = rehome(
+      draft.tasks ?? [],
+      { it: doc.itinerary, names: doc },
+      { it: draft.itinerary, names: draft },
+    )
+    if (moved) {
+      snapshot('tasks')
+      draft.tasks = moved
+    }
   }
   if (!steps.length) return { ok: false, error: { code: 'NO_CHANGE' } }
   return { ok: true, doc: draft, steps, effects }

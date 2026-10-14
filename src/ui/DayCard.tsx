@@ -6,6 +6,7 @@ import { todayISO, useApp } from '../app/store'
 import { fillOpenChoice } from '../app/choices'
 import { colorOf } from './colors'
 import { DayRow } from './Roteiro'
+import { TaskSection } from './TaskViews'
 
 // O cartão do dia (spec §17.2, como a "barra de dias" da v1): o dia escolhido na trilha,
 // onde se está, onde se dorme e as atividades do dia. Antes da viagem começa no dia 1; durante, em hoje.
@@ -124,6 +125,7 @@ export function DayCard() {
         </div>
       ) : null}
       <DayRow day={d} destId={actDest} compact />
+      {d.ref ? <TaskSection about={{ kind: 'day', ref: d.ref }} title="TAREFAS DO DIA" compact /> : null}
     </section>
   )
 }

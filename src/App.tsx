@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { health } from './engine'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
 import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
@@ -12,6 +11,7 @@ import { Mapa } from './ui/Mapa'
 import { Sheets } from './ui/Sheets'
 import { Tarefas } from './ui/Tarefas'
 import { Tutorial } from './ui/Tutorial'
+import { docHealth } from './app/tasks'
 
 // Casca do app (spec §17.1): HUD de uma linha (voltar, nome, tema, Desfazer e um menu com o resto),
 // abas embaixo, painéis e comemorações. A contagem e o nível ficam no mapa (e o nível nas Tarefas).
@@ -112,7 +112,7 @@ function Tabs() {
   const doc = useApp((s) => s.doc)!
   const tab = useApp((s) => s.tab)
   const setTab = useApp((s) => s.setTab)
-  const urgent = health(doc.itinerary, doc).filter((i) => i.severity !== 'info').length
+  const urgent = docHealth(doc).filter((i) => i.severity !== 'info').length
   return (
     <nav className="tabs" aria-label="Telas da viagem">
       <div className="tabs-in">

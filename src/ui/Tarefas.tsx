@@ -1,20 +1,15 @@
-import {
-  describeIssue,
-  health,
-  legName,
-  MODE_NAMES,
-  progress,
-  stopName,
-  XP,
-  days as allDays,
-} from '../engine'
-import type { Issue } from '../engine'
-import { useApp } from '../app/store'
-import { askStartDate, buyTicket, markLodging, scheduleOnce } from '../app/choices'
+import { useState } from 'react'
+import { describeIssue, health, XP } from '../engine'
+import type { ID, Issue } from '../engine'
+import { todayISO, useApp } from '../app/store'
+import { aboutLabel, autoKey, docHealth, docProgress, dueGroup } from '../app/tasks'
+import type { DueGroup, Task } from '../app/tasks'
+import { issueQuick, issueWhere } from './autoTasks'
 import { LevelLine } from './LevelLine'
+import { DueTag, TaskLine } from './TaskViews'
 
-// Tarefas: a Saúde do roteiro com textos de quem viaja e resolução num toque (spec §17.6, §17.12).
-// Cada tarefa diz o que falta, tem a ação que resolve (quando há) e "Ir para …" que leva ao lugar dela.
+// Tarefas (spec §17.6, §17.11): uma lista só, por prazo, com o que o app vê sozinho (passagem por
+// comprar, hospedagem, imperdível sem dia…) e o que quem viaja escreve (com prazo, link, itens, quem faz).
 
 const SEV = { alert: 'PRECISA RESOLVER', warn: 'ATENÇÃO', info: 'PARA FAZER' } as const
 const REWARD: Partial<Record<Issue['kind'], number>> = {
@@ -23,114 +18,105 @@ const REWARD: Partial<Record<Issue['kind'], number>> = {
   'lodging-partial': XP.lodging,
   'must-unscheduled': XP.must,
 }
+const GROUPS: [DueGroup, string][] = [
+  ['late', 'VENCIDAS'],
+  ['week', 'ESTA SEMANA'],
+  ['later', 'MAIS TARDE'],
+  ['none', 'SEM PRAZO'],
+]
+
+type Row =
+  | { kind: 'auto'; issue: Issue; key: string; due?: string; who?: ID }
+  | { kind: 'user'; task: Task; due?: string; who?: ID }
 
 export function Tarefas() {
   const doc = useApp((s) => s.doc)!
-  const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
-  const focusOn = useApp((s) => s.focusOn)
-  const openStopCard = useApp((s) => s.openStopCard)
-  const setCursorDay = useApp((s) => s.setCursorDay)
+  const [mine, setMine] = useState<ID | null>(null)
+  const [showDone, setShowDone] = useState(false)
   const it = doc.itinerary
-  const issues = health(it, doc)
-  const p = progress(it, doc)
   const names = { destinations: doc.destinations, places: doc.places }
+  const p = docProgress(doc)
   const label = { ticket: 'Passagens', lodging: 'Hospedagens', must: 'Imperdíveis' }
-  const dated = !!it.start
+  const today = todayISO()
+  const travelers = it.travelers
+  const nameOf = (id?: ID) => travelers.find((t) => t.id === id)?.name
 
-  /** Para onde "Ir para …" leva: o cartão do destino (aberto), o trecho, a atividade ou o dia. */
-  const where = (i: Issue): { label: string; go: () => void } | null => {
-    const d = i.data ?? {}
-    const stop = (id: string) => ({
-      label: `Ir para ${stopName(it, id, names)}`,
-      go: () => {
-        openStopCard(id)
-        focusOn(`c-${id}`, 'mapa')
-      },
-    })
-    const leg = (id: string) => {
-      const l = it.legs.find((x) => x.id === id)
-      return {
-        label: l ? `Ir para o trecho ${legName(it, l, names)}` : 'Ir para o trecho',
-        go: () => focusOn(`l-${id}`, 'mapa'),
-      }
-    }
-    if (i.target.kind === 'stop') return stop(i.target.id)
-    if (i.target.kind === 'leg') return leg(i.target.id)
-    if (i.target.kind === 'place') {
-      const place = doc.places.find((x) => x.id === i.target.id)
-      return {
-        label: `Ir para ${place?.name ?? 'a atividade'}`,
-        go: () => focusOn(`p-${i.target.id}`, 'atividades'),
-      }
-    }
-    if (i.target.kind === 'booking') {
-      if (d.stopId) return stop(String(d.stopId))
-      if (d.legId) return leg(String(d.legId))
-      // Reserva sem lugar no roteiro: as reservas ficam em "Sua viagem".
-      return { label: 'Ver as reservas', go: () => openSheet({ kind: 'trip' }) }
-    }
-    if (i.target.kind === 'anchor') {
-      const a = it.anchors.find((x) => x.id === i.target.id)
-      const day = a ? allDays(it).find((x) => x.date === a.date) : undefined
-      if (!day) return null
-      return {
-        label: `Ver ${day.label}`,
-        go: () => {
-          useApp.getState().setTab('mapa')
-          setCursorDay(day.index)
-        },
-      }
-    }
-    return null
-  }
+  const rows: Row[] = [
+    ...docHealth(doc).map((issue): Row => {
+      const key = autoKey(issue)
+      const m = doc.taskMeta?.[key]
+      return { kind: 'auto', issue, key, due: m?.due, who: m?.who }
+    }),
+    ...(doc.tasks ?? [])
+      .filter((t) => !t.done)
+      .map((task): Row => ({ kind: 'user', task, due: task.due, who: task.who })),
+  ].filter((r) => !mine || !r.who || r.who === mine)
+  // Pelo prazo; no mesmo prazo, as escritas por vocês primeiro (foram pedidas de propósito).
+  const byDue = (a: Row, b: Row) =>
+    (a.due ?? '').localeCompare(b.due ?? '') || Number(a.kind === 'auto') - Number(b.kind === 'auto')
+  // A dica do que dá para fazer numa automática aparece por extenso só na primeira.
+  let hinted = false
+  const done = (doc.tasks ?? []).filter((t) => t.done)
+  const skipped = health(it, doc).filter((i) => doc.taskMeta?.[autoKey(i)]?.skip)
 
-  const quick = (i: Issue): { label: string; run: () => void } | null => {
-    if (i.kind === 'transport-missing')
-      return dated
-        ? { label: 'Marcar comprada', run: () => buyTicket(i.target.id) }
-        : {
-            label: 'Escolher a data de ida',
-            run: () => askStartDate('Para marcar a passagem, escolha primeiro a data de ida.'),
-          }
-    if (i.kind === 'lodging-missing' || i.kind === 'lodging-partial')
-      return dated
-        ? { label: 'Marcar reservada', run: () => markLodging(i.target.id) }
-        : {
-            label: 'Escolher a data de ida',
-            run: () => askStartDate('Para anotar a hospedagem, escolha primeiro a data de ida.'),
-          }
-    if (i.kind === 'must-unscheduled') {
-      const place = doc.places.find((x) => x.id === i.target.id)
-      if (!place) return null
-      return {
-        label: 'Pôr num dia',
-        run: () =>
-          openSheet({
-            kind: 'days',
-            title: `Pôr ${place.name} em qual dia?`,
-            prefer: place.destinationId,
-            placeId: place.id,
-            pick: (ref) => scheduleOnce(place.id, ref),
-          }),
-      }
-    }
-    if (i.kind === 'booking-wrong-mode') {
-      const b = doc.bookings.find((x) => x.id === i.target.id)
-      const legId = String(i.data?.legId ?? '')
-      if (b?.kind !== 'transport' || !legId) return null
-      return {
-        label: `Voltar para ${MODE_NAMES[b.mode]}`,
-        run: () => act({ type: 'engine', command: { type: 'setLegMode', legId, mode: b.mode } }),
-      }
-    }
-    if (i.kind.startsWith('booking-'))
-      return {
-        label: 'Tirar a reserva do roteiro',
-        run: () => act({ type: 'setBooking', id: i.target.id, patch: { archived: true } }),
-      }
-    return null
+  const hint = () => {
+    if (hinted) return '▸'
+    hinted = true
+    return 'prazo, anotações ou "não preciso" ▸'
   }
+  const autoRow = (r: Extract<Row, { kind: 'auto' }>) => {
+    const i = r.issue
+    const q = issueQuick(i)
+    const w = issueWhere(i)
+    // XP só onde é dado de fato (com a ação que resolve, na viagem com datas).
+    const reward = it.start || i.kind === 'must-unscheduled' ? REWARD[i.kind] : undefined
+    const note = doc.taskMeta?.[r.key]?.note
+    return (
+      <div key={r.key} className={`quest ${i.severity}`}>
+        <span className="qhead">
+          {SEV[i.severity]} · o app viu
+          {reward ? <span className="xp">+{reward} XP</span> : null}
+        </span>
+        <button
+          type="button"
+          className="task-open"
+          aria-label={`${describeIssue(i, it, names, doc.bookings)}: prazo, anotações ou "não preciso"`}
+          onClick={() => openSheet({ kind: 'autoTask', key: r.key })}
+        >
+          <b>{describeIssue(i, it, names, doc.bookings)}</b>
+          <small>
+            {[nameOf(r.who), note ? '✎' : ''].filter(Boolean).join(' · ')}
+            {r.due ? ' ' : ''}
+            <DueTag due={r.due} />
+            {!r.due && !note && !r.who ? hint() : ''}
+          </small>
+        </button>
+        <div className="row">
+          {q ? (
+            <button type="button" className="btn small" onClick={q.run}>
+              {q.label}
+            </button>
+          ) : null}
+          {w ? (
+            <button type="button" className="btn small ghost" onClick={w.run}>
+              {w.label}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+  const userRow = (r: Extract<Row, { kind: 'user' }>) => (
+    <TaskLine
+      key={r.task.id}
+      task={r.task}
+      tag={[r.task.about.kind === 'trip' ? '' : aboutLabel(r.task.about, it, names), nameOf(r.who)]
+        .filter(Boolean)
+        .join(' · ')}
+      onOpen={() => openSheet({ kind: 'task', taskId: r.task.id })}
+    />
+  )
 
   return (
     <>
@@ -147,42 +133,91 @@ export function Tarefas() {
             </span>
           ))}
       </div>
-      {!issues.length ? (
+      <div className="row" style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="btn main"
+          onClick={() => openSheet({ kind: 'task', about: { kind: 'trip' } })}
+        >
+          + Tarefa
+        </button>
+        {travelers.length > 1 ? (
+          <div className="segs" role="group" aria-label="De quem">
+            <button
+              type="button"
+              className={!mine ? 'on' : ''}
+              aria-pressed={!mine}
+              onClick={() => setMine(null)}
+            >
+              todas
+            </button>
+            {travelers.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={mine === t.id ? 'on' : ''}
+                aria-pressed={mine === t.id}
+                onClick={() => setMine(t.id)}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {!rows.length ? (
         <div className="empty">
           <b>Tudo pronto. Boa viagem!</b>
-          Nenhuma pendência no roteiro.
+          Nenhuma tarefa por fazer. Algo a lembrar? Toque em "+ Tarefa".
         </div>
       ) : (
-        <div className="quests">
-          {issues.map((i, k) => {
-            const q = quick(i)
-            const w = where(i)
-            // XP só onde ele é dado de fato (com a ação que resolve, na viagem com datas).
-            const reward = dated || i.kind === 'must-unscheduled' ? REWARD[i.kind] : undefined
-            return (
-              <div key={`${i.kind}-${i.target.id}-${k}`} className={`quest ${i.severity}`}>
-                <span className="qhead">
-                  {SEV[i.severity]}
-                  {reward ? <span className="xp">+{reward} XP</span> : null}
-                </span>
-                <p>{describeIssue(i, it, names, doc.bookings)}</p>
-                <div className="row">
-                  {q ? (
-                    <button type="button" className="btn small" onClick={q.run}>
-                      {q.label}
-                    </button>
-                  ) : null}
-                  {w ? (
-                    <button type="button" className="btn small ghost" onClick={w.go}>
-                      {w.label}
-                    </button>
-                  ) : null}
-                </div>
+        GROUPS.map(([g, title]) => {
+          const mineG = rows.filter((r) => dueGroup(r.due, today) === g).sort(byDue)
+          if (!mineG.length) return null
+          return (
+            <section key={g} className={`task-group ${g}`} aria-label={title}>
+              <div className="group-t">
+                {title} · {mineG.length}
               </div>
-            )
-          })}
-        </div>
+              <div className="quests">{mineG.map((r) => (r.kind === 'auto' ? autoRow(r) : userRow(r)))}</div>
+            </section>
+          )
+        })
       )}
+      {done.length || skipped.length ? (
+        <section className="task-group done">
+          <button
+            type="button"
+            className="btn small ghost"
+            aria-expanded={showDone}
+            onClick={() => setShowDone(!showDone)}
+          >
+            {showDone ? '▴' : '▾'} Feitas e "não preciso" · {done.length + skipped.length}
+          </button>
+          {showDone ? (
+            <div className="quests">
+              {done.map((t) => (
+                <TaskLine key={t.id} task={t} onOpen={() => openSheet({ kind: 'task', taskId: t.id })} />
+              ))}
+              {skipped.map((i) => {
+                const key = autoKey(i)
+                const reason = doc.taskMeta?.[key]?.skip?.reason
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className="task-open skipped"
+                    onClick={() => openSheet({ kind: 'autoTask', key })}
+                  >
+                    <b>{describeIssue(i, it, names, doc.bookings)}</b>
+                    <small>não precisa{reason ? `: ${reason}` : ''} · tocar para voltar a precisar</small>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </>
   )
 }

@@ -312,3 +312,26 @@ test('apagar uma viagem pede um segundo toque', async ({ page }) => {
   await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(page.locator('.trip-card')).toHaveCount(1)
 })
+
+test('tarefa da atividade: entrar na fila online do Gion até uma data, e achar na aba Tarefas', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
+  await page.locator('#c-s8 .loose-row').getByRole('button', { name: /^Gion/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '+ Tarefa' }).click()
+  await dialog.getByLabel('O que precisa fazer').fill('Entrar na fila online')
+  await dialog.getByRole('button', { name: 'Criar tarefa' }).click()
+  await dialog.getByLabel('Prazo').fill('2030-03-01')
+  await dialog.getByLabel('Link (site, fila, reserva)').fill('sankan.kunaicho.go.jp')
+  await dialog.getByLabel('Novo item').fill('passaporte em mãos')
+  await dialog.getByLabel('Novo item').press('Enter')
+  await expect(dialog.getByRole('link', { name: 'Abrir ↗' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await page.getByRole('navigation', { name: 'Telas da viagem' }).getByText('Tarefas').click()
+  const group = page.getByRole('region', { name: 'MAIS TARDE' })
+  await expect(group).toContainText('Entrar na fila online')
+  await expect(group).toContainText('Gion')
+  await expect(group).toContainText('0/1 itens')
+})

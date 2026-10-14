@@ -693,7 +693,18 @@ export interface Progress {
   tasks: PrepTask[]
 }
 
-export function progress(it: Itinerary, data: { places: Place[]; bookings: Booking[] }): Progress {
+export function progress(
+  it: Itinerary,
+  data: {
+    places: Place[]
+    bookings: Booking[]
+    /** Tarefas automáticas marcadas "Não preciso" (chave `tipo:alvo`): contam como resolvidas. */
+    skip?: (key: string) => boolean
+    /** XP de fora do motor (tarefas escritas por quem viaja). */
+    extraXp?: number
+  },
+): Progress {
+  const skip = data.skip ?? (() => false)
   const bookings = data.bookings.filter((b) => !b.archived)
   const okTickets = new Set(
     bookings
@@ -708,7 +719,8 @@ export function progress(it: Itinerary, data: { places: Place[]; bookings: Booki
   )
   const tickets = {
     kind: 'ticket' as const,
-    done: ticketLegs.filter((l) => okTickets.has(l.id)).length,
+    done: ticketLegs.filter((l) => okTickets.has(l.id) || skip(`transport-missing:${l.id}`)).length,
+    skipped: ticketLegs.filter((l) => !okTickets.has(l.id) && skip(`transport-missing:${l.id}`)).length,
     total: ticketLegs.length,
   }
 
@@ -716,7 +728,12 @@ export function progress(it: Itinerary, data: { places: Place[]; bookings: Booki
   const sleeps = it.stops.filter((s) => s.destinationId && !NO_LODGING_NEEDED.has(s.lodging))
   const lodging = {
     kind: 'lodging' as const,
-    done: sleeps.filter((s) => !gaps.has(s.id)).length,
+    done: sleeps.filter(
+      (s) => !gaps.has(s.id) || skip(`lodging-missing:${s.id}`) || skip(`lodging-partial:${s.id}`),
+    ).length,
+    skipped: sleeps.filter(
+      (s) => gaps.has(s.id) && (skip(`lodging-missing:${s.id}`) || skip(`lodging-partial:${s.id}`)),
+    ).length,
     total: sleeps.length,
   }
 
@@ -724,7 +741,8 @@ export function progress(it: Itinerary, data: { places: Place[]; bookings: Booki
   const musts = data.places.filter((p) => p.rarity === 'must' && inTrip.has(p.destinationId))
   const must = {
     kind: 'must' as const,
-    done: musts.filter((p) => scheduled.has(p.id)).length,
+    done: musts.filter((p) => scheduled.has(p.id) || skip(`must-unscheduled:${p.id}`)).length,
+    skipped: musts.filter((p) => !scheduled.has(p.id) && skip(`must-unscheduled:${p.id}`)).length,
     total: musts.length,
   }
   const others = data.places.filter((p) => p.rarity !== 'must' && scheduled.has(p.id)).length
@@ -736,12 +754,17 @@ export function progress(it: Itinerary, data: { places: Place[]; bookings: Booki
   const next = LEVELS.find((l) => l.level === current.level + 1)
   const inLevel = next ? (ratio - current.from) / (next.from - current.from) : 1
   return {
-    xp: done + others * XP.scheduled,
+    // "Não preciso" conta no nível (ratio), mas não dá XP: só o que foi feito de verdade.
+    xp:
+      done -
+      (tickets.skipped * XP.ticket + lodging.skipped * XP.lodging + must.skipped * XP.must) +
+      others * XP.scheduled +
+      (data.extraXp ?? 0),
     level: current.level,
     levelName: current.name,
     ratio,
     inLevel: Math.max(0, Math.min(1, inLevel)),
-    tasks: [tickets, lodging, must],
+    tasks: [tickets, lodging, must].map((t) => ({ kind: t.kind, done: t.done, total: t.total })),
   }
 }
 

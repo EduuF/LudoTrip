@@ -455,11 +455,11 @@ _Retorno do M3.4 (spec §17.12; plano em `~/.claude/plans/excelente-a-ferramenta
 
 _Spec §17.11. Começa depois da revisão do M3.5._
 
-- [ ] Modelo (`tasks`, `taskMeta`) e ações com Desfazer; tarefas de alvo apagado viram "da viagem".
-- [ ] Aba Tarefas por prazo, com as automáticas ("Não preciso…") e as escritas; filtro "só as minhas".
-- [ ] Painel da tarefa (presa a, prazo, quem faz, link, itens, anotações).
-- [ ] Seção "TAREFAS" nos painéis do que prendem.
-- [ ] Testes, e2e (fila do Jardim Imperial), docs.
+- [x] Modelo (`tasks`, `taskMeta`) e ações com Desfazer; tarefas de alvo apagado viram "da viagem".
+- [x] Aba Tarefas por prazo, com as automáticas ("Não preciso…") e as escritas; filtro "só as minhas".
+- [x] Painel da tarefa (presa a, prazo, quem faz, link, itens, anotações).
+- [x] Seção "TAREFAS" nos painéis do que prendem.
+- [x] Testes, e2e (fila do Jardim Imperial), docs.
 
 **Ponto de revisão M3.6:** o mantenedor cria a tarefa da fila online numa atividade e a encontra na aba Tarefas pelo prazo.
 

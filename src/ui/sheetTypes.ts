@@ -1,4 +1,5 @@
 import type { DayRef, ID } from '../engine'
+import type { TaskAbout } from '../app/tasks'
 
 /** Uma opção de escolha (com prévia do que vai acontecer). */
 export interface Opt {
@@ -32,3 +33,9 @@ export type SheetSpec =
   | { kind: 'newActivity'; destId: ID; day?: DayRef; dayLabel?: string; lat?: number; lon?: number }
   /** Onde vocês dormem numa parada: nome, noites e "já reservei". */
   | { kind: 'lodging'; stopId: ID }
+  /** Tarefa escrita por quem viaja: sem `taskId`, cria uma nova (já presa a `about`). */
+  | { kind: 'task'; taskId?: ID; about?: TaskAbout }
+  /** Tarefa que o app vê sozinho (chave `tipo:alvo`): prazo, quem faz, anotações, "Não preciso". */
+  | { kind: 'autoTask'; key: string }
+  /** "Presa a": trocar ao que a tarefa está presa. */
+  | { kind: 'taskAbout'; taskId: ID; step?: 'dest' | 'leg' | 'day' | 'place' | 'placeIn'; destId?: ID }

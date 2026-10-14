@@ -2122,7 +2122,8 @@ a.opt {
   flex-direction: column;
   gap: 6px;
 }
-.field > span {
+.field > span,
+.field > label:first-child {
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2772,5 +2773,96 @@ button.tl-stop:active {
   .tr-handle {
     min-width: 44px;
     min-height: 40px;
+  }
+}
+
+/* M3.6 (spec §17.11): tarefas escritas por quem viaja */
+.task-group {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-group.late > .group-t {
+  color: var(--beni);
+}
+.task-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.task-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-left: 6px solid var(--matcha);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.task-line.done {
+  opacity: 0.7;
+}
+.task-line.done .task-open b {
+  text-decoration: line-through;
+}
+.check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--paper);
+  font-weight: 700;
+}
+.check.on {
+  background: var(--matcha);
+  border-color: var(--matcha);
+}
+.task-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.task-open small {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.task-open.skipped {
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.due {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.due.late {
+  color: var(--beni);
+  font-weight: 700;
+}
+.item.done {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
+@media (pointer: coarse) {
+  .check {
+    width: 44px;
+    height: 44px;
   }
 }

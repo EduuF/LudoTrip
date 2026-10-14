@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   bookingStatus,
   dayLabel,
@@ -29,12 +29,13 @@ import {
   suggestGap,
 } from '../app/choices'
 import { DayPicker, TimelinePicker } from './TimelinePicker'
+import { AutoTaskSheet, TaskAboutSheet, TaskSection, TaskSheet } from './TaskViews'
 import { fold } from '../providers/countries'
 import { searchOnline } from '../providers/places'
 import type { OnlinePlace } from '../providers/places'
 import { RARITY } from './rarity'
 import { colorOf, sealOf } from './colors'
-import { OptButton, SheetFrame, Stepper, Vehicle } from './kit'
+import { NoteBox, OptButton, SheetFrame, Stepper, Vehicle } from './kit'
 import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
@@ -159,6 +160,7 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 }),
             }}
           />
+          <TaskSection about={{ kind: 'leg', id: leg.id }} />
         </>
       )
     }
@@ -360,53 +362,16 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'lodging':
       return <LodgingSheet stopId={sheet.stopId} />
+
+    case 'task':
+      return <TaskSheet taskId={sheet.taskId} about={sheet.about} />
+
+    case 'autoTask':
+      return <AutoTaskSheet taskKey={sheet.key} />
+
+    case 'taskAbout':
+      return <TaskAboutSheet taskId={sheet.taskId} step={sheet.step} destId={sheet.destId} />
   }
-}
-
-// ---------------------------------------------------------------------------
-// Anotações: caixa de texto que salva ao sair (e ao fechar o painel), com Desfazer.
-// ---------------------------------------------------------------------------
-
-function NoteBox({
-  id,
-  label,
-  value,
-  placeholder,
-  save,
-}: {
-  id: string
-  label: string
-  value: string
-  placeholder: string
-  save: (text: string) => void
-}) {
-  const [text, setText] = useState(value)
-  const latest = useRef({ text, value, save })
-  latest.current = { text, value, save }
-  // Mudou por fora (Copiar de…, Desfazer): a caixa acompanha.
-  useEffect(() => setText(value), [value])
-  // Fechar o painel com algo digitado também salva.
-  useEffect(
-    () => () => {
-      const l = latest.current
-      if (l.text.trim() !== l.value) l.save(l.text.trim())
-    },
-    [],
-  )
-  return (
-    <label className="field" htmlFor={id}>
-      <span>{label}</span>
-      <textarea
-        className="input memo-box"
-        id={id}
-        rows={3}
-        value={text}
-        placeholder={placeholder}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text.trim() !== value && save(text.trim())}
-      />
-    </label>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -554,6 +519,7 @@ function VisitSheet({ visitId }: { visitId: ID }) {
           Tirar do dia
         </button>
       </div>
+      {p ? <TaskSection about={{ kind: 'place', id: p.id }} title="TAREFAS DA ATIVIDADE" /> : null}
       {p ? (
         <OptButton
           o={{
@@ -629,6 +595,7 @@ function AboutActivity({ placeId }: { placeId: ID }) {
         placeholder="Ex.: site dos ingressos, preço, fecha às segundas"
         save={(t) => setPlace({ note: t })}
       />
+      <TaskSection about={{ kind: 'place', id: p.id }} />
       {visits.length ? <div className="group-t">DIAS · TOQUE PARA AS ANOTAÇÕES DO DIA</div> : null}
       {visits.map(({ d, v }) => (
         <OptButton

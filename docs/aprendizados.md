@@ -5,6 +5,15 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M3.6: tarefas de verdade
+
+- **Uma lista só, por prazo**, juntando o que o app calcula (`health()`) e o que se escreve. As automáticas continuam calculadas; o que se acrescenta a elas (prazo, quem faz, anotações, "Não preciso") fica numa tabela pela chave `tipo:alvo` (`taskMeta`). Nada duplicado, nada que fique velho.
+- **Presa ao destino, não à parada:** paradas mudam de id (tirar do roteiro vira noite em aberto; Kyoto duas vezes são duas paradas). O destino é o que a pessoa pensa.
+- **Nada some calado:** `rehome()` roda depois de toda ação e transforma em "da viagem" a tarefa cujo alvo sumiu, guardando o nome ("era de Gion"); o Desfazer volta as duas coisas.
+- **"Não preciso" conta no nível, não no XP:** quem decide que não precisa avança no preparo, mas o XP é do que foi feito.
+- **Bug pego no teste:** seletor do Zustand com `?? []` cria uma lista nova a cada leitura e entra em loop de redesenho. Usar uma constante fora do componente.
+- **A tela mostrou:** a tarefa escrita ficava enterrada depois de 18 automáticas sem prazo, e a dica "prazo, anotações ou não preciso" repetida 18 vezes virava ruído. As escritas vêm primeiro no grupo; a dica aparece uma vez.
+
 ## 2026-10-14 — M3.5: varredura de bugs, becos sem saída e clareza
 
 ### Como foi feita
