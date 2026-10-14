@@ -758,6 +758,29 @@ _Retorno do M3.3: "a mesma atividade em 2 dias", "detalhes de cada dia", "não a
 - **"+ Adicionar destino"** (cartão do fim do roteiro, mapa e prateleira): o destino e depois a linha do tempo, com a sugestão.
 - Fora: a régua da trilha em viagens de 120 dias (já tem zoom; medida registrada nos aprendizados) e "quem vai" por atividade.
 
+### 17.11 Tarefas de verdade (M3.6)
+
+_Retorno do M3.4: "as tarefas são o que falta fazer para a viagem; quero criar as minhas, presas a cidade, dia ou atividade, com data limite e observações"._
+
+- **Uma lista só:** as tarefas que o app vê sozinho (§17.6: passagem por comprar, hospedagem, imperdível sem dia, reservas fora do roteiro…) e as que quem viaja escreve, juntas, agrupadas por prazo: Vencidas · Esta semana · Mais tarde · Sem prazo · Feitas (recolhida).
+- **Tarefa escrita por quem viaja:** texto; **presa a** viagem, destino, trecho, dia ou atividade (de atividade vale para todos os dias dela); **prazo** (data, com atalhos "hoje", "em 1 semana", "1 mês antes da viagem"); **quem faz** (com mais de 1 viajante; filtro "só as minhas"); **link** ("Abrir ↗"); **itens** (checklist); **anotações**; feita (+5 XP); apagar (com Desfazer).
+- **Automáticas:** continuam calculadas e somem sozinhas quando resolvidas; ganham prazo, quem faz e anotações, guardados pela chave estável `tipo:alvo`; e **"Não preciso…"** com motivo opcional ("paga a bordo"): sai da lista, conta no progresso sem dar XP, e o motivo fica à vista no trecho ou destino, para mudar de ideia.
+- **Onde aparecem:** na aba Tarefas e no painel do que prendem ("Sobre a atividade", painel do dia da atividade, painel do destino, "Editar trecho", cartão do dia), com "+ Tarefa" já presa.
+- **Nada some calado:** apagar o que a tarefa prende a transforma em "da viagem", com "era de Gion".
+- **Modelo:** `TripDoc.tasks?: Task[]` e `TripDoc.taskMeta?: Record<chave, { due?, note?, who?, skip? }>`, com `addTask` / `setTask` / `removeTask` / `setTaskMeta` em `runDoc` (Desfazer em tudo); entram pelo `migrate()` do documento (§17.12).
+
+### 17.12 Varredura de bugs, becos e clareza (M3.5)
+
+_Retorno do M3.4: "busca bem detalhada por bugs, corner cases, jornadas, deadends, problemas de interface". Duas auditorias de leitura de código (interface: 40 achados; motor e estado: 26), os graves conferidos no código; cada correção com um teste que falhava antes._
+
+- **Bugs:** "Ver no mapa da cidade" e "Marcar no mapa" a partir de Atividades levam à aba Mapa; "+ Mais uma pessoa" salva na hora; o campo da volta acompanha a ida; datas só valem completas (digitar o ano não cria anos 0002/0202); atividade que é parada de um trecho arquivado se apaga; erro do armazenamento do aparelho não desliga o salvar para sempre e avisa; "Salvar" dos horários volta ao trecho; textos de hospedagem conforme o status; plurais; "Pôr num dia" das Tarefas pelo mesmo caminho do resto; `setPlace` sem mudança não cria Desfazer.
+- **Becos sem saída:** viagem sem datas marca hospedagem e passagem (presas ao destino/trecho) e, onde a data é indispensável, oferece "Escolher a data de ida"; hospedagem "com amigos" ou "não precisa"; reservas guardadas listadas em "Sua viagem" com "Voltar"; "Ir para …" nas Tarefas abre o cartão e cobre todos os alvos; sem "Mudar a ordem" com 1 destino; noite em aberto com "Escolher destino"; "Apagar destino" para os guardados; Atividades vazia com "+ Adicionar destino"; nada de "Adiar a volta (mais tarde)" sem datas; mudar a volta sem quem ceda explica o porquê.
+- **Clareza:** Tarefas com "Precisa resolver / Atenção / Para fazer" e "Ir para Kyoto"; 済 e 宿 com nome em palavras para leitores de tela e uma linha no tutorial; resumo do cartão fechado em palavras; "destinos" (não "lugares") na trilha; "Passagem comprada" abre um painel curto em vez de desmarcar num toque; a cidade de casa com "×" separado.
+- **Acessibilidade e toque:** blocos e pegadores da trilha pelo teclado (Enter abre, ← → mudam noites); alvos de 44 px no toque; painéis devolvem o foco, prendem o Tab, não começam numa ação destrutiva; menus fecham com Escape e toque fora; Enter cria a atividade.
+- **Proteção:** apagar uma viagem e apagar uma atividade com anotações pedem um segundo toque.
+- **Futuro:** `schemaVersion` no documento e `migrate()` ao abrir.
+- **Registrado, não agora:** casos raros de fuso (âncora no dia de saída, linha de data), dois passes seguidos, o mesmo par de cidades em dois trechos, paradas de trechos arquivados, várias abas abertas (vai com a nuvem, M4), dia sem ano no Ano-Novo, "Misturado" no criar viagem.
+
 ## 18. Persistência, concorrência e offline
 
 - **Online:** cada operação roda numa transação do Firestore, que lê o itinerário atual do servidor, **reaplica a operação** e grava com `version + 1`. Duas pessoas editando ao mesmo tempo não se sobrescrevem; a operação é reaplicada sobre o estado mais novo.

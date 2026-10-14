@@ -437,6 +437,32 @@ _Retorno do M3.3 (spec §17.10). Sem migração: `Visit.note`, `Visit.time` e `P
 
 **Ponto de revisão M3.4:** o mantenedor repete uma atividade em dois dias com anotações diferentes e adiciona um destino numa viagem longa.
 
+## M3.5 — Varredura: bugs, becos sem saída e clareza
+
+_Retorno do M3.4 (spec §17.12; plano em `~/.claude/plans/excelente-a-ferramenta-est-whimsical-nebula.md`). Um teste que falha antes de cada correção._
+
+- [ ] **A** Bugs: `enterCity` troca para a aba Mapa e `setTab` limpa `placing`; "+ Mais uma pessoa" salva; volta sincronizada; datas completas; `removePlace` com trecho arquivado; `repo` sem desligar e com aviso; horários voltam ao trecho; textos de hospedagem; plurais; `scheduleOnce` em Tarefas; `setPlace` sem mudança.
+- [ ] **B** Becos: sem datas (hospedagem, passagem, progresso, "Escolher a data de ida"); hospedagem com amigos / não precisa; reservas guardadas em "Sua viagem"; "Ir para …" em todos os alvos; "Mudar a ordem" com 1 destino; noite em aberto no cartão do dia; apagar destino guardado; Atividades vazia; volta sem datas; volta sem quem ceda.
+- [ ] **C** Clareza: rótulos das Tarefas; 済/宿 em palavras; resumo do cartão; "destinos"; passagem comprada abre painel; pílula de casa; textos de Atividades e do tutorial.
+- [ ] **D** Acessibilidade: teclado na trilha; alvos de 44 px no toque; foco dos painéis e menus; Enter cria atividade.
+- [ ] **E** Segundo toque para apagar viagem e atividade com anotações.
+- [ ] **F** `schemaVersion` + `migrate()`.
+- [ ] **V** testes, e2e (viagem sem datas, casa de amigos, apagar viagem), navegador nas 6 viagens de exemplo + uma sem datas; docs; commit; push; CI e Pages.
+
+**Ponto de revisão M3.5:** o mantenedor percorre uma viagem sem datas e uma de exemplo procurando botão sem efeito.
+
+## M3.6 — Tarefas de verdade
+
+_Spec §17.11. Começa depois da revisão do M3.5._
+
+- [ ] Modelo (`tasks`, `taskMeta`) e ações com Desfazer; tarefas de alvo apagado viram "da viagem".
+- [ ] Aba Tarefas por prazo, com as automáticas ("Não preciso…") e as escritas; filtro "só as minhas".
+- [ ] Painel da tarefa (presa a, prazo, quem faz, link, itens, anotações).
+- [ ] Seção "TAREFAS" nos painéis do que prendem.
+- [ ] Testes, e2e (fila do Jardim Imperial), docs.
+
+**Ponto de revisão M3.6:** o mantenedor cria a tarefa da fila online numa atividade e a encontra na aba Tarefas pelo prazo.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**
