@@ -9,7 +9,7 @@ import { localRepo } from './repo'
 import type { TripRepo } from './repo'
 import { applyTheme, readThemeChoice } from './theme'
 import type { ThemeChoice } from './theme'
-import { tutorialSeen } from './tutorial'
+import { markTutorialSeen, tutorialSeen } from './tutorial'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 import { docProgress } from './tasks'
@@ -103,6 +103,9 @@ export interface AppState {
   toggleStop(stopId: ID, isOpen: boolean): void
   openStopCard(stopId: ID): void
   exitCity(): void
+  /** Volta um passo (spec §17.14): painel → tutorial → "marcar no mapa" → outra aba → cidade → viagem → início.
+   *  O "‹" do topo, o Escape e o Voltar do sistema usam todos este. Devolve se havia para onde voltar. */
+  stepBack(): boolean
   setPlacing(what: ID | 'new' | null): void
   setPlaying(on: boolean): void
   setTutorial(on: boolean): void
@@ -397,6 +400,40 @@ export const useApp = create<AppState>((set, get) => {
     exitCity() {
       set({ mapView: { kind: 'trip' }, placing: null })
     },
+    stepBack() {
+      const s = get()
+      // O painel aberto (ou os passos de "Criar viagem") decide: pode perguntar "Criar ou Descartar".
+      if ((s.sheet || s.screen === 'create') && localBack) {
+        localBack()
+        return true
+      }
+      if (s.sheet) {
+        s.backSheet()
+        return true
+      }
+      if (s.tutorial && s.screen === 'trip' && s.tab === 'mapa') {
+        markTutorialSeen()
+        set({ tutorial: false })
+        return true
+      }
+      if (s.placing) {
+        set({ placing: null })
+        return true
+      }
+      if (s.screen === 'trip' && s.tab !== 'mapa') {
+        set({ tab: 'mapa' })
+        return true
+      }
+      if (s.screen === 'trip' && s.mapView.kind === 'city') {
+        s.exitCity()
+        return true
+      }
+      if (s.screen !== 'home') {
+        s.goHome()
+        return true
+      }
+      return false
+    },
     toggleStop(stopId, isOpen) {
       if (isOpen) return set({ openStop: stopId, stopCollapsed: true })
       set({ openStop: stopId, stopCollapsed: false })
@@ -507,6 +544,13 @@ export function countdownTo(
     mm: pad(Math.floor(ms / 6e4) % 60),
     ss: pad(Math.floor(ms / 1e3) % 60),
   }
+}
+
+// O que está por cima diz como voltar um passo: o painel (ao de baixo, ou fecha, perguntando antes se há
+// texto não criado) ou "Criar viagem" (ao passo anterior).
+let localBack: (() => void) | null = null
+export const setLocalBack = (fn: (() => void) | null): void => {
+  localBack = fn
 }
 
 // Painel fechado (por qualquer caminho: fechar, ação concluída, trocar de aba): a pilha e o guarda saem junto.

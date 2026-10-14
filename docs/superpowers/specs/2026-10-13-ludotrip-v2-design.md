@@ -793,6 +793,26 @@ _Retorno do M3.6: "cliquei em + Tarefa e achei que tinha voltado para a atividad
 - "Reduzir movimento": sem deslizar.
 - **Painéis que editam terminam em "Pronto ✓"** (tarefa, tarefa do app, atividade, atividade no dia, trecho, hospedagem, "Sua viagem"): salvam sozinhos, e "Pronto" volta ao painel anterior ou fecha; os de escolha terminam em "Fechar". A tarefa recém-criada diz "Criada ✓ · tudo aqui salva sozinho".
 
+### 17.14 Sair da cidade e voltar um passo (M3.8)
+
+_Retorno do M3.7: dentro do mapa da cidade, 60% das pessoas levaram mais de 5 s para achar como voltar ao mapa da viagem toda._ O botão dizia "◀ Mapa" (já se está num mapa, e a aba também se chama Mapa); o "‹" do topo saía da viagem; tocar a aba Mapa não fazia nada; o Voltar do celular saía do app.
+
+- **A saída diz para onde leva:** "‹ Viagem toda" ao lado do nome da cidade.
+- **Toda saída onde se procura:**
+  - o "‹" do topo volta um nível (da cidade, à viagem toda; da viagem, a "Suas viagens");
+  - tocar de novo a aba Mapa dentro da cidade volta à viagem toda;
+  - Escape (fora de painéis) sai da cidade.
+- **Voltar do sistema** (Android, navegador, gesto do iPhone) volta um passo (`stepBack`), sem sair do app nem mudar a URL. A ordem:
+  1. painel empilhado → painel anterior;
+  2. painel → fecha (perguntando "Criar ou Descartar" se há nome digitado);
+  3. tutorial → fecha;
+  4. "marcar no mapa" → sai;
+  5. outra aba → Mapa;
+  6. cidade → viagem toda;
+  7. viagem → "Suas viagens".
+
+  Em "Criar viagem", volta ao passo anterior. Em "Suas viagens", o Voltar sai do app.
+
 ## 18. Persistência, concorrência e offline
 
 - **Online:** cada operação roda numa transação do Firestore, que lê o itinerário atual do servidor, **reaplica a operação** e grava com `version + 1`. Duas pessoas editando ao mesmo tempo não se sobrescrevem; a operação é reaplicada sobre o estado mais novo.

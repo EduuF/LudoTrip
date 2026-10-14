@@ -26,14 +26,35 @@ test('abrir um exemplo: mapa, trilha e cartão do dia numa tela; entrar na cidad
   const kyoto = page.getByRole('button', { name: 'Kyoto: entrar no mapa da cidade' })
   await expect(kyoto).toBeVisible()
   await kyoto.click()
-  await expect(page.getByRole('button', { name: '◀ Mapa' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Voltar ao mapa da viagem toda' })).toBeVisible()
   const lugares = page.getByRole('group', { name: 'Lugares no mapa da cidade' })
   await expect(lugares.getByRole('button', { name: 'Gion' })).toBeVisible()
   await page.getByRole('button', { name: /^Ver o dia dom 14/ }).click()
   await expect(dia).toContainText('em Kyoto')
   await expect(lugares.getByRole('button', { name: 'Gion' })).toHaveClass(/dim/)
-  await page.getByRole('button', { name: '◀ Mapa' }).click()
+  await page.getByRole('button', { name: 'Voltar ao mapa da viagem toda' }).click()
   await expect(kyoto).toBeVisible()
+})
+
+test('Voltar do celular volta um passo (M3.8): painel → cidade → viagem toda → suas viagens, sem sair do app', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: entrar no mapa da cidade' }).click()
+  const sair = page.getByRole('button', { name: 'Voltar ao mapa da viagem toda' })
+  await expect(sair).toHaveText('‹ Viagem toda')
+  await page
+    .getByRole('group', { name: 'Lugares no mapa da cidade' })
+    .getByRole('button', { name: 'Gion' })
+    .click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(sair).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('button', { name: 'Kyoto: entrar no mapa da cidade' })).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('button', { name: 'Criar viagem' })).toBeVisible()
 })
 
 test('tocar num dia da régua move o cursor; "▶ Ver a viagem" passa os dias sozinho', async ({ page }) => {

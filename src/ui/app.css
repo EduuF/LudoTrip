@@ -1567,6 +1567,10 @@ button.pill {
 .city-head .btn {
   color: var(--ink);
 }
+.city-head .city-back {
+  flex: none;
+  white-space: nowrap;
+}
 .city-t {
   min-width: 0;
   display: flex;
@@ -1584,6 +1588,9 @@ button.pill {
 .city-t span {
   font: 11px var(--f-pixel);
   opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .city-days {
   position: absolute;

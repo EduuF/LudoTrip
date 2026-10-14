@@ -63,6 +63,7 @@ export function Tutorial() {
     document.querySelector<HTMLElement>('.tutorial button')?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      e.preventDefault()
       markTutorialSeen()
       setTutorial(false)
     }

@@ -125,17 +125,22 @@ function CityHead({ destId }: { destId: string }) {
   return (
     <>
       <div className="city-head">
-        <button type="button" className="btn small" onClick={exitCity}>
-          ◀ Mapa
+        <button
+          type="button"
+          className="btn small city-back"
+          onClick={exitCity}
+          aria-label="Voltar ao mapa da viagem toda"
+        >
+          ‹ Viagem toda
         </button>
         <div className="city-t">
           <b>
             {d?.name}
             {d?.localName && d.localName !== d.name ? <span className="local"> {d.localName}</span> : null}
           </b>
-          <span>
+          <span title={`${placed} de ${mine.length} lugares com dia`}>
             {city.cityDays.length ? `${plural(city.cityDays.length, 'dia', 'dias')} · ` : 'bate-volta · '}
-            {placed}/{mine.length} lugares com dia
+            {placed}/{mine.length} com dia
           </span>
         </div>
       </div>

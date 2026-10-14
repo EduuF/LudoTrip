@@ -474,6 +474,16 @@ _Retorno do M3.6 (spec §17.13)._
 
 **Ponto de revisão M3.7:** o mantenedor cria uma tarefa a partir de uma atividade e percorre trecho → horários.
 
+## M3.8 — Sair da cidade sem procurar
+
+_Retorno do M3.7 (spec §17.14)._
+
+- [x] "‹ Viagem toda" na cidade; "‹" do topo e aba Mapa ativa voltam à viagem toda.
+- [x] `stepBack` no store; Voltar do sistema (`src/app/backButton.ts`) e Escape usam ele; painéis e "Criar viagem" dizem como voltar (`setLocalBack`).
+- [x] Testes (jsdom, e2e com `page.goBack()`) e docs.
+
+**Ponto de revisão M3.8:** o mantenedor entra numa cidade e volta pelo botão, pelo "‹" do topo, pela aba e pelo Voltar do celular.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**

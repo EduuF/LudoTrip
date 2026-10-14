@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createItinerary, haversineKm } from '../engine'
 import type { Destination, LegMode } from '../engine'
-import { uid, useApp } from '../app/store'
+import { setLocalBack, uid, useApp } from '../app/store'
 import type { Scope, TripDoc } from '../app/doc'
 import { CITIES } from '../providers/cities'
 import { countryBounds } from '../providers/countries'
@@ -117,6 +117,12 @@ export function Create() {
     }
     await addTrip(doc)
   }
+
+  // Voltar do sistema (spec §17.14): o passo anterior, como o "‹ Voltar".
+  useEffect(() => {
+    setLocalBack(() => (step ? setStep(step - 1) : goHome()))
+    return () => setLocalBack(null)
+  }, [step, goHome])
 
   const canNext = step === 0 ? !!scope : step === 1 ? picks.length > 0 || undecided || !isCountry : true
 

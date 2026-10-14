@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { LegMode } from '../engine'
-import { useApp } from '../app/store'
+import { setLocalBack, useApp } from '../app/store'
 import type { Opt } from './sheetTypes'
 import { currentTheme } from '../app/theme'
 import { palette, petalBurst, takeBursts } from './petals'
@@ -359,6 +359,11 @@ export function SheetFrame({
   const leave = (then: () => void) => (guard ? setAsking(() => then) : then())
   const close = () => leave(onClose)
   const goBack = back ? () => leave(back.go) : undefined
+  // Voltar do sistema (spec §17.14): um passo, como o "‹" do cabeçalho.
+  useEffect(() => {
+    setLocalBack(goBack ?? close)
+    return () => setLocalBack(null)
+  })
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null
     return () => {
@@ -367,7 +372,10 @@ export function SheetFrame({
   }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return close()
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        return close()
+      }
       if (e.key !== 'Tab' || !panel.current) return
       const all = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
       if (!all.length) return
@@ -471,7 +479,11 @@ export function PopMenu({ children, onClose }: { children: ReactNode; onClose: (
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     box.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({ preventScroll: true })
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      onClose()
+    }
     const onDown = (e: PointerEvent) => {
       // O botão "⋯" que abriu fica de fora: ele mesmo fecha.
       const t = e.target as Node

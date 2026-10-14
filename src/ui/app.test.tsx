@@ -92,7 +92,7 @@ async function entrarEmKyoto() {
   fireEvent.click(
     await screen.findByRole('button', { name: 'Kyoto: entrar no mapa da cidade' }, { timeout: 8000 }),
   )
-  await screen.findByRole('button', { name: '◀ Mapa' })
+  await screen.findByRole('button', { name: 'Voltar ao mapa da viagem toda' })
 }
 
 describe('app', () => {
@@ -501,7 +501,7 @@ describe('app', () => {
   it('tocar numa fase do mapa entra na cidade: dias como fichas, lugares por dia, voltar', async () => {
     await entrarEmKyoto()
     const map = () => within(screen.getByRole('group', { name: 'Lugares no mapa da cidade' }))
-    expect(screen.getByText(/7 dias · 7\/8 lugares com dia/)).toBeTruthy()
+    expect(screen.getByText(/7 dias · 7\/8 com dia/)).toBeTruthy()
     const gion = await map().findByRole('button', { name: 'Gion' })
     expect(gion.getAttribute('class')).not.toContain('dim')
     expect(map().getByRole('button', { name: 'Kiyomizu-dera' }).getAttribute('class')).toContain('dim')
@@ -511,7 +511,7 @@ describe('app', () => {
     expect(dayCard().getByText('em Kyoto')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Todos' }))
     expect(map().getByRole('button', { name: 'Gion' }).getAttribute('class')).not.toContain('dim')
-    fireEvent.click(screen.getByRole('button', { name: '◀ Mapa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar ao mapa da viagem toda' }))
     expect(await screen.findByRole('button', { name: 'Kyoto: entrar no mapa da cidade' })).toBeTruthy()
   })
 

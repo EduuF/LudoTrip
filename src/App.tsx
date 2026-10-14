@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { wireBackButton } from './app/backButton'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
 import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
@@ -20,6 +21,8 @@ import { docHealth } from './app/tasks'
 function Hud() {
   const doc = useApp((s) => s.doc)!
   const goHome = useApp((s) => s.goHome)
+  const exitCity = useApp((s) => s.exitCity)
+  const inCity = useApp((s) => s.tab === 'mapa' && s.mapView.kind === 'city')
   const undo = useApp((s) => s.undo)
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const sound = useApp((s) => s.sound)
@@ -36,7 +39,14 @@ function Hud() {
     <header className="hud">
       <div className="hud-in">
         <div className="hud-top">
-          <button type="button" className="hud-btn" onClick={goHome} aria-label="Suas viagens">
+          {/* Volta um nível (spec §17.14): da cidade, à viagem toda; da viagem, a "Suas viagens". */}
+          <button
+            type="button"
+            className="hud-btn"
+            onClick={inCity ? exitCity : goHome}
+            aria-label={inCity ? 'Voltar à viagem toda' : 'Suas viagens'}
+            title={inCity ? 'Voltar à viagem toda' : 'Suas viagens'}
+          >
             ‹
           </button>
           <button
@@ -112,6 +122,8 @@ function Tabs() {
   const doc = useApp((s) => s.doc)!
   const tab = useApp((s) => s.tab)
   const setTab = useApp((s) => s.setTab)
+  const exitCity = useApp((s) => s.exitCity)
+  const inCity = useApp((s) => s.mapView.kind === 'city')
   const urgent = docHealth(doc).filter((i) => i.severity !== 'info').length
   return (
     <nav className="tabs" aria-label="Telas da viagem">
@@ -123,6 +135,8 @@ function Tabs() {
             className={tab === t.id ? 'on' : ''}
             aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => {
+              // Tocar de novo a aba "Mapa" dentro da cidade volta à viagem toda (spec §17.14).
+              if (t.id === 'mapa' && tab === 'mapa' && inCity) return exitCity()
               setTab(t.id)
               scrollTo(0, 0)
             }}
@@ -191,6 +205,7 @@ export default function App() {
   useEffect(() => {
     void init()
   }, [init])
+  useEffect(() => wireBackButton(), [])
   return (
     <>
       <Petals />

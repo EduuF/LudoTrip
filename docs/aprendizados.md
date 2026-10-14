@@ -5,6 +5,13 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M3.8: sair da cidade
+
+- **O rótulo da saída diz o lugar, não o tipo de tela:** "◀ Mapa" dentro de um mapa não dizia nada; 60% demoraram mais de 5 s. "‹ Viagem toda" diz para onde vai.
+- **A saída precisa estar onde se procura**, não só onde a desenhamos: o "‹" do topo, a aba ativa e o Voltar do celular. Um Voltar do sistema que sai do app é um beco sem saída ao contrário.
+- **Uma regra de voltar num lugar só** (`stepBack`): botões, Escape e histórico chamam a mesma função. O histórico guarda só uma entrada nossa, reposta a cada Voltar, para nunca correr contra `history.back()`.
+- **Escape com dois ouvintes:** quem trata o Escape chama `preventDefault()`; o ouvinte global ignora o evento já tratado, senão um Escape fecharia o painel e sairia da cidade.
+
 ## 2026-10-14 — M3.7: painéis empilhados
 
 - **Trocar de painel sem pista é se perder:** o painel novo no mesmo lugar, sem título nem movimento, parecia o anterior ("demorei 3 segundos"). Cada painel diz o que é; um painel aberto de outro tem "‹ voltar" e desliza.
