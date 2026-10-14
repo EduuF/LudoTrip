@@ -5,6 +5,19 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-13 — M3.3: primeira impressão e painéis que fechavam cedo
+
+### A tela não tinha coisa demais; tinha coisa demais aberta
+
+- Contagem na tela do exemplo, no celular, na primeira tela e meia: **~70 controles** (HUD com 6 botões e duas linhas, três "+ Adicionar destino", duas contagens, prateleira repetindo os blocos, 7 cartões × 8 linhas, cada trecho com 3 ações). Quem conhece acha tudo à mão; quem chega leva um susto.
+- **Regra (revelar progressivamente):** um lugar aberto por vez (acordeão no roteiro), uma ação primária por bloco, duplicatas fora (uma contagem, um "+ Adicionar destino" por área), dicas que somem depois de usadas, trechos em uma linha. Nenhuma capacidade sai: a conferência é linha a linha no inventário. Fontes: Nielsen #8 (estética e design minimalista), lei de Hick, guias de UX (progressive disclosure, empty states, Web Interface Guidelines).
+- **Medir antes e depois** (exemplo do Japão, celular 375 px, mesmo script): roteiro de **150 para 50 botões**, página de **7.331 para 3.369 px**, HUD de 7 para 5 botões. Na primeira tela e meia o número mal muda (83 → 77) porque a régua de dias e os blocos da trilha dominam; o alívio está no que vem abaixo.
+
+### Bugs
+
+- **"Editar trecho" fechava ao escolher o meio.** O `act(setLegMode)` ia sem `keep: true`. Quando "Sua viagem" ganhou o `keep` (M3.1) eu deveria ter auditado todos os painéis-editores; fechavam cedo também atividade (prioridade, tipo, feita), visita (turno, feita) e hospedagem (reservei, tirar). **Regra:** ao corrigir um bug, procurar a classe inteira dele (`grep` por todos os `act(` dentro dos painéis), não só o caso reportado. A regra dos painéis está no `ActOptions.keep` e no CLAUDE.md.
+- **Mapa de tiles entrava em cena antes de desenhar:** em rede lenta a viagem nova aparecia como um retângulo azul no lugar do contorno. **Regra:** o mapa de tiles nasce já enquadrado (`bounds`) e só substitui o papel no primeiro `idle`.
+
 ## 2026-10-13 — M3.2: mouse × toque, criar atividade, micro-detalhes
 
 ### Bugs

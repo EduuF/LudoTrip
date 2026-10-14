@@ -22,7 +22,7 @@ const STEPS = [
   {
     target: '.daycard',
     title: 'O cartão do dia',
-    text: 'Onde vocês estão, onde dormem e as atividades do dia, com "+ Atividade". Role para baixo: o roteiro inteiro, com passagens e hospedagens. Tudo tem Desfazer.',
+    text: 'Onde vocês estão, onde dormem e as atividades do dia, com "+ Atividade". Role para baixo: o roteiro, um destino aberto por vez (toque num destino para abrir os dias dele). Tudo tem Desfazer.',
   },
 ]
 

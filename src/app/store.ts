@@ -42,7 +42,8 @@ interface ActOptions {
   stamp?: boolean
   /** Pétalas (algo saiu, "puf"). */
   burst?: boolean
-  /** Deixa o painel aberto (painéis com vários campos, como "Sua viagem"). */
+  /** Deixa o painel aberto. Regra: painel-editor (vários campos: trecho, atividade, visita, hospedagem,
+   *  "Sua viagem") fica aberto ao mudar um campo; painel de escolha fecha ao escolher. */
   keep?: boolean
 }
 
@@ -58,6 +59,10 @@ export interface AppState {
   sheet: SheetSpec | null
   /** Dia escolhido (índice em `days()`): sincroniza trilha, mapa e cartão do dia. */
   cursorDay: number | null
+  /** Cartão do roteiro aberto (acordeão); null segue o dia do cursor. */
+  openStop: ID | null
+  /** A pessoa fechou o cartão aberto. */
+  stopCollapsed: boolean
   mapView: MapView
   /** À espera de um toque no mapa: marcar esta atividade, ou criar uma nova ('new'). */
   placing: ID | 'new' | null
@@ -82,6 +87,8 @@ export interface AppState {
   setCursorDay(index: number | null): void
   /** Entra no mapa da cidade; o cursor de dias vai para o primeiro dia dela, como na v1. */
   enterCity(destId: ID): void
+  toggleStop(stopId: ID, isOpen: boolean): void
+  openStopCard(stopId: ID): void
   exitCity(): void
   setPlacing(what: ID | 'new' | null): void
   setPlaying(on: boolean): void
@@ -180,6 +187,8 @@ export const useApp = create<AppState>((set, get) => {
     celebrations: [],
     sheet: null,
     cursorDay: null,
+    openStop: null,
+    stopCollapsed: false,
     mapView: { kind: 'trip' },
     placing: null,
     playing: false,
@@ -207,6 +216,8 @@ export const useApp = create<AppState>((set, get) => {
         undoStack: [],
         sheet: null,
         cursorDay: null,
+        openStop: null,
+        stopCollapsed: false,
         mapView: { kind: 'trip' },
         placing: null,
         playing: false,
@@ -305,14 +316,14 @@ export const useApp = create<AppState>((set, get) => {
     setCursorDay(index) {
       const { cursorDay, mapView, doc } = get()
       if (index === cursorDay) return
-      set({ cursorDay: index })
+      const day = index !== null && doc ? allDays(doc.itinerary, doc.places)[index] : undefined
+      // O cartão do roteiro aberto segue o dia (acordeão).
+      set({ cursorDay: index, ...(day?.stopId ? { openStop: day.stopId, stopCollapsed: false } : {}) })
       if (index === null) return
       sfx.step()
       // No mapa da cidade, mudar o dia muda a cidade (a mesma regra do "▶ Ver a viagem").
-      if (mapView.kind === 'city' && doc) {
-        const dest = allDays(doc.itinerary, doc.places)[index]?.destinationId
-        if (dest && dest !== mapView.destId) get().enterCity(dest)
-      }
+      if (mapView.kind === 'city' && day?.destinationId && day.destinationId !== mapView.destId)
+        get().enterCity(day.destinationId)
     },
     enterCity(destId) {
       const { doc, cursorDay } = get()
@@ -328,6 +339,20 @@ export const useApp = create<AppState>((set, get) => {
     },
     exitCity() {
       set({ mapView: { kind: 'trip' }, placing: null })
+    },
+    toggleStop(stopId, isOpen) {
+      if (isOpen) return set({ openStop: stopId, stopCollapsed: true })
+      set({ openStop: stopId, stopCollapsed: false })
+      // Abrir o cartão leva o cursor ao primeiro dia dele (mapa, trilha e cartão do dia seguem).
+      const doc = get().doc
+      const first = doc
+        ? allDays(doc.itinerary, doc.places).find((d) => d.stopId === stopId && d.kind === 'stop')
+        : undefined
+      if (first) get().setCursorDay(first.index)
+    },
+    openStopCard(stopId) {
+      const { openStop, stopCollapsed } = get()
+      if (openStop !== stopId || stopCollapsed) set({ openStop: stopId, stopCollapsed: false })
     },
     setPlacing(what) {
       // Entrar no modo "marcar no mapa" fecha o painel; sair dele não mexe no painel (o clique no mapa

@@ -295,7 +295,14 @@ export function aboardChoice(leg: Leg, delta: 1 | -1) {
     kind: 'choice',
     title: delta > 0 ? 'De onde sai a noite a bordo?' : 'Para onde vai essa noite?',
     sub: `${legName(it, leg, names(doc()))}: ${plural(n, 'noite', 'noites')} a bordo.`,
-    options,
+    // Escolhido, volta ao painel do trecho (é um editor; a escolha é só um passo dele).
+    options: options.map((o) => ({
+      ...o,
+      run: () => {
+        o.run()
+        S().openSheet({ kind: 'leg', legId: leg.id })
+      },
+    })),
   })
 }
 

@@ -113,8 +113,9 @@ test('no toque: segurar levanta o destino; arrastar um dia muda a data; soltar n
 
 test('"+ Atividade" num dia do roteiro cria a atividade já naquele dia', async ({ page }) => {
   await abrirJapao(page)
+  await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
   const card = page.locator('#c-s8')
-  await card.getByRole('button', { name: '+ Atividade' }).first().click()
+  await card.getByRole('button', { name: 'Atividade em sáb 13/04' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Nova atividade em Kyoto')
   await expect(dialog).toContainText('Entra em sáb 13/04')
@@ -191,6 +192,23 @@ test('criar viagem com uma cidade: o passo 2 pergunta por outra cidade, não por
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
+})
+
+test('"Editar trecho": trocar o meio não fecha o painel; o roteiro abre um destino por vez', async ({
+  page,
+}) => {
+  await abrirJapao(page)
+  await page.getByRole('button', { name: /São Paulo → Tóquio: editar trecho/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: /trem/i }).click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: /trem/i })).toHaveAttribute('aria-pressed', 'true')
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  // Acordeão: o primeiro Tóquio (dia 1) aberto e Kyoto fechado; abrir Kyoto fecha Tóquio.
+  await expect(page.getByRole('button', { name: 'Tóquio: fechar os dias' })).toBeVisible()
+  await page.getByRole('button', { name: 'Kyoto: abrir os dias' }).click()
+  await expect(page.getByRole('button', { name: 'Kyoto: fechar os dias' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tóquio: fechar os dias' })).toHaveCount(0)
 })
 
 test('passagem: marcar, desmarcar e desfazer, com carimbo e XP', async ({ page }) => {

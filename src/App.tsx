@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
-import { health, progress, tripPhase } from './engine'
-import { countdownTo, todayISO, useApp } from './app/store'
+import { useEffect, useState } from 'react'
+import { health } from './engine'
+import { useApp } from './app/store'
 import type { Tab } from './app/store'
 import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
+import { resetTrilhaHint } from './app/tutorial'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
@@ -12,7 +13,8 @@ import { Sheets } from './ui/Sheets'
 import { Tarefas } from './ui/Tarefas'
 import { Tutorial } from './ui/Tutorial'
 
-// Casca do app (spec §17.1): HUD com contagem e nível, abas embaixo, painéis e comemorações.
+// Casca do app (spec §17.1): HUD de uma linha (voltar, nome, tema, Desfazer e um menu com o resto),
+// abas embaixo, painéis e comemorações. A contagem e o nível ficam no mapa (e o nível nas Tarefas).
 // A tela principal é o Mapa: mapa, trilha, cartão do dia e roteiro numa tela só (spec §17.2).
 
 function Hud() {
@@ -28,17 +30,7 @@ function Hud() {
   const setTutorial = useApp((s) => s.setTutorial)
   const setTab = useApp((s) => s.setTab)
   const openSheet = useApp((s) => s.openSheet)
-  const it = doc.itinerary
-  const p = progress(it, doc)
-  const phase = tripPhase(it, todayISO())
-  const cd =
-    phase.kind === 'before'
-      ? `FALTAM ${countdownTo(phase.start).days} ${countdownTo(phase.start).days === 1 ? 'DIA' : 'DIAS'}`
-      : phase.kind === 'during'
-        ? `DIA ${phase.day}/${phase.totalDays}`
-        : phase.kind === 'after'
-          ? 'VIAGEM COMPLETA'
-          : 'SEM DATA'
+  const [menu, setMenu] = useState(false)
   return (
     <header className="hud">
       <div className="hud-in">
@@ -57,58 +49,52 @@ function Hud() {
           <button
             type="button"
             className="hud-btn"
-            aria-label="Como jogar"
-            onClick={() => {
-              setTab('mapa')
-              setTutorial(true)
-            }}
-          >
-            ?
-          </button>
-          <button
-            type="button"
-            className="hud-btn"
             aria-label={THEME_ACTION[mode]}
             title={THEME_ACTION[mode]}
             onClick={() => setTheme(toggledTheme())}
           >
             {THEME_GLYPH[mode]}
           </button>
-          <button
-            type="button"
-            className="hud-btn"
-            aria-pressed={sound}
-            onClick={toggleSound}
-            aria-label={sound ? 'Desligar sons' : 'Ligar sons'}
-            title={sound ? 'Sons ligados' : 'Sons desligados'}
-          >
-            {sound ? '♪' : '♪̸'}
-          </button>
           <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
             ↶ Desfazer
           </button>
-        </div>
-        <div className="hud-bottom">
-          <button
-            type="button"
-            className="cd-chip"
-            onClick={() => openSheet({ kind: 'trip' })}
-            aria-label={`${cd}. Toque para mudar as datas`}
-          >
-            {cd}
-          </button>
-          <span className="lv">NÍVEL {p.level}</span>
-          <span
-            className="xpbar"
-            role="progressbar"
-            aria-label={`Preparo: ${p.levelName}`}
-            aria-valuenow={Math.round(p.ratio * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <i style={{ width: `${Math.round(p.inLevel * 100)}%` }} />
-          </span>
-          <span>{p.xp} XP</span>
+          <div className="hud-menu">
+            <button
+              type="button"
+              className="hud-btn"
+              aria-label="Mais opções"
+              aria-expanded={menu}
+              onClick={() => setMenu(!menu)}
+            >
+              ⋯
+            </button>
+            {menu ? (
+              <div className="popmenu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false)
+                    setTab('mapa')
+                    resetTrilhaHint()
+                    setTutorial(true)
+                  }}
+                >
+                  Como jogar
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false)
+                    toggleSound()
+                  }}
+                >
+                  {sound ? '♪ Desligar sons' : '♪ Ligar sons'}
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>

@@ -406,6 +406,20 @@ _Resposta aos 13 pontos do retorno do M3.1 (plano em `~/.claude/plans/magical-we
 
 **Ponto de revisão M3.2:** o mantenedor testa no PC e no celular em `https://eduuf.github.io/LudoTrip/`.
 
+## M3.3 — Primeira impressão e painéis que fechavam cedo
+
+_Retorno do M3.2: "a tela inicial assusta o usuário novo" e "Editar trecho fecha ao escolher o meio" (plano em `~/.claude/plans/excelente-a-ferramenta-est-whimsical-nebula.md`)._
+
+- [x] **A1** Painéis-editores ficam abertos (`keep`): trecho (meio; noites a bordo voltam ao trecho), atividade, visita, hospedagem. Regra no `ActOptions.keep` e no CLAUDE.md.
+- [x] **B1** HUD de uma linha; nível e XP na contagem do mapa e nas Tarefas (`LevelLine`).
+- [x] **B2** Mapa de tiles nasce enquadrado e só entra em cena no primeiro `idle`.
+- [x] **B3** Dica da trilha some depois do primeiro arraste; prateleira só com os guardados.
+- [x] **B4** Roteiro em acordeão; trecho em uma linha; "+" discreto nos dias com atividades; sem o botão duplicado no cabeçalho.
+- [x] **B5** `touch-action: manipulation` nos botões; `overscroll-behavior: contain` nos painéis. **B6** Tutorial.
+- [x] **C** Docs (inventário, aprendizados, spec §17) e memória.
+
+**Ponto de revisão M3.3:** o mantenedor abre o exemplo do Japão como um amigo abriria, no celular e no PC.
+
 ## M4 — Contas, nuvem e compartilhamento
 
 **O mantenedor precisa fazer antes deste marco:**

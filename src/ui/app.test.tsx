@@ -30,6 +30,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   useRepo(memoryRepo())
+  localStorage.removeItem('ludotrip.hint.trilha')
   useApp.setState({
     ready: false,
     screen: 'home',
@@ -38,6 +39,8 @@ beforeEach(async () => {
     toast: null,
     sheet: null,
     cursorDay: null,
+    openStop: null,
+    stopCollapsed: false,
     celebrations: [],
   })
   render(<App />)
@@ -56,12 +59,19 @@ const mouse = { pointerId: 2, pointerType: 'mouse', button: 0, isPrimary: true }
 const tripName = () => useApp.getState().doc!.meta.name
 /** Nomes das viagens na tela inicial (o h3 fica dentro do botão de abrir, fora da árvore de acessibilidade). */
 const tripNames = () => [...document.querySelectorAll('.trip-card h3')].map((e) => e.textContent)
+/** O roteiro é um acordeão: abre o cartão de Kyoto (se ainda não estiver aberto). */
+const abrirKyoto = () => {
+  const b = screen.queryByRole('button', { name: 'Kyoto: abrir os dias' })
+  if (b) fireEvent.click(b)
+}
 
 /** Preenche o painel "Nova atividade" aberto: nome, prioridade e "Criar atividade". */
 async function preencherAtividade(name: string, rarity: RegExp) {
   const dialog = await screen.findByRole('dialog')
   fireEvent.change(within(dialog).getByLabelText('Nome da atividade'), { target: { value: name } })
-  fireEvent.click(within(within(dialog).getByRole('group', { name: 'Prioridade' })).getByRole('button', { name: rarity }))
+  fireEvent.click(
+    within(within(dialog).getByRole('group', { name: 'Prioridade' })).getByRole('button', { name: rarity }),
+  )
   fireEvent.click(within(dialog).getByRole('button', { name: 'Criar atividade' }))
   expect(await screen.findByText(`Atividade nova: ${name}.`)).toBeTruthy()
 }
@@ -81,18 +91,41 @@ async function entrarEmKyoto() {
 }
 
 describe('app', () => {
-  it('abre na tela do Mapa, com trilha, cartão do dia e roteiro; abas Mapa · Atividades · Tarefas', () => {
+  it('abre na tela do Mapa com o HUD de uma linha; abas Mapa · Atividades · Tarefas', () => {
     for (const t of ['Mapa', 'Atividades', 'Tarefas']) expect(nav().getByText(t)).toBeTruthy()
     expect(nav().queryByText('Mochila')).toBeNull()
-    expect(nav().queryByText('Roteiro')).toBeNull()
     expect(screen.getByRole('region', { name: 'Mapa da viagem' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Trilha da viagem' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Dia escolhido' })).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Noites em Kyoto' })).toBeTruthy()
-    // O resumo da viagem fica no cabeçalho da trilha (a contagem no mapa é compacta).
+    // O resumo da viagem fica no cabeçalho da trilha; o nível fica na contagem do mapa.
     expect(document.querySelector('.tr-month')!.textContent).toMatch(/23 noites · 6 lugares/)
+    expect(document.querySelector('.map-head .level')!.textContent).toMatch(/NÍVEL \d/)
+    // HUD: voltar, nome, tema, Desfazer e o menu "Mais"; sem contagem nem XP duplicados.
+    expect(document.querySelectorAll('.hud button').length).toBe(5)
+    expect(document.querySelector('.hud')!.textContent).not.toMatch(/FALTAM|XP/)
+    // Só um "+ Adicionar destino" no roteiro (o cartão do fim).
+    expect(screen.getAllByRole('button', { name: /Adicionar destino/ }).length).toBe(3)
     // Nada de "figurinha", "colar" ou "noites incertas" na tela.
     expect(document.body.textContent).not.toMatch(/figurinha|colar|incerta/i)
+  })
+
+  it('roteiro em acordeão: o destino do dia escolhido fica aberto; abrir outro fecha o primeiro', async () => {
+    // Dia 1: o primeiro Tóquio aberto, Kyoto fechado (uma linha com o resumo).
+    expect(screen.getByRole('button', { name: 'Tóquio: fechar os dias' })).toBeTruthy()
+    expect(screen.queryByRole('group', { name: 'Noites em Kyoto' })).toBeNull()
+    expect(kyotoCard().getByRole('button', { name: 'Kyoto: abrir os dias' }).textContent).toMatch(
+      /7 noites · \d+ atividades · 宿 済/,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Kyoto: abrir os dias' }))
+    expect(screen.getByRole('group', { name: 'Noites em Kyoto' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Tóquio: fechar os dias' })).toBeNull()
+    // Abrir leva o cursor ao primeiro dia de Kyoto.
+    expect(await dayCard().findByText('chega em Kyoto')).toBeTruthy()
+    // Fechar o aberto deixa tudo fechado; tocar num dia da régua abre o destino daquele dia.
+    fireEvent.click(screen.getByRole('button', { name: 'Kyoto: fechar os dias' }))
+    expect(screen.queryByRole('group', { name: 'Noites em Kyoto' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^sex 05\/04/ }))
+    expect(await screen.findByRole('button', { name: 'Tóquio: fechar os dias' })).toBeTruthy()
   })
 
   it('passagem: marcar e desmarcar no mesmo lugar, com Desfazer', async () => {
@@ -107,21 +140,58 @@ describe('app', () => {
     await waitFor(() => expect(useApp.getState().toast?.text).toMatch(/^Desfeito/))
   })
 
+  it('"Editar trecho" é uma linha tocável; trocar o meio não fecha o painel', async () => {
+    fireEvent.click(screen.getByRole('button', { name: /São Paulo → Tóquio: editar trecho/ }))
+    const dialog = await screen.findByRole('dialog')
+    const group = within(within(dialog).getByRole('group', { name: 'Como vão' }))
+    fireEvent.click(group.getByRole('button', { name: /trem/i }))
+    expect(await screen.findByText(/trem/i, { selector: '.toast p, .toast' })).toBeTruthy()
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(group.getByRole('button', { name: /trem/i }).getAttribute('aria-pressed')).toBe('true')
+    // Painéis-editores ficam abertos: atividade (prioridade) e visita (turno) também.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    abrirKyoto()
+    fireEvent.click(kyotoCard().getByRole('button', { name: /Gion/ }))
+    const visit = await screen.findByRole('dialog')
+    fireEvent.click(within(visit).getByRole('button', { name: 'tarde' }))
+    await waitFor(() =>
+      expect(within(visit).getByRole('button', { name: 'tarde' }).getAttribute('aria-pressed')).toBe('true'),
+    )
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.click(within(visit).getByText('Detalhes da atividade'))
+    const sticker = await screen.findByRole('dialog')
+    fireEvent.click(
+      within(within(sticker).getByRole('group', { name: 'Prioridade' })).getByRole('button', {
+        name: /Se der/,
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        within(within(sticker).getByRole('group', { name: 'Prioridade' }))
+          .getByRole('button', { name: /Se der/ })
+          .getAttribute('aria-pressed'),
+      ).toBe('true'),
+    )
+    expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
   it('nova atividade: escolhe a prioridade e conclui com "Criar atividade" (desligado sem nome)', async () => {
     tab('Atividades')
     fireEvent.click(screen.getByRole('button', { name: 'Nova atividade em Kyoto' }))
     const dialog = await screen.findByRole('dialog')
     const create = within(dialog).getByRole('button', { name: 'Criar atividade' })
     expect(create).toHaveProperty('disabled', true)
-    // "Quero" já vem marcado.
     expect(within(dialog).getByRole('button', { name: /Quero/ }).getAttribute('aria-pressed')).toBe('true')
     await preencherAtividade('Ginkaku-ji', /Imperdível/)
     const card = screen.getByRole('button', { name: /^Ginkaku-ji, Imperdível, sem dia/ })
     expect(card.className).toContain('r-must')
   })
 
-  it('"+ Atividade" num dia do roteiro cria a atividade já naquele dia', async () => {
-    fireEvent.click(kyotoCard().getAllByRole('button', { name: '+ Atividade' })[0]!)
+  it('"+ Atividade" num dia do roteiro cria a atividade já naquele dia ("+" discreto nos dias com atividades)', async () => {
+    abrirKyoto()
+    expect(kyotoCard().queryByRole('button', { name: '+ Atividade' })).toBeNull()
+    fireEvent.click(kyotoCard().getByRole('button', { name: 'Atividade em sáb 13/04' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Nova atividade em Kyoto')).toBeTruthy()
     expect(within(dialog).getByText(/Entra em sáb 13\/04/)).toBeTruthy()
@@ -144,7 +214,6 @@ describe('app', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    // De novo: "Não adicionar" sai do modo, e o clique no mapa volta a ser só mapa.
     fireEvent.click(screen.getByRole('button', { name: '+ Atividade aqui' }))
     await waitFor(() => expect(board.className).toContain('placing'))
     fireEvent.click(screen.getByRole('button', { name: 'Não adicionar' }))
@@ -154,6 +223,7 @@ describe('app', () => {
   })
 
   it('volta marcada: "+" pergunta de onde sai a noite, com prévia', async () => {
+    abrirKyoto()
     const kyoto = screen.getByRole('group', { name: 'Noites em Kyoto' })
     fireEvent.click(within(kyoto).getByRole('button', { name: 'Mais' }))
     const dialog = await screen.findByRole('dialog')
@@ -162,12 +232,13 @@ describe('app', () => {
     expect(await screen.findByText(/Kyoto: 8 noites\. Shinsekai e Kuromon ficaram sem dia\./)).toBeTruthy()
   })
 
-  it('tocar num destino da trilha leva ao cartão e ao primeiro dia dele; "⋯" tem as ações raras', async () => {
+  it('tocar num destino da trilha abre o cartão dele e leva ao primeiro dia; "⋯" tem as ações raras', async () => {
     const block = screen.getByRole('button', { name: /^Kyoto, 7 noites/ })
     fireEvent.pointerDown(block, { ...touch, clientX: 5, clientY: 5 })
     fireEvent.pointerUp(block, { ...touch, clientX: 5, clientY: 5 })
     expect(await dayCard().findByText('chega em Kyoto')).toBeTruthy()
     await waitFor(() => expect(document.getElementById('c-s8')!.className).toContain('flash'))
+    expect(screen.getByRole('button', { name: 'Kyoto: fechar os dias' })).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
 
     fireEvent.click(kyotoCard().getByRole('button', { name: 'Mais opções de Kyoto' }))
@@ -193,7 +264,8 @@ describe('app', () => {
     expect(useApp.getState().doc!.itinerary.stops.find((s) => s.id === 's8')!.destinationId).toBeNull()
   })
 
-  it('no mouse: o bloco levanta ao mover 6 px, sem segurar; parado, o clique leva ao cartão', async () => {
+  it('no mouse: o bloco levanta ao mover 6 px, sem segurar; a dica some depois do primeiro arraste', async () => {
+    expect(screen.getByText(/◂▸ muda as noites/)).toBeTruthy()
     const block = screen.getByRole('button', { name: /^Kyoto, 7 noites/ })
     fireEvent.pointerDown(block, { ...mouse, clientX: 100, clientY: 5 })
     expect(block.className).not.toContain('charging')
@@ -203,13 +275,27 @@ describe('app', () => {
     expect(block.className).toContain('lifted')
     fireEvent.pointerUp(block, { ...mouse, clientX: 112, clientY: 5 })
     expect(block.className).not.toContain('lifted')
+    expect(screen.queryByText(/◂▸ muda as noites/)).toBeNull()
+    expect(localStorage.getItem('ludotrip.hint.trilha')).toBe('1')
 
     fireEvent.pointerDown(block, { ...mouse, clientX: 100, clientY: 5 })
     fireEvent.pointerUp(block, { ...mouse, clientX: 101, clientY: 5 })
     expect(await dayCard().findByText('chega em Kyoto')).toBeTruthy()
+    // "Como jogar" traz a dica de volta.
+    fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Como jogar' }))
+    expect(await screen.findByText(/◂▸ muda as noites/)).toBeTruthy()
+  })
+
+  it('a prateleira mostra só os destinos guardados (Nara, bate-volta), não os que já estão na trilha', () => {
+    const shelf = within(screen.getByLabelText('Destinos guardados: arraste para a trilha'))
+    expect(shelf.getByRole('button', { name: /^Nara:/ })).toBeTruthy()
+    expect(shelf.queryByRole('button', { name: /^Kyoto:/ })).toBeNull()
+    expect(shelf.getByRole('button', { name: '+ Adicionar destino' })).toBeTruthy()
   })
 
   it('arrastar uma atividade de um dia para outro muda o dia (mouse)', async () => {
+    abrirKyoto()
     const gion = kyotoCard().getByRole('button', { name: /Gion/ })
     const rows = document.querySelectorAll<HTMLElement>('#c-s8 [data-dayref]')
     const target = rows[1]!
@@ -240,21 +326,23 @@ describe('app', () => {
     expect(document.querySelector('.city-t b')!.textContent).toContain('Kyoto')
     const doc = useApp.getState().doc!
     const osaka = doc.destinations.find((d) => d.name === 'Osaka')!
-    const day = days(doc.itinerary, doc.places).find((d) => d.kind === 'stop' && d.destinationId === osaka.id)!
+    const day = days(doc.itinerary, doc.places).find(
+      (d) => d.kind === 'stop' && d.destinationId === osaka.id,
+    )!
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${day.label}`) }))
     await waitFor(() => expect(document.querySelector('.city-t b')!.textContent).toContain('Osaka'))
     expect(dayCard().getByText(/Osaka/)).toBeTruthy()
   })
 
-  it('hospedagem com nome: o painel mostra a reserva, "Tirar" abre a falta e anotar outra carimba', async () => {
+  it('hospedagem com nome: o painel mostra a reserva, "Tirar" abre a falta (sem fechar) e anotar outra carimba', async () => {
     fireEvent.click(screen.getByRole('button', { name: /^dom 14\/04/ }))
     fireEvent.click(await dayCard().findByRole('button', { name: /Hotel em Kyoto/ }))
     let dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Onde vocês dormem em Kyoto?')).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Tirar' }))
     expect(await screen.findByText('Hospedagem desmarcada.')).toBeTruthy()
-    fireEvent.click(await dayCard().findByRole('button', { name: /onde vocês dormem\?/ }))
-    dialog = await screen.findByRole('dialog')
+    // O painel continua aberto, já pedindo o nome da hospedagem que falta.
+    dialog = screen.getByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('Nome da hospedagem'), {
       target: { value: 'Ryokan Sakura' },
     })
@@ -276,7 +364,6 @@ describe('app', () => {
     fireEvent.blur(name)
     await waitFor(() => expect(useApp.getState().doc!.meta.name).toBe('Nossa viagem'))
     expect(screen.getByRole('dialog')).toBeTruthy()
-    // Com o painel aberto, o aviso aparece no topo, nunca por cima do painel.
     expect(screen.getByRole('status').className).toContain('top')
     const who = within(dialog).getByLabelText('Viajante 1')
     fireEvent.change(who, { target: { value: 'Ana' } })
@@ -295,7 +382,6 @@ describe('app', () => {
     const map = () => within(screen.getByRole('group', { name: 'Lugares no mapa da cidade' }))
     expect(screen.getByText(/7 dias · 7\/8 lugares com dia/)).toBeTruthy()
     const gion = await map().findByRole('button', { name: 'Gion' })
-    // Entrar leva o cursor ao primeiro dia de Kyoto (Gion aceso, Kiyomizu-dera esmaecido).
     expect(gion.getAttribute('class')).not.toContain('dim')
     expect(map().getByRole('button', { name: 'Kiyomizu-dera' }).getAttribute('class')).toContain('dim')
     fireEvent.click(screen.getByRole('button', { name: /^Ver o dia dom 14/ }))
@@ -351,9 +437,10 @@ describe('app', () => {
     useApp.getState().setTheme('auto')
   })
 
-  it('"Como jogar": três passos com holofote; aparece uma vez e o "?" mostra de novo', async () => {
+  it('"Como jogar" (no menu "Mais"): três passos com holofote; aparece uma vez e dá para rever', async () => {
     expect(screen.queryByRole('dialog', { name: 'Como jogar' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Como jogar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mais opções' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Como jogar' }))
     const tut = await screen.findByRole('dialog', { name: 'Como jogar' })
     expect(within(tut).getByText('O mapa da viagem')).toBeTruthy()
     fireEvent.click(within(tut).getByText('Próximo'))
@@ -377,7 +464,6 @@ describe('app', () => {
     fireEvent.click(within(screen.getByRole('status')).getByText('Desfazer'))
     await waitFor(() => expect(tripNames()).toEqual([name]))
 
-    // Abrir o exemplo de novo reaproveita a cópia que já existe.
     fireEvent.click(screen.getByText('Japão de trem'))
     await screen.findByText('FALTAM', { selector: '.map-head .lbl' })
     fireEvent.click(screen.getByRole('button', { name: 'Suas viagens' }))

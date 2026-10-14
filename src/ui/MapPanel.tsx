@@ -3,6 +3,7 @@ import { days as allDays, placeStates, plural, tripPhase } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
 import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
+import { LevelLine } from './LevelLine'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
 // resumo por cima, "+ Adicionar destino" / "+ Atividade aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
@@ -268,6 +269,7 @@ export function MapPanel() {
       ) : (
         <div className="map-head">
           <Countdown />
+          <LevelLine />
         </div>
       )}
       <span className="map-wm" aria-hidden="true">

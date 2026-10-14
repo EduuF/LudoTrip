@@ -16,6 +16,7 @@ import {
 } from '../engine'
 import type { Command, ID, Itinerary } from '../engine'
 import { useApp, todayISO } from '../app/store'
+import { markTrilhaHintSeen, trilhaHintSeen } from '../app/tutorial'
 import { blockIntent, boundaryCommand, endIntent, shelfIntent } from '../app/trilha/intent'
 import type { BlockIntent, ShelfIntent } from '../app/trilha/intent'
 import { cityName, previewLines } from '../app/choices'
@@ -85,6 +86,17 @@ export function Trilha() {
   const [charging, setCharging] = useState<ID | null>(null)
   const [panning, setPanning] = useState(false)
   const [nudge, setNudge] = useState(true)
+  // A dica some depois do primeiro arraste (lembrado no aparelho); "Como jogar" mostra de novo.
+  const [hint, setHint] = useState(() => !trilhaHintSeen())
+  const tutorial = useApp((s) => s.tutorial)
+  useEffect(() => {
+    if (tutorial) setHint(true)
+  }, [tutorial])
+  const learned = () => {
+    if (!hint) return
+    markTrilhaHintSeen()
+    setHint(false)
+  }
   const dragRef = useRef<Drag | null>(null)
   const pending = useRef<Pending | null>(null)
   dragRef.current = drag
@@ -384,8 +396,10 @@ export function Trilha() {
     const d = dragRef.current
     setDrag(null)
     if (!d || (d.kind !== 'handle' && d.kind !== 'end')) return
-    if (d.cmd && !d.bad) act({ type: 'engine', command: d.cmd })
-    else if (d.bad) say(d.text, true)
+    if (d.cmd && !d.bad) {
+      act({ type: 'engine', command: d.cmd })
+      learned()
+    } else if (d.bad) say(d.text, true)
   }
 
   // ---------------------------------------------------------------------------
@@ -508,6 +522,7 @@ export function Trilha() {
     }
     dragRef.current = null
     setDrag(null)
+    learned()
     if (d.kind === 'block') {
       if (d.trash) {
         act({ type: 'engine', command: { type: 'removeStop', stopId: d.stopId } }, { burst: true })
@@ -609,9 +624,8 @@ export function Trilha() {
   const backLeg = it.legs[it.legs.length - 1]
 
   const destsInTrip = new Set(it.stops.map((s) => s.destinationId).filter(Boolean))
-  const shelf = [...doc.destinations].sort(
-    (a, b) => Number(destsInTrip.has(b.id)) - Number(destsInTrip.has(a.id)),
-  )
+  // Só os destinos guardados (fora da trilha): os da trilha entram no meio de outro pelo "+ Adicionar destino".
+  const shelf = doc.destinations.filter((d) => !destsInTrip.has(d.id))
   const blockHint = coarse
     ? 'Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.'
     : 'Clique para ver os dias no roteiro; arraste para mudar a data ou a ordem.'
@@ -902,8 +916,8 @@ export function Trilha() {
         </div>
       </div>
 
-      <div className="shelf" aria-label="Destinos: arraste para a trilha">
-        <span className="shelf-t">ARRASTE UM DESTINO PARA A TRILHA</span>
+      <div className="shelf" aria-label="Destinos guardados: arraste para a trilha">
+        {shelf.length ? <span className="shelf-t">GUARDADOS · ARRASTE PARA A TRILHA</span> : null}
         {shelf.map((d) => (
           <button
             key={d.id}
@@ -937,11 +951,13 @@ export function Trilha() {
           + Adicionar destino
         </button>
       </div>
-      <p className="tr-hint">
-        {coarse
-          ? 'Segure um destino para arrastar · toque para ver os dias · ◂▸ muda as noites.'
-          : 'Arraste um destino para mudar a data ou a ordem · clique para ver os dias · ◂▸ muda as noites · arraste a régua para rolar.'}
-      </p>
+      {hint ? (
+        <p className="tr-hint">
+          {coarse
+            ? 'Segure um destino para arrastar · toque para ver os dias · ◂▸ muda as noites.'
+            : 'Arraste um destino para mudar a data ou a ordem · clique para ver os dias · ◂▸ muda as noites · arraste a régua para rolar.'}
+        </p>
+      ) : null}
 
       {lifted ? (
         <div className={`trash${lifted.trash ? ' hot' : ''}`} ref={trashRef} aria-hidden="true">

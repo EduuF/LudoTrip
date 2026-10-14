@@ -34,6 +34,8 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - Ações dizem a intenção de quem viaja ("Tirar do roteiro", "Chegar 1 dia antes", "Desfazer"), nunca o nome da operação; ícone ou seta sozinha não basta. Os avisos confirmam o que aconteceu ("Sensō-ji ficou sem dia").
 - Português do Brasil. **Vocabulário de jogo no visual e nas comemorações** (carimbo, nível, XP, estrelas); **navegação e ações em palavras comuns** (Mapa, Atividades, Tarefas, Destino, Atividade, Hospedagem). Nada de "Quest", "Mundo", "LV", "Fase", "Mochila" ou "figurinha" em rótulos ("mochila" só no motor).
 - **Não inventar problema:** toda ação visível responde a uma frase de quem viaja; se não há frase, não há botão.
+- **Painéis-editores ficam abertos** (trecho, atividade, visita, hospedagem, "Sua viagem"): mudar um campo não fecha o painel (`act(..., { keep: true })`); painéis de escolha fecham ao escolher. Ao corrigir um bug num painel, auditar todos os `act(` dos outros.
+- **Revelar progressivamente:** um lugar aberto por vez, uma ação primária por bloco, sem duplicatas na mesma tela; dicas somem depois de usadas. Medida: contar os controles da página do exemplo antes e depois.
 - **"Destino" é a palavra genérica** (país, região, cidade, parque, ilha, navio); "cidade" só quando é mesmo uma cidade.
 
 ## Como trabalhar

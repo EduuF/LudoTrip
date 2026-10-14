@@ -37,6 +37,7 @@ export function ChipDragProvider({ children }: { children: ReactNode }) {
   const pend = useRef<Pend | null>(null)
   const hover = useRef<HTMLElement | null>(null)
   const edgeY = useRef<number | null>(null)
+  const headHover = useRef<{ id: string | null; t: number }>({ id: null, t: 0 })
 
   // Com algo levantado, o dedo não rola a página; perto das bordas, a página rola sozinha.
   useEffect(() => {
@@ -61,6 +62,10 @@ export function ChipDragProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setHover = (el: HTMLElement | null) => {
+    if (!el && headHover.current.id) {
+      clearTimeout(headHover.current.t)
+      headHover.current = { id: null, t: 0 }
+    }
     if (hover.current === el) return
     hover.current?.classList.remove('drop')
     el?.classList.add('drop')
@@ -102,9 +107,18 @@ export function ChipDragProvider({ children }: { children: ReactNode }) {
     if (!l) return
     edgeY.current = y
     setLift({ ...l, x, y })
-    const under =
-      document.elementFromPoint?.(x, y)?.closest<HTMLElement>('[data-dayref],[data-loose]') ?? null
+    const el = document.elementFromPoint?.(x, y) ?? null
+    const under = el?.closest<HTMLElement>('[data-dayref],[data-loose]') ?? null
     setHover(under)
+    // Pairar 400 ms sobre um destino fechado abre o cartão dele (o dia-alvo fica à vista).
+    const head = el?.closest<HTMLElement>('[data-stophead]')?.dataset.stophead ?? null
+    if (head !== headHover.current.id) {
+      clearTimeout(headHover.current.t)
+      headHover.current = {
+        id: head,
+        t: head ? window.setTimeout(() => useApp.getState().openStopCard(head), 400) : 0,
+      }
+    }
   }
 
   const finish = (item: ChipItem) => {

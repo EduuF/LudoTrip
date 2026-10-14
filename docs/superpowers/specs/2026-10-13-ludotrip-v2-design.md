@@ -655,7 +655,7 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
 ### 17.1 Casca e HUD
 
 - **Abas embaixo (M3.1):** Mapa · Atividades · Tarefas. Topo: o HUD escuro da v1. Vocabulário de jogo só no visual e nas comemorações; navegação e ações em palavras comuns ("destino" é a palavra genérica).
-- **HUD:** nome da viagem e **contagem** (os dois abrem "Sua viagem": nome, quem vai, de onde saem e voltam, datas), **nível de preparo**, "?" (Como jogar), modo dia/noite (um botão que alterna claro ↔ escuro; segue o aparelho só até o primeiro toque; lembrado; o mapa de tiles e as partículas seguem), sons e Desfazer.
+- **HUD (M3.3): uma linha** — voltar, nome da viagem (abre "Sua viagem": nome, quem vai, de onde saem e voltam, datas), modo dia/noite (um botão que alterna claro ↔ escuro; segue o aparelho só até o primeiro toque; lembrado; o mapa de tiles e as partículas seguem), Desfazer e o menu "Mais opções" (Como jogar, sons). A **contagem** e o **nível de preparo** (com a barra de XP) ficam na contagem do mapa; o nível aparece também no topo das Tarefas.
 - **Avisos:** no pé da tela; com um painel aberto, no topo (nunca por cima do painel).
   - Antes da viagem: "Faltam 172 dias". Durante: "Dia 5 de 23 · hoje em Kyoto". Depois: "Viagem completa". Sem data: "Escolha a data de ida".
   - Nível: LV 1 "Sonhando" → LV 2 "Rascunho" → LV 3 "Roteiro firme" → LV 4 "Quase lá" → LV 5 "Pronto pra partir", com a barra de XP listrada.
@@ -664,10 +664,10 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
 
 ### 17.2 Mapa (a tela da viagem, M3)
 
-- **Uma tela só, como na v1:** o painel do mapa (§8) com a contagem e o resumo por cima ("Japão · 23 noites · 6 lugares"), "▶ Ver a viagem" e "+ Adicionar destino" (a contagem é compacta: rótulo, número e unidade numa linha; o resumo "23 noites · 6 lugares" fica no cabeçalho da trilha); logo abaixo a **Trilha** (§17.3); o **cartão do dia** (dia N de T, data, onde está, onde dorme (nome da hospedagem, ou "onde vocês dormem?") e as atividades do dia com "+ Atividade"); e o **Roteiro** (§17.4). No desktop (≥ 900 px), mapa e trilha à esquerda e o roteiro à direita.
+- **Uma tela só, como na v1:** o painel do mapa (§8) com a contagem e o resumo por cima ("Japão · 23 noites · 6 lugares"), "▶ Ver a viagem" e "+ Adicionar destino" (a contagem é compacta: rótulo, número e unidade numa linha, com o nível e a barra de XP embaixo; o resumo "23 noites · 6 lugares" fica no cabeçalho da trilha); logo abaixo a **Trilha** (§17.3); o **cartão do dia** (dia N de T, data, onde está, onde dorme (nome da hospedagem, ou "onde vocês dormem?") e as atividades do dia com "+ Atividade"); e o **Roteiro** (§17.4). No desktop (≥ 900 px), mapa e trilha à esquerda e o roteiro à direita.
 - **Cursor de dia:** tocar numa data ou arrastar pela régua, tocar num destino da trilha (vai para o primeiro dia dele e rola o roteiro até o cartão), as fichas da cidade e "▶ Ver a viagem" movem o mesmo cursor; mapa, cartão do dia e trilha seguem.
 - Tocar numa fase entra na cidade (§8); "◀ Mapa" volta. **Dentro da cidade, mudar o dia muda a cidade** (trilha, régua, cartão do dia e "▶ Ver a viagem" seguem a mesma regra do `setCursorDay`).
-- **"+ Atividade aqui" (M3.2):** entra no modo "marcar": cursor de mira, faixa "Marque no mapa onde fica a atividade nova" com "Não adicionar"; **um clique** abre "Nova atividade" já com o lugar. Segurar no mapa continua abrindo o painel.
+  \1- **Tiles (M3.3):** o mapa de tiles nasce já enquadrado e só substitui o papel quando os primeiros tiles estão desenhados (`idle`); nunca um mar vazio no lugar do contorno.
 - Depois de criar a viagem, a pessoa cai aqui, com o mapa enquadrado no escopo.
 
 ### 17.3 Roteiro: a Trilha (visão geral, aprovada)
@@ -689,7 +689,7 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
   - Arrastar um bloco já na trilha só empurra, reordena ou vai para a lixeira. Para dividir uma estadia, a cidade vem da prateleira: assim os gestos nunca se confundem.
   - Soltar onde não pode faz o bloco balançar e voltar, com o balão dizendo por quê ("Volta marcada. Toque no 🔒 para liberar.").
   - **Mouse × toque (M3.2, normas dnd-kit/SortableJS):** com o **mouse**, um bloco (ou uma ficha da prateleira) levanta ao mover 6 px, sem espera; a **régua** rola a faixa ao arrastar e o clique escolhe o dia; a roda do mouse rola a faixa. Com o **dedo**, segurar 450 ms levanta (o bloco infla enquanto espera, vibra; alça ⋮⋮ no canto), os blocos rolam a faixa e a régua passa os dias (a barra de dias da v1). No toque, o arraste continua mesmo se o navegador cancelar o ponteiro. **Tocar ou clicar sem arrastar** leva ao cartão do destino no roteiro e põe o cursor no primeiro dia dele; não abre menu.
-  - **Pegadores:** pílulas com setas ◂▸ (cursor ⟷ no PC) que acenam uma vez ao abrir a viagem.
+    \1 - **Dica e prateleira (M3.3):** a dica da trilha some depois do primeiro arraste (volta com "Como jogar"); a prateleira mostra só os destinos guardados (fora da trilha) e "+ Adicionar destino" — um destino da trilha entra no meio de outro pelo "+ Adicionar destino → No meio de…".
 
 - **Zoom:** "Dias" (44 px por noite) e "Ver tudo" (a viagem inteira na largura da tela). Estadias longas mostram semanas na régua; o arraste continua em dias.
 - **Sincroniza na hora:** roteiro, mapa, tarefas, atividades que ficaram sem dia, alertas na própria trilha (bandeirinha vermelha no bloco com hotel fora das datas).
@@ -697,8 +697,10 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
 ### 17.4 Roteiro: cidades, trechos e dias (visão granular)
 
 - Lista na ordem da viagem: cartão de cada cidade e, entre eles, o trecho.
+- **Roteiro em acordeão (M3.3):** um destino aberto por vez: o do dia escolhido; tocar no cabeçalho abre outro (e leva o cursor ao primeiro dia dele) ou fecha o aberto; tocar na trilha abre; pairar com uma atividade arrastada sobre um cartão fechado abre o cartão. Fechado, o cartão é uma linha: nome, datas e "7 noites · 5 atividades · 宿 済". "+ Atividade" só nos dias vazios; nos outros, um "+" discreto no fim da linha.
 - **Cartão do destino (M3.1):** selo, datas, noites com `– +`, onde se dorme (nome da hospedagem com 済 quando reservada; "onde vocês dormem?" abre o painel de hospedagem), os **dias sempre à vista** (data, atividades por turno e "+ Atividade" em cada um; "⋯" do dia: tirar esta noite, trocar com outro dia), as **atividades ainda sem dia** do destino e dos bate-voltas (chips: arrastar até o dia, ou tocar e escolher o dia). **As atividades dos dias também arrastam** (M3.2): para outro dia (muda de dia, inclusive no cartão do dia) ou para a área "sem dia" (tira do dia); mouse ao mover 6 px, dedo segurando 300 ms e um "⋯" com o raro: mudar a ordem, chegar 1 dia antes/depois, tirar do roteiro. Sem "noites incertas": não resolvia um problema real.
-- **Trecho:** veículo e meio, data, tempo com a fonte, e o **interruptor de passagem** "Passagem: falta / comprada 済" que desmarca no mesmo lugar (com Desfazer). Comprar a passagem de volta marca a volta, com aviso. "Editar trecho" abre meio, horários e noites a bordo; "+ Parar no caminho" põe um destino entre os dois.
+- **Trecho (M3.3):** uma linha tocável (veículo, nome, data, meio, horários, duração) com a passagem ao lado ("Passagem: falta comprar" / "comprada 済", que desmarca no mesmo lugar, com Desfazer; comprar a volta marca a volta). Tocar na linha abre "Editar trecho": meio, horários, noites a bordo (a escolha volta ao trecho) e "+ Parar no caminho".
+- **Regra dos painéis:** painéis-editores (trecho, atividade, visita, hospedagem, "Sua viagem") ficam abertos ao mudar um campo (`keep`); painéis de escolha fecham ao escolher; criar, apagar e salvar fecham.
 - **Painel "Nova atividade":** nome com sugestões perto do destino (busca online, só pontos de interesse), tipo, prioridade como seleção (Se der · **Quero** · Imperdível, "Quero" já marcado) e o botão **"Criar atividade"** (desligado sem nome). Aberto de um dia, a atividade já entra nele e as "já na lista, sem dia" entram com um toque. É o mesmo painel de "+ Atividade aqui" (segurar no mapa da cidade, já com o lugar) e do "+ Atividade" da aba Atividades.
 - **Painel "Onde vocês dormem em X?":** as hospedagens da parada com "já reservei" / "ainda não reservei" e "Tirar"; para as noites que faltam, o nome (sugestões de hotéis online, ou "Hospedagem em X") e "já reservei" (carimbo 済 e XP).
 

@@ -3,6 +3,7 @@ import type { Booking, Issue } from '../engine'
 import { uid, useApp } from '../app/store'
 import type { DocAction } from '../app/doc'
 import { markLodging } from '../app/choices'
+import { LevelLine } from './LevelLine'
 
 // Tarefas: a Saúde do roteiro com textos de quem viaja e resolução num toque (spec §17.6).
 
@@ -110,10 +111,8 @@ export function Tarefas() {
       <h1 className="title">
         Tarefas <em>da viagem</em>
       </h1>
+      <LevelLine />
       <div className="pills" style={{ marginTop: 6 }}>
-        <span className="pill">
-          NÍVEL {p.level} · {p.levelName}
-        </span>
         {p.tasks
           .filter((t) => t.total)
           .map((t) => (

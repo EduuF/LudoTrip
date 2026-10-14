@@ -27,6 +27,7 @@ export function MapCanvas() {
   const [adapter, setAdapter] = useState<MapAdapter | null>(null)
   const [tick, setTick] = useState(0)
   const [settled, setSettled] = useState(true)
+  const targetRef = useRef<BBox | null>(null)
 
   useLayoutEffect(() => {
     const el = box.current
@@ -41,7 +42,7 @@ export function MapCanvas() {
       setTick((t) => t + 1)
     })
     ro.observe(el)
-    void tilesAdapter(tel, currentTheme()).then((t) => {
+    void tilesAdapter(tel, currentTheme(), targetRef.current ?? undefined).then((t) => {
       if (!t) return
       if (dead) return t.destroy()
       // Nunca uma tela vazia: se o contêiner dos tiles não tiver tamanho (CSS alheio, WebGL capenga),
@@ -84,6 +85,7 @@ export function MapCanvas() {
     if (mapView.kind === 'city') return cityFrame(doc, mapView.destId) ?? trip
     return trip
   }, [doc, mapView])
+  targetRef.current = target
   const prev = useRef<{ adapter: MapAdapter | null; key: string }>({ adapter: null, key: '' })
   useEffect(() => {
     if (!adapter || !target) return

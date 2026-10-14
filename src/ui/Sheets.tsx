@@ -111,7 +111,10 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 aria-pressed={m === leg.mode}
                 onClick={() =>
                   m !== leg.mode &&
-                  act({ type: 'engine', command: { type: 'setLegMode', legId: leg.id, mode: m } })
+                  act(
+                    { type: 'engine', command: { type: 'setLegMode', legId: leg.id, mode: m } },
+                    { keep: true },
+                  )
                 }
               >
                 <Vehicle mode={m} px={1.5} /> {MODE_NAMES[m]}
@@ -389,7 +392,9 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 type="button"
                 className={`rar r-${r}${p.rarity === r ? ' on' : ''}`}
                 aria-pressed={p.rarity === r}
-                onClick={() => p.rarity !== r && act({ type: 'setPlace', id: p.id, patch: { rarity: r } })}
+                onClick={() =>
+                  p.rarity !== r && act({ type: 'setPlace', id: p.id, patch: { rarity: r } }, { keep: true })
+                }
               >
                 {RARITY[r].gems} {RARITY[r].label}
               </button>
@@ -403,7 +408,8 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                 className={(p.kind ?? 'sight') === k ? 'on' : ''}
                 aria-pressed={(p.kind ?? 'sight') === k}
                 onClick={() =>
-                  (p.kind ?? 'sight') !== k && act({ type: 'setPlace', id: p.id, patch: { kind: k } })
+                  (p.kind ?? 'sight') !== k &&
+                  act({ type: 'setPlace', id: p.id, patch: { kind: k } }, { keep: true })
                 }
               >
                 <b>{PLACE_KINDS[k].glyph}</b> {PLACE_KINDS[k].label}
@@ -442,13 +448,20 @@ function Body({ sheet }: { sheet: SheetSpec }) {
               o={{
                 label: st?.visited ? 'Desmarcar como feita' : 'Marcar como feita 済',
                 run: () =>
-                  act({
-                    type: 'batch',
-                    actions: visits.map((v) => ({
-                      type: 'engine' as const,
-                      command: { type: 'setVisitMeta' as const, visitId: v.visit.id, visited: !st?.visited },
-                    })),
-                  }),
+                  act(
+                    {
+                      type: 'batch',
+                      actions: visits.map((v) => ({
+                        type: 'engine' as const,
+                        command: {
+                          type: 'setVisitMeta' as const,
+                          visitId: v.visit.id,
+                          visited: !st?.visited,
+                        },
+                      })),
+                    },
+                    { keep: true },
+                  ),
               }}
             />
           ) : null}
@@ -514,7 +527,10 @@ function Body({ sheet }: { sheet: SheetSpec }) {
                   aria-pressed={v.slot === slot}
                   onClick={() =>
                     v.slot !== slot &&
-                    act({ type: 'engine', command: { type: 'setVisitMeta', visitId: v.id, slot } })
+                    act(
+                      { type: 'engine', command: { type: 'setVisitMeta', visitId: v.id, slot } },
+                      { keep: true },
+                    )
                   }
                 >
                   {label}
@@ -539,10 +555,13 @@ function Body({ sheet }: { sheet: SheetSpec }) {
             o={{
               label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita 済',
               run: () =>
-                act({
-                  type: 'engine',
-                  command: { type: 'setVisitMeta', visitId: v.id, visited: !v.visited },
-                }),
+                act(
+                  {
+                    type: 'engine',
+                    command: { type: 'setVisitMeta', visitId: v.id, visited: !v.visited },
+                  },
+                  { keep: true },
+                ),
             }}
           />
           {p ? (
@@ -780,7 +799,9 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
               <button
                 type="button"
                 className="btn small ghost"
-                onClick={() => act({ type: 'setBooking', id: b.id, patch: { status: 'planned' } })}
+                onClick={() =>
+                  act({ type: 'setBooking', id: b.id, patch: { status: 'planned' } }, { keep: true })
+                }
               >
                 Ainda não reservei
               </button>
@@ -789,7 +810,10 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
                 type="button"
                 className="btn small"
                 onClick={() =>
-                  act({ type: 'setBooking', id: b.id, patch: { status: 'booked' } }, { stamp: true })
+                  act(
+                    { type: 'setBooking', id: b.id, patch: { status: 'booked' } },
+                    { stamp: true, keep: true },
+                  )
                 }
               >
                 Já reservei 済
@@ -798,7 +822,7 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
             <button
               type="button"
               className="btn small ghost"
-              onClick={() => act({ type: 'removeBooking', id: b.id })}
+              onClick={() => act({ type: 'removeBooking', id: b.id }, { keep: true })}
             >
               Tirar
             </button>

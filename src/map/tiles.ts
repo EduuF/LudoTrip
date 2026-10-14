@@ -30,7 +30,12 @@ async function reachable(url: string, ms = 4000): Promise<boolean> {
   }
 }
 
-export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAdapter | null> {
+export async function tilesAdapter(
+  el: HTMLElement,
+  theme: Theme,
+  /** Enquadramento inicial: o mapa já nasce no lugar, e os primeiros tiles são os certos. */
+  bounds?: BBox,
+): Promise<MapAdapter | null> {
   if (!webglOk()) return null
   if (!(await reachable(TILES_URL))) return null
   const [maplibregl, { default: workerUrl }] = await Promise.all([
@@ -51,6 +56,15 @@ export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAd
     maxPitch: 0,
     renderWorldCopies: false,
     fadeDuration: 200,
+    ...(bounds
+      ? {
+          bounds: [
+            [bounds[0], bounds[1]],
+            [bounds[2], bounds[3]],
+          ] as [[number, number], [number, number]],
+          fitBoundsOptions: { padding: 30 },
+        }
+      : {}),
   })
   map.touchZoomRotate.disableRotation()
   // O crédito (OpenFreeMap © OpenMapTiles, dados © OpenStreetMap) é desenhado pelo MapCanvas.
@@ -59,7 +73,15 @@ export async function tilesAdapter(el: HTMLElement, theme: Theme): Promise<MapAd
     const img = seigaihaImage(cur)
     if (img) map.addImage('seigaiha', img, { pixelRatio: 2 })
   })
-  await new Promise<void>((resolve) => (map.loaded() ? resolve() : map.once('load', () => resolve())))
+  // Só entra em cena com os primeiros tiles desenhados (`idle`): até lá o papel segue valendo e ninguém
+  // vê um mar vazio no lugar do contorno. Limite de 8 s para redes lentas.
+  await new Promise<void>((resolve) => {
+    const t = setTimeout(resolve, 8000)
+    map.once('idle', () => {
+      clearTimeout(t)
+      resolve()
+    })
+  })
 
   const subs = new Set<(p: MovePhase) => void>()
   const onMove = () => subs.forEach((cb) => cb('move'))
