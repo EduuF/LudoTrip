@@ -172,8 +172,11 @@ export function askStartDate(why: string) {
   S().say(why)
 }
 
-/** Marca a passagem de um trecho como comprada (comprar a volta marca a volta). */
-export function buyTicket(legId: ID) {
+/**
+ * Marca a passagem de um trecho como comprada (comprar a volta marca a volta). Tocado num painel-editor
+ * (`keep`), o painel continua aberto: a comemoração acontece sobre ele.
+ */
+export function buyTicket(legId: ID, keep = false) {
   const d = doc()
   const it = d.itinerary
   const leg = it.legs.find((l) => l.id === legId)
@@ -198,12 +201,17 @@ export function buyTicket(legId: ID) {
   const actions: DocAction[] = [{ type: 'addBooking', booking }]
   if (leg.to === 'home' && it.lock === 'free')
     actions.push({ type: 'engine', command: { type: 'setLock', lock: 'fixed' } })
-  if (S().act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true }))
+  if (S().act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true, keep }))
     cueTicket(doc())
 }
 
 /** Marca como reservada a hospedagem das noites ainda descobertas de um destino (com carimbo). */
-export function markLodging(stopId: ID, title?: string, status: 'planned' | 'booked' = 'booked') {
+export function markLodging(
+  stopId: ID,
+  title?: string,
+  status: 'planned' | 'booked' = 'booked',
+  keep = false,
+) {
   const d = doc()
   const it = d.itinerary
   const s = it.stops.find((x) => x.id === stopId)
@@ -228,7 +236,7 @@ export function markLodging(stopId: ID, title?: string, status: 'planned' | 'boo
         status,
       },
     },
-    { stamp: status === 'booked' },
+    { stamp: status === 'booked', keep },
   )
   if (ok && status === 'booked') cueLodging(doc(), s.destinationId)
 }

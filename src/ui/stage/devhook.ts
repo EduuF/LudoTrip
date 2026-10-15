@@ -4,7 +4,7 @@
 // de quadros do avaliador (scripts/filmstrip.mjs).
 
 import { useApp } from '../../app/store'
-import { cueBigDay, cueCloud, cueDone, cueLodging, cueTicket, MOMENTS } from './cues'
+import { cueBigDay, cueCloud, cueLodging, cueTicket, MOMENTS } from './cues'
 import { force, freeze, activeRuns, stopAll } from './palco'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -16,6 +16,15 @@ function button(text: string, within: ParentNode = document): HTMLElement | null
       (b) => b.textContent?.includes(text) && b.getBoundingClientRect().width > 0,
     ) ?? null
   )
+}
+
+/** Quantas mudanças o demo fez no documento (desfeitas no `reset`). */
+let changed = 0
+
+/** O toque de verdade: o Palco lembra o botão (pointerdown) e o app executa a ação (click). */
+function press(el: Element | null) {
+  tap(el)
+  ;(el as HTMLElement | null)?.click()
 }
 
 /** Faz o toque "de mentira" (o Palco lembra o último botão tocado). */
@@ -32,30 +41,61 @@ async function demo(id: keyof typeof MOMENTS, variant: string | null) {
   if (!doc && id !== 'nuvem') throw new Error('abra uma viagem antes')
   const it = doc!.itinerary
   switch (id) {
+    // Passagem, hospedagem e atividade: o toque de verdade no botão real (o mesmo caminho da pessoa,
+    // inclusive o que acontece com o painel depois); a mudança é desfeita no `reset`.
     case 'passagem': {
-      const pill = [...document.querySelectorAll<HTMLElement>('button.ticket')].find(
-        (b) => b.getBoundingClientRect().width > 0,
-      )
-      pill?.scrollIntoView({ block: 'center' })
-      await wait(300)
-      tap(pill ?? document.querySelector('.map-acts .btn'))
-      cueTicket(doc!)
+      const pill =
+        [...document.querySelectorAll<HTMLElement>('button.ticket:not(.on)')].find(
+          (b) => b.getBoundingClientRect().width > 0,
+        ) ?? null
+      if (pill) {
+        pill.scrollIntoView({ block: 'center' })
+        await wait(300)
+        press(pill)
+        changed++
+      } else {
+        const any = [...document.querySelectorAll<HTMLElement>('button.ticket')].find(
+          (b) => b.getBoundingClientRect().width > 0,
+        )
+        any?.scrollIntoView({ block: 'center' })
+        await wait(300)
+        tap(any ?? document.querySelector('.map-acts .btn'))
+        cueTicket(doc!)
+      }
       break
     }
     case 'hospedagem': {
-      const stop = it.stops.find((s) => s.destinationId)!
-      S.openSheet({ kind: 'lodging', stopId: stop.id })
-      await wait(450)
-      tap(button('Marcar reservada') ?? button('Anotar') ?? document.querySelector('.sheet .btn'))
-      cueLodging(doc!, stop.destinationId)
+      const gap = document.querySelector<HTMLElement>('button.pill.warn')
+      if (gap) {
+        gap.scrollIntoView({ block: 'center' })
+        await wait(200)
+        gap.click()
+        await wait(450)
+        const box = document.querySelector<HTMLInputElement>('.sheet input[type=checkbox]')
+        if (box && !box.checked) box.click()
+        await wait(80)
+        press(button('Marcar reservada'))
+        changed++
+      } else {
+        const stop = it.stops.find((s) => s.destinationId)!
+        S.openSheet({ kind: 'lodging', stopId: stop.id })
+        await wait(450)
+        tap(button('Marcar reservada') ?? button('Já reservei') ?? document.querySelector('.sheet .btn'))
+        cueLodging(doc!, stop.destinationId)
+      }
       break
     }
     case 'feita': {
       const visit = it.stops.flatMap((s) => s.days.flat())[0]!
       S.openSheet({ kind: 'visit', visitId: visit.id })
       await wait(450)
-      tap(button('Marcar como feita') ?? button('Desmarcar') ?? document.querySelector('.sheet .btn'))
-      cueDone(doc!, visit.placeId)
+      if (visit.visited) {
+        press(document.querySelector('.done-toggle'))
+        changed++
+        await wait(150)
+      }
+      press(document.querySelector('.done-toggle'))
+      changed++
       break
     }
     case 'nuvem':
@@ -73,7 +113,7 @@ async function demo(id: keyof typeof MOMENTS, variant: string | null) {
       cueBigDay(doc!, document.querySelector('.map-head'), document.querySelector('.mappanel'), true)
       break
   }
-  await wait(60)
+  await wait(120)
   force(id, null)
   const run = activeRuns()[0]
   return run ? { variant: run.variant, duration: run.duration } : null
@@ -93,6 +133,7 @@ function box() {
   /** Fecha painéis e comemorações e encerra os momentos (entre uma tira e outra). */
   reset() {
     stopAll()
+    for (; changed > 0; changed--) useApp.getState().undo()
     useApp.setState({ celebrations: [], sheet: null, tutorial: false })
     scrollTo(0, 0)
   },

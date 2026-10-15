@@ -466,6 +466,23 @@ function VisitSheet({ visitId }: { visitId: ID }) {
           </>
         ) : null}
       </p>
+      {/* "Feita" logo abaixo do nome (retorno do staging: no fim do painel, ficava escondido). */}
+      <button
+        type="button"
+        className={`btn ${v.visited ? 'ghost' : 'main'} done-toggle`}
+        aria-pressed={!!v.visited}
+        onClick={() => {
+          if (meta({ visited: !v.visited }) && !v.visited) cueDone(useApp.getState().doc!, v.placeId)
+        }}
+      >
+        {v.visited ? (
+          <>
+            <span aria-hidden="true">済</span> Feita · desmarcar
+          </>
+        ) : (
+          '✓ Marcar como feita'
+        )}
+      </button>
       <NoteBox
         key={v.id}
         id="nota-dia"
@@ -517,14 +534,6 @@ function VisitSheet({ visitId }: { visitId: ID }) {
           />
         </div>
       </div>
-      <OptButton
-        o={{
-          label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita',
-          run: () => {
-            if (meta({ visited: !v.visited }) && !v.visited) cueDone(useApp.getState().doc!, v.placeId)
-          },
-        }}
-      />
       <div className="row actions">
         <button
           type="button"
@@ -1040,7 +1049,8 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
           <button
             type="button"
             className="btn main"
-            onClick={() => markLodging(stopId, name, booked ? 'booked' : 'planned')}
+            // Painel-editor: continua aberto depois de anotar (a comemoração acontece sobre ele).
+            onClick={() => markLodging(stopId, name, booked ? 'booked' : 'planned', true)}
           >
             {booked ? (
               <>

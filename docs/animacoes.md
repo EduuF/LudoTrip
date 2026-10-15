@@ -139,6 +139,11 @@ Base: os 12 princípios da animação (skill do projeto `web-motion-design`) apl
 - **Uma causa cômica se lê melhor com uma forma reconhecível** (baforada, nuvem de poeira) do que com partículas soltas.
 - **Quem entra pela borda entra com o corpo primeiro;** o que está na mão vem do lado de trás do movimento até o personagem parar.
 - **Desvio e alarme medem o que se vê:** a pílula do rótulo, o círculo do pino, não só o texto dentro deles.
+- **Mudou a escala? Revise todos os alvos e rotas:** o alvo vem do retângulo real do elemento, nunca de uma fração do palco.
+- **Desacelerar é desacelerar a ação, não a espera:** depois do acerto, a espera fica em torno de 250–300 ms.
+- **No topo da tela, tudo o que sobe precisa caber entre os elementos.** Se não couber, troque o objeto por um menor ou por outra ideia; não deixe encostar em texto ou botão.
+- **Voo sobre a faixa de botões:** o objeto fica fino (metade do tamanho, girando), corre rente à borda de cima dos botões (acima das letras) e só desce ao alvo nos últimos 20% do trajeto. Toda medida de encaixe vem do retângulo real do elemento, medido no gatilho.
+- **Objeto deixado no chão fica inteiro sobre o apoio;** contato (chute, pegada, batida) tem um quadro em que as duas partes se tocam, mantido por pelo menos 100 ms.
 - **Medir antes de corrigir:**
   - mudar a cor de um elemento e gerar a tira de novo diz se o defeito é de cor/luz ou de geometria;
   - congelar o quadro e ler as caixas dos atores diz onde cada coisa está de verdade;
@@ -148,7 +153,7 @@ Base: os 12 princípios da animação (skill do projeto `web-motion-design`) apl
 
 Toda animação nova ou alterada passa por avaliação antes do commit.
 
-1. **Tira de quadros:**
+1. **Tira de quadros** (reproduz o caminho real da pessoa: o mesmo toque no botão de verdade e o mesmo estado da tela depois; o demo desfaz a mudança no fim):
    - comando: `node scripts/filmstrip.mjs <momento> [variação]`;
    - abre o app em 375 × 812 com o servidor de desenvolvimento, dispara o momento de verdade e congela o Palco em vários instantes;
    - monta uma folha de contato com o recorte da cena **e do elemento ao redor**, para julgar o encaixe;
@@ -205,3 +210,9 @@ Toda animação nova ou alterada passa por avaliação antes do commit.
 - **2026-10-15, 4ª e 5ª rodadas:** 23 de 26 aprovadas. Lições em §3: luz no ator, entrega pelo objeto, borda do sprite, causa visível em 2 quadros, linha recalculada, balão que desvia, fila de 26 px, efeitos com a fonte, transições ≥ 40 ms.
 - **2026-10-15, 6ª e 7ª rodadas:** fala na calma, esmaecer sem acinzentar, causa com forma, medir antes de corrigir; a tira ganhou o alarme de colisão com rótulos.
 - **2026-10-15, 8ª e 9ª rodadas:** as 26 variações aprovadas. Lições: corpo primeiro na entrada; medir o que se vê; folha de contato só com redução inteira; captura cheia como árbitro de 1 px.
+- **2026-10-15, teste no celular do mantenedor:**
+  - **Hospedagem:** não aparecia, porque o botão fechava o painel e a cena virava só o brilho. O painel de hospedagem é painel-editor e agora fica aberto; a tira passou a tocar o botão de verdade.
+  - **"Marcar como feita":** subiu para logo abaixo do nome da atividade.
+  - **Nuvem:** "muito rápida e pequena".
+    - O boneco agora tem cerca de 1,1 × o botão e a ação é 60% mais lenta: a nuvem fica com 1,6–1,8 s, acima do limite de 1,5 s de um momento, por pedido do mantenedor.
+    - Balão e pipa deram lugar a avião de papel e chute, que cabem no vão acima dos botões.

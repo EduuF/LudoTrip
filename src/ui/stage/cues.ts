@@ -93,6 +93,8 @@ export function cueCloud(doc: TripDoc | null, anchor: Element | null) {
     {
       travelers: doc ? travelers(doc) : 1,
       badgeX: a.width / 2,
+      badgeY: a.top + a.height / 2 - r.top,
+      buttonsTop: a.top - r.top,
       freeX: (last ? last.right : a.right) - a.left + 6,
       onHit: () => {
         try {

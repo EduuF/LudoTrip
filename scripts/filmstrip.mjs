@@ -14,7 +14,7 @@ const VARIANTS = {
   passagem: ['bilheteiro', 'mala', 'carimbo', 'vento'],
   hospedagem: ['cama', 'futon', 'barraca', 'travesseiro'],
   feita: ['foto', 'selfie', 'comer', 'pulo', 'gato'],
-  nuvem: ['arremesso', 'balao', 'pipa', 'espirro'],
+  nuvem: ['arremesso', 'aviao', 'chute', 'espirro'],
   criada: ['kombi', 'aviao', 'trem', 'barco', 'esquecidos'],
   'grande-dia': ['malas', 'portao', 'porta-malas', 'esqueceu'],
 }
@@ -106,11 +106,16 @@ for (const [moment, variant] of jobs) {
   // Folha de contato: os quadros em grade, com o instante em ms.
   // Cada quadro em 1 px de tela por px CSS (redução inteira de 3:1, vizinho mais próximo): linhas e
   // partículas de 1 px de arte nunca somem nem aparecem pela metade na folha.
-  const sheet = await browser.newPage({ viewport: { width: 4 * 390 + 40, height: 800 } })
+  const sheet = await browser.newPage({
+    viewport: {
+      width: Math.ceil(4 * Math.max(...shots.map((x) => (x.w <= 420 ? x.w * 3 : x.w))) + 80),
+      height: 800,
+    },
+  })
   await sheet.setContent(`<!doctype html><body style="margin:0;padding:12px;background:#ddd;font:14px monospace">
     <h3 style="margin:0 0 8px">${moment} · ${run.variant} · ${run.duration} ms${dark ? ' · escuro' : ''}</h3>
     <div style="display:grid;grid-template-columns:repeat(4,max-content);gap:8px">
-    ${shots.map((s) => `<figure style="margin:0;background:#fff;padding:4px"><img src="${s.src}" style="width:${s.w}px;image-rendering:pixelated"><figcaption>${s.t} ms</figcaption></figure>`).join('')}
+    ${shots.map((s) => `<figure style="margin:0;background:#fff;padding:4px"><img src="${s.src}" style="width:${s.w <= 420 ? s.w * 3 : s.w}px;image-rendering:pixelated"><figcaption>${s.t} ms</figcaption></figure>`).join('')}
     </div></body>`)
   const file = `${out}/${moment}-${variant}${dark ? '-escuro' : ''}.png`
   await sheet.screenshot({ path: file, fullPage: true })

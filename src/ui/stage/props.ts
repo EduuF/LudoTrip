@@ -540,6 +540,20 @@ export const cloud = (face: CloudFace = 'calm') =>
     }),
   )
 
+/** Avião de papel (9 × 5), bico para a direita: o cartão da viagem dobrado, com a faixa vermelha. */
+export const paperPlane = () =>
+  cached('aviao-de-papel', () =>
+    make(9, 5, (g) => {
+      for (let x = 0; x <= 8; x++) {
+        const hw = Math.round((8 - x) * 0.3)
+        box(g, x, 2 - hw, x, 2 + hw, x < 3 ? C.paper : C.white)
+      }
+      box(g, 0, 2, 7, 2, C.silverLight) // a dobra do meio
+      put(g, 2, 3, C.red)
+      put(g, 3, 3, C.red)
+    }),
+  )
+
 /** O cartão da viagem em miniatura (10 × 8): papel com o selo vermelho. */
 export const tripCard = () =>
   cached('cartao', () =>

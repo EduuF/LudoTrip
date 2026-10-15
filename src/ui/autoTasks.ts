@@ -20,14 +20,14 @@ export function issueQuick(i: Issue): IssueAction | null {
   const dated = !!it.start
   if (i.kind === 'transport-missing')
     return dated
-      ? { label: 'Marcar comprada', run: () => buyTicket(i.target.id) }
+      ? { label: 'Marcar comprada', run: () => buyTicket(i.target.id, true) }
       : {
           label: 'Escolher a data de ida',
           run: () => askStartDate('Para marcar a passagem, escolha primeiro a data de ida.'),
         }
   if (i.kind === 'lodging-missing' || i.kind === 'lodging-partial')
     return dated
-      ? { label: 'Marcar reservada', run: () => markLodging(i.target.id) }
+      ? { label: 'Marcar reservada', run: () => markLodging(i.target.id, undefined, 'booked', true) }
       : {
           label: 'Escolher a data de ida',
           run: () => askStartDate('Para anotar a hospedagem, escolha primeiro a data de ida.'),
