@@ -38,10 +38,24 @@ export function testAuth(origin = location.origin): AuthClient {
     },
     async token() {
       if (!account) return null
-      const r = await fetch(`${origin}/api/test/token?uid=${encodeURIComponent(account.uid)}`)
+      const q = new URLSearchParams({ uid: account.uid, ...(account.name ? { name: account.name } : {}) })
+      const r = await fetch(`${origin}/api/test/token?${q}`)
       return r.ok ? ((await r.json()) as { token: string }).token : null
     },
-    signInWithGoogle: async () => signIn('ana', 'Ana'),
+    // Quem "entra com Google": a Ana, ou quem o teste pedir (`ludotrip.testAuthNext`, para o e2e com
+    // várias pessoas).
+    signInWithGoogle: async () => {
+      try {
+        const next = JSON.parse(localStorage.getItem(`${KEY}Next`) ?? 'null') as {
+          uid: string
+          name: string
+        } | null
+        if (next) return signIn(next.uid, next.name)
+      } catch {
+        // sem armazenamento: a Ana
+      }
+      return signIn('ana', 'Ana')
+    },
     sendEmailLink: async () => ({ ok: true }),
     completeEmailLink: async () => signIn('bia', 'Bia'),
     signOut: async () => set(null),
