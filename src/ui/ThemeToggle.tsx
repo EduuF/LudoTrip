@@ -3,6 +3,8 @@ import { useApp } from '../app/store'
 import { currentTheme, THEME_ACTION, THEME_LABEL, toggledTheme } from '../app/theme'
 import { canAnimate, playThemeSwap } from './themeSwap'
 import { sfx } from './sound'
+import { FADE, startDaylight } from './daylight'
+import { animMode } from './stage/palco'
 import { CAST, castFor } from './stage/cast'
 
 // O botão Dia/Noite (retorno do staging): com nome, e uma lanterna ou lâmpada sorteada a cada toque.
@@ -23,6 +25,20 @@ export function ThemeToggle({ className = 'hud-btn' }: { className?: string }) {
     const next = toggledTheme()
     if (!canAnimate() || !ref.current) return setTheme(next)
     setBusy(true)
+    if (animMode() === 'discreet') {
+      // "Animações discretas": só o pôr/nascer do sol, sem a corda.
+      const end = startDaylight(next === 'dark', () => setTheme(next))
+      const t = window.setTimeout(() => {
+        stop.current = null
+        setBusy(false)
+      }, FADE)
+      stop.current = () => {
+        clearTimeout(t)
+        end()
+        setBusy(false)
+      }
+      return
+    }
     stop.current = playThemeSwap(
       ref.current,
       next === 'dark',

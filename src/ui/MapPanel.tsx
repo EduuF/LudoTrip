@@ -4,6 +4,7 @@ import { countdownTo, todayISO, useApp } from '../app/store'
 import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 import { LevelLine } from './LevelLine'
+import { cueBigDay } from './stage/cues'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
 // resumo por cima, "+ Adicionar destino" / "+ Atividade aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
@@ -26,6 +27,18 @@ function Countdown() {
     return () => clearInterval(t)
   }, [])
   const phase = tripPhase(it, todayISO(now))
+  // O grande dia (uma vez por viagem): os viajantes passam de mala logo abaixo da contagem.
+  const firstDay = phase.kind === 'during' && phase.day === 1
+  const cd = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const el = cd.current
+    if (!firstDay || !el || !el.getBoundingClientRect().width) return
+    const t = setTimeout(
+      () => cueBigDay(useApp.getState().doc!, el.closest('.map-head'), el.closest('.mappanel')),
+      500,
+    )
+    return () => clearTimeout(t)
+  }, [firstDay])
 
   if (phase.kind === 'undated')
     return (
@@ -68,6 +81,7 @@ function Countdown() {
     const city = doc.destinations.find((d) => d.id === phase.destinationId)?.name
     return (
       <button
+        ref={cd}
         type="button"
         className="cd-open"
         onClick={open}

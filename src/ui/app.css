@@ -3440,3 +3440,33 @@ html.theme-fading {
     transition: none;
   }
 }
+
+/* O Palco (docs/animacoes.md): a camada dos momentos de diversão nunca recebe toque. */
+.palco {
+  z-index: 50;
+  pointer-events: none;
+  overflow: visible;
+}
+.palco-say {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  font-family: var(--f-pixel);
+  line-height: 1.2;
+  padding: 0.3em 0.6em;
+  border-radius: 0.5em;
+  background: #fffbfa;
+  color: #241a28;
+  border: 2px solid #241a28;
+  box-shadow: 2px 2px 0 #e2809f;
+}
+.levelup .box .cel-stage {
+  display: block;
+  position: relative;
+  width: min(280px, 70vw);
+  height: 72px;
+  margin: 12px auto 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hud-fg) 8%, transparent);
+}

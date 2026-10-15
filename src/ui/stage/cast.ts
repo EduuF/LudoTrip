@@ -2,6 +2,18 @@
 // Dia/Noite e em toda animação futura. Cada quadro é montado por partes (pernas, tronco, braços, cabeça,
 // rosto) e ganha contorno automático; o resultado vira poucos <rect> (tiras da mesma cor), sem imagens.
 
+import {
+  box,
+  grid as gridOf,
+  INK,
+  outline as outlineOf,
+  put,
+  runs,
+  type Art,
+  type Grid,
+  type Run,
+} from './art'
+
 export const W = 24
 export const H = 30
 
@@ -31,22 +43,16 @@ export const CAST: readonly Person[] = [
   { name: 'Duda', hair: '#1d1a20', skin: '#b07a57', shirt: '#c4313a', pants: '#241a28', style: 'bun' },
 ]
 
-export const INK = '#241a28'
-const SHOE = '#3a2c3a'
-const WHITE = '#ffffff'
-const BLUSH = '#f2a0a8'
-const MOUTH = '#7a2a2a'
+export { INK } from './art'
+export type { Grid } from './art'
+export const SHOE = '#3a2c3a'
+export const WHITE = '#ffffff'
+export const BLUSH = '#f2a0a8'
+export const MOUTH = '#7a2a2a'
 
-export type Grid = (string | null)[][]
 type Pt = readonly [number, number]
 
-const grid = (): Grid => Array.from({ length: H }, () => Array<string | null>(W).fill(null))
-function put(g: Grid, x: number, y: number, c: string) {
-  if (x >= 0 && x < W && y >= 0 && y < H) g[y]![x] = c
-}
-function box(g: Grid, x0: number, y0: number, x1: number, y1: number, c: string) {
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(g, x, y, c)
-}
+const grid = (): Grid => gridOf(W, H)
 
 // Membros: pontos de 2 px de largura por pose (lado direito da tela; o esquerdo espelha).
 interface Arm {
@@ -233,6 +239,25 @@ const ARMS = {
     hand: [
       [12, 12],
       [12, 13],
+    ],
+  },
+  // O outro tempo do aceno: o braço continua no alto, com a mão inclinada para o outro lado.
+  wave2: {
+    sleeve: [
+      [17, 14],
+      [18, 13],
+      [18, 12],
+    ],
+    skin: [
+      [18, 11],
+      [18, 10],
+      [18, 9],
+      [17, 8],
+    ],
+    hand: [
+      [16, 6],
+      [16, 7],
+      [17, 6],
     ],
   },
 } satisfies Record<string, Arm>
@@ -492,29 +517,13 @@ function drawBody(g: Grid, p: Person) {
   box(g, 8, 22, 15, 22, p.pants) // cinto
 }
 
-// Contorno automático: todo vazio vizinho (4 lados) de algo pintado vira tinta.
-function outline(g: Grid): Grid {
-  const out = g.map((r) => r.slice())
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      if (g[y]![x]) continue
-      const n = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ].some(([dx, dy]) => g[y + dy!]?.[x + dx!])
-      if (n) out[y]![x] = INK
-    }
-  return out
-}
-
 interface Pose {
   arms: [ArmPose, ArmPose]
   legs: LegPose
   face: Face
   back?: boolean
-  camera?: boolean
+  /** Onde está a câmera: no rosto (fotografando), no peito (baixada) ou na mão esquerda. */
+  camera?: 'face' | 'chest' | 'hand' | 'handOut'
 }
 export const POSES = {
   idle: { arms: ['down', 'down'], legs: 'stand', face: { eyes: 'open', mouth: 'smile' } },
@@ -533,14 +542,45 @@ export const POSES = {
     arms: ['camera', 'camera'],
     legs: 'stand',
     face: { eyes: 'squint', mouth: 'smile' },
-    camera: true,
+    camera: 'face',
   },
   thumb: { arms: ['hip', 'thumb'], legs: 'stand', face: { eyes: 'happy', mouth: 'smile' } },
+  // O outro tempo do aceno (alternar com `wave` a cada 140 ms).
+  wave2: { arms: ['down', 'wave2'], legs: 'stand', face: { eyes: 'happy', mouth: 'smile' } },
+  // Entregando algo (o bilhete na mão estendida).
+  give: { arms: ['down', 'out'], legs: 'stand', face: { eyes: 'open', mouth: 'smile' } },
+  // Comendo: as duas mãos na boca, olhos felizes.
+  eat: { arms: ['camera', 'camera'], legs: 'stand', face: { eyes: 'happy', mouth: 'open' } },
+  // A câmera baixada no peito, segura com as duas mãos (entre fotografar e o joinha).
+  camLow: {
+    arms: ['grabLow', 'grabLow'],
+    legs: 'stand',
+    face: { eyes: 'open', mouth: 'smile' },
+    camera: 'chest',
+  },
+  // Joinha com a câmera na outra mão.
+  thumbCam: {
+    arms: ['hip', 'thumb'],
+    legs: 'stand',
+    face: { eyes: 'happy', mouth: 'smile' },
+    camera: 'hand',
+  },
+  // De costas, em pé (virado para uma porta, prestes a entrar).
+  back: { arms: ['down', 'down'], legs: 'stand', face: {}, back: true },
+  // Susto com a câmera na mão (a foto do gato).
+  oopsCam: {
+    arms: ['out', 'out'],
+    legs: 'stand',
+    face: { eyes: 'open', mouth: 'open' },
+    camera: 'handOut',
+  },
+  // Susto ou surpresa (a variação rara).
+  oops: { arms: ['out', 'out'], legs: 'stand', face: { eyes: 'open', mouth: 'open' } },
 } satisfies Record<string, Pose>
 export type PoseName = keyof typeof POSES
 
 // Braços erguidos passam por cima da cabeça; os outros ficam atrás dela.
-const OVER = new Set<ArmPose>(['up', 'wave', 'rope', 'camera', 'thumb'])
+const OVER = new Set<ArmPose>(['up', 'wave', 'wave2', 'rope', 'camera', 'thumb'])
 
 function draw(person: Person, poseName: PoseName): Grid {
   const pose: Pose = POSES[poseName]
@@ -551,39 +591,24 @@ function draw(person: Person, poseName: PoseName): Grid {
   if (pose.back) drawHeadBack(g, person)
   else drawHead(g, person, pose.face)
   pose.arms.forEach((a, i) => OVER.has(a) && drawArm(g, a, i ? 'R' : 'L', person))
-  if (pose.camera) {
+  if (pose.camera === 'face') {
     box(g, 9, 9, 14, 12, INK)
     box(g, 11, 10, 12, 11, '#9a95a3')
     put(g, 13, 9, WHITE)
   }
-  return outline(g)
-}
-
-export interface Run {
-  x: number
-  y: number
-  w: number
-  c: string
-}
-
-/** Tiras horizontais da mesma cor (poucos retângulos). */
-export function runs(g: Grid): Run[] {
-  const out: Run[] = []
-  for (let y = 0; y < H; y++) {
-    let x = 0
-    while (x < W) {
-      const c = g[y]![x]
-      if (!c) {
-        x++
-        continue
-      }
-      let e = x
-      while (e + 1 < W && g[y]![e + 1] === c) e++
-      out.push({ x, y, w: e - x + 1, c })
-      x = e + 1
-    }
+  if (pose.camera === 'chest') {
+    box(g, 9, 17, 14, 20, INK)
+    box(g, 11, 18, 12, 19, '#9a95a3')
   }
-  return out
+  if (pose.camera === 'handOut') {
+    box(g, 0, 14, 4, 17, INK)
+    box(g, 1, 15, 2, 16, '#9a95a3')
+  }
+  if (pose.camera === 'hand') {
+    box(g, 2, 19, 6, 22, INK)
+    box(g, 3, 20, 4, 21, '#9a95a3')
+  }
+  return outlineOf(g)
 }
 
 const cache = new Map<string, Run[]>()
@@ -599,12 +624,13 @@ export function sprite(person: Person, pose: PoseName): Run[] {
   return r
 }
 
+/** O quadro como arte (tamanho + tiras), para o Palco. */
+export const frontArt = (person: Person, pose: PoseName): Art => ({ w: W, h: H, runs: sprite(person, pose) })
+
 /** O mesmo quadro como grade de cores (para testes e ferramentas). */
 export const render = draw
 
-/** O quadro como marcação SVG (para camadas montadas fora do React). */
-export const toSvgRects = (rs: Run[]) =>
-  rs.map((r) => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="1" fill="${r.c}"/>`).join('')
+export { runs, toSvgRects, type Run } from './art'
 
 /** O personagem de cada viajante (o 5º em diante repete o elenco). */
 export const castFor = (i: number): Person => CAST[((i % CAST.length) + CAST.length) % CAST.length]!

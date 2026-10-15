@@ -44,6 +44,7 @@ import { PrivacySheet } from './Consent'
 import type { SheetSpec } from './sheetTypes'
 import { AccountSheet, AdoptSheet, CloudSaveSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
+import { cueDone, cueLodging } from './stage/cues'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
 // e os painéis de criar: atividade, hospedagem e "Sua viagem".
@@ -519,7 +520,9 @@ function VisitSheet({ visitId }: { visitId: ID }) {
       <OptButton
         o={{
           label: v.visited ? 'Desmarcar como feita' : 'Marcar como feita',
-          run: () => meta({ visited: !v.visited }),
+          run: () => {
+            if (meta({ visited: !v.visited }) && !v.visited) cueDone(useApp.getState().doc!, v.placeId)
+          },
         }}
       />
       <div className="row actions">
@@ -965,7 +968,7 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
                   act(
                     { type: 'setBooking', id: b.id, patch: { status: 'booked' } },
                     { stamp: true, keep: true },
-                  )
+                  ) && cueLodging(useApp.getState().doc!, b.kind === 'lodging' ? b.destinationId : null)
                 }
               >
                 Já reservei <span aria-hidden="true">済</span>

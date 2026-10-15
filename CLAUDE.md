@@ -45,6 +45,7 @@ Nasceu da v1 "Sakura Quest", um artifact do claude.ai feito para uma viagem ao J
 - **Atividade × dia:** anotações, turno, horário e "feita" são da visita (`Visit`); nome, tipo, prioridade, mapa e anotações gerais são da atividade (`Place`). Agendar do catálogo sempre cria mais uma visita (`scheduleOnce`).
 - **Revelar progressivamente:** um lugar aberto por vez, uma ação primária por bloco, sem duplicatas na mesma tela; dicas somem depois de usadas. Medida: contar os controles da página do exemplo antes e depois.
 - **"Destino" é a palavra genérica** (país, região, cidade, parque, ilha, navio); "cidade" só quando é mesmo uma cidade.
+- **Animações seguem `docs/animacoes.md`** (guia vivo: contrato de diversão não invasiva, tamanho pelo cenário, mesma escala entre sprites que interagem, avaliador obrigatório com tira de quadros antes do commit). Aprendeu algo? Atualize o guia e o histórico dele.
 
 ## Como trabalhar
 

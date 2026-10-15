@@ -16,6 +16,7 @@ export type EventName =
   | 'conflito'
   | 'offline_fila'
   | 'painel_aberto'
+  | 'animacao'
 
 type Props = Record<string, string | number | boolean>
 
@@ -30,6 +31,9 @@ const ALLOWED = new Set([
   'kind',
   'cloud',
   'pending',
+  'momento',
+  'variacao',
+  'minima',
 ])
 const MAX_VALUE = 40
 

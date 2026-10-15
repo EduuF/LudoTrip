@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { useApp } from '../app/store'
+import { cueCloud } from './stage/cues'
 
 // A nuvem no topo da viagem (spec publicação §3.1, §5.4), sempre no mesmo lugar:
 // - viagem só do aparelho: "☁️ Salvar", à vista (guardar não pode depender de voltar à tela inicial);
@@ -19,6 +21,13 @@ export function CloudBadge() {
   const cloudEnabled = useApp((s) => s.cloudEnabled)
   const local = useApp((s) => !!s.doc && !s.doc.meta.cloud)
   const openSheet = useApp((s) => s.openSheet)
+  const ref = useRef<HTMLButtonElement>(null)
+  const id = useApp((s) => s.doc?.meta.id)
+  const fresh = useApp((s) => !!id && s.justUploaded.includes(id))
+  // Guardou na nuvem agora: um viajante numa nuvenzinha manda o cartão para o selo (docs/animacoes.md).
+  useEffect(() => {
+    if (fresh) cueCloud(useApp.getState().doc, ref.current)
+  }, [fresh])
   if (cloudEnabled && local)
     return (
       <button
@@ -42,6 +51,7 @@ export function CloudBadge() {
   return (
     <button
       type="button"
+      ref={ref}
       className={`hud-btn cloud-badge ${cloud.status}`}
       aria-label={text}
       title={text}

@@ -15,6 +15,7 @@ import { Sheets } from './ui/Sheets'
 import { Tarefas } from './ui/Tarefas'
 import { Tutorial } from './ui/Tutorial'
 import { docHealth } from './app/tasks'
+import { animMode, setAnimMode } from './ui/stage/palco'
 
 // Casca do app (spec §17.1): HUD de uma linha (voltar, nome, tema, Desfazer e um menu com o resto),
 // abas embaixo, painéis e comemorações. A contagem e o nível ficam no mapa (e o nível nas Tarefas).
@@ -34,6 +35,8 @@ function Hud() {
   const openSheet = useApp((s) => s.openSheet)
   const [menu, setMenu] = useState(false)
   const closeMenu = useCallback(() => setMenu(false), [])
+  const say = useApp((s) => s.say)
+  const [anim, setAnim] = useState(animMode)
   return (
     <header className="hud">
       <div className="hud-in">
@@ -89,6 +92,20 @@ function Hud() {
                   }}
                 >
                   {sound ? '♪ Desligar sons' : '♪ Ligar sons'}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    // Animações (docs/animacoes.md): completas, ou só um brilho discreto.
+                    const next = anim === 'full' ? 'discreet' : 'full'
+                    setAnimMode(next)
+                    setAnim(next)
+                    setMenu(false)
+                    say(next === 'full' ? 'Animações completas.' : 'Animações discretas: só um brilho.')
+                  }}
+                >
+                  {anim === 'full' ? '✦ Animações discretas' : '✦ Animações completas'}
                 </button>
                 <button
                   type="button"

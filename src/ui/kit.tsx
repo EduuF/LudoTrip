@@ -7,6 +7,7 @@ import { currentTheme } from '../app/theme'
 import { palette, petalBurst, takeBursts } from './petals'
 import type { Petal } from './petals'
 import { H as CAST_H, STRIDE, W as CAST_W, castFor, sprite, travelersSize } from './stage/cast'
+import { cueCreated } from './stage/cues'
 
 // Peças visuais da casa (guia de vibe): pixel art, selos, pétalas, painel, aviso e comemorações.
 
@@ -517,6 +518,15 @@ export function Toast() {
   )
 }
 
+/** A faixa onde os viajantes entram no veículo e partem (Palco, momento "viagem criada"). */
+function CreatedStage() {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    cueCreated(useApp.getState().doc, ref.current)
+  }, [])
+  return <span ref={ref} className="cel-stage" aria-hidden="true" />
+}
+
 export function Celebrations() {
   const list = useApp((s) => s.celebrations)
   const dismiss = useApp((s) => s.dismiss)
@@ -525,7 +535,7 @@ export function Celebrations() {
       if (c.kind === 'burst') petalBurst(innerWidth / 2, innerHeight - 160, 28)
       if (c.kind === 'page' || c.kind === 'created') petalBurst(innerWidth / 2, innerHeight / 2, 60)
       if (c.kind === 'level') petalBurst(innerWidth / 2, innerHeight / 2, 80)
-      const ms = c.kind === 'level' || c.kind === 'created' ? 2600 : c.kind === 'page' ? 2200 : 1400
+      const ms = c.kind === 'created' ? 3200 : c.kind === 'level' ? 2600 : c.kind === 'page' ? 2200 : 1400
       return setTimeout(() => dismiss(c.id), reduced() ? 900 : ms)
     })
     return () => timers.forEach(clearTimeout)
@@ -573,6 +583,7 @@ export function Celebrations() {
                 <span className="box" role="status">
                   <b>VIAGEM CRIADA!</b>
                   <span>{c.name}</span>
+                  <CreatedStage />
                   <small>o mapa e a trilha já estão prontos para mexer</small>
                 </span>
               </button>

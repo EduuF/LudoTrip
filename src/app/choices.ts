@@ -33,6 +33,7 @@ import type {
 import type { DocAction, TripDoc } from './doc'
 import { uid, useApp } from './store'
 import type { Opt } from '../ui/sheetTypes'
+import { cueLodging, cueTicket } from '../ui/stage/cues'
 
 // Escolhas em vez de erros (spec §5.1): cada opção mostra antes o que vai acontecer.
 
@@ -197,7 +198,8 @@ export function buyTicket(legId: ID) {
   const actions: DocAction[] = [{ type: 'addBooking', booking }]
   if (leg.to === 'home' && it.lock === 'free')
     actions.push({ type: 'engine', command: { type: 'setLock', lock: 'fixed' } })
-  S().act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true })
+  if (S().act(actions.length > 1 ? { type: 'batch', actions } : actions[0]!, { stamp: true }))
+    cueTicket(doc())
 }
 
 /** Marca como reservada a hospedagem das noites ainda descobertas de um destino (com carimbo). */
@@ -213,7 +215,7 @@ export function markLodging(stopId: ID, title?: string, status: 'planned' | 'boo
   // Só as noites seguidas a partir da primeira que falta (uma reserva não cobre um buraco do meio).
   const run = [gap.missing[0]!]
   for (const m of gap.missing.slice(1)) if (m.ordinal === run[run.length - 1]!.ordinal + 1) run.push(m)
-  S().act(
+  const ok = S().act(
     {
       type: 'addBooking',
       booking: {
@@ -228,6 +230,7 @@ export function markLodging(stopId: ID, title?: string, status: 'planned' | 'boo
     },
     { stamp: status === 'booked' },
   )
+  if (ok && status === 'booked') cueLodging(doc(), s.destinationId)
 }
 
 // ---------------------------------------------------------------------------

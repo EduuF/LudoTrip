@@ -5,6 +5,7 @@ import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
 import { PopMenu } from './kit'
 import type { ExampleKey } from '../app/store'
+import { cueCloud } from './stage/cues'
 
 // Suas viagens (com renomear e apagar), exemplos para explorar e criar viagem (spec §17.7).
 
@@ -38,6 +39,11 @@ export function Home() {
     setConfirm(null)
   }, [])
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
+  // Viagens que acabaram de subir: o cartão voa para a nuvem no primeiro delas (docs/animacoes.md).
+  const firstUp = justUploaded[0]
+  useEffect(() => {
+    if (firstUp) cueCloud(null, document.querySelector('.trip-card.uploaded .trip-open, .trip-card.uploaded'))
+  }, [firstUp])
   useEffect(() => {
     document.title = 'LudoTrip'
   }, [])
