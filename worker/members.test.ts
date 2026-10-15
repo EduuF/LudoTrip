@@ -165,7 +165,9 @@ describe('apagar para todos e recuperar', () => {
     await trip('m-apagar', 'm-nina', [['m-otto', 'editor']])
     const otto = await connect('m-apagar', 'm-otto')
     expect((await api('/api/trips/m-apagar', { uid: 'm-otto', method: 'DELETE' })).status).toBe(403)
-    expect((await api('/api/trips/m-apagar', { uid: 'm-nina', name: 'Nina Reis', method: 'DELETE' })).status).toBe(200)
+    expect(
+      (await api('/api/trips/m-apagar', { uid: 'm-nina', name: 'Nina Reis', method: 'DELETE' })).status,
+    ).toBe(200)
     expect(await otto.waitFor((m) => m.t === 'gone')).toEqual({ t: 'gone', reason: 'deleted', by: 'Nina' })
     const listOf = async (uid: string, q = '') =>
       ((await (await api(`/api/trips${q}`, { uid })).json()) as { trips: { id: string }[] }).trips.map(

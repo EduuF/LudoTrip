@@ -41,7 +41,12 @@ export function mergeTrips(local: TripMeta[], remote: RemoteTrip[] | null, signe
     .map((m) => {
       const r = byId.get(m.id)!
       // O papel pode ter mudado com a viagem fechada (o Dono trocou, ou passou a viagem).
-      const cloud = { ...m.cloud!, role: r.role, owner: r.owner, ...(r.members ? { members: r.members } : {}) }
+      const cloud = {
+        ...m.cloud!,
+        role: r.role,
+        owner: r.owner,
+        ...(r.members ? { members: r.members } : {}),
+      }
       return { ...m, name: r.name, updatedAt: Math.max(r.updatedAt, m.updatedAt), cloud }
     })
   const fresh = remote

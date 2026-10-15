@@ -3588,7 +3588,10 @@ html.theme-fading {
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--shade);
-  font: 13px/1.4 ui-monospace, 'Courier New', monospace;
+  font:
+    13px/1.4 ui-monospace,
+    'Courier New',
+    monospace;
   overflow-wrap: anywhere;
   user-select: all;
 }
