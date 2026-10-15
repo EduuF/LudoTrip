@@ -18,6 +18,7 @@ export interface PendingOp {
 }
 
 export type ClientMsg =
+  /** `sinceVersion`: a versão que o aparelho tem; -1 se ainda não tem nada desta viagem. */
   | { t: 'hello'; sinceVersion: number; protocol: number; schemaVersion: number; app: string }
   | { t: 'op'; opId: string; action: DocAction }
 

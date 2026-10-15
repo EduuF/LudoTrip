@@ -27,7 +27,6 @@ describe('API base', () => {
 })
 
 describe('login de teste nunca em produção', () => {
-
   it('sem TEST_AUTH, /api/test/token não existe', async () => {
     const { default: worker } = await import('./index')
     const r = await worker.fetch(
