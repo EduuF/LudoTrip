@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_TRIPS } from '../engine/fixtures/trips'
+import { ALL_TRIPS, asiaAberta } from '../engine/fixtures/trips'
 import type { BuiltTrip } from '../engine/fixtures/build'
 import type { TripDoc } from '../app/doc'
 import { cityFrame, frame, levelOf, spanKm } from './frame'
@@ -15,6 +15,20 @@ const docOf = (t: BuiltTrip): TripDoc => ({
 })
 
 describe('enquadramento do mapa', () => {
+  it('só noites em aberto: a caixa dos países delas', () => {
+    const t = asiaAberta()
+    const doc = docOf(t)
+    const open = { ...doc, itinerary: { ...doc.itinerary, stops: doc.itinerary.stops.slice(0, 2) } }
+    const f = frame(open)!
+    expect(f.points).toEqual([])
+    expect(f.level).toBe('country')
+    const [w, s, e, n] = f.bbox
+    expect(w).toBeLessThan(126.1)
+    expect(e).toBeGreaterThan(145.8)
+    expect(s).toBeLessThan(31)
+    expect(n).toBeGreaterThan(45.5)
+  })
+
   it('Rio: região Rio–Petrópolis, sem Belo Horizonte (a casa nunca entra)', () => {
     const f = frame(docOf(ALL_TRIPS.rio()))!
     expect(f.level).toBe('region')

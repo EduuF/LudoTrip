@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { LegMode } from '../engine'
 import { setLocalBack, useApp } from '../app/store'
+import { tripArea } from '../app/area'
 import type { Opt } from './sheetTypes'
 import { currentTheme } from '../app/theme'
 import { palette, petalBurst, takeBursts } from './petals'
@@ -144,7 +145,7 @@ export function Travelers({ count, height = 30 }: { count: number; height?: numb
 
 export function Petals() {
   const ref = useRef<HTMLCanvasElement>(null)
-  const country = useApp((s) => s.doc?.scope?.country)
+  const country = useApp((s) => (s.doc ? tripArea(s.doc).mainCountry : undefined))
   const theme = useApp((s) => s.theme)
   useEffect(() => {
     const cv = ref.current

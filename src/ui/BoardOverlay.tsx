@@ -3,6 +3,7 @@ import { geoContains } from 'd3-geo'
 import { lodgingGaps, placeStates, tripPhase } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
+import { tripArea } from '../app/area'
 import type { MapAdapter } from '../map/adapter'
 import { easeInOut, reducedMotion } from '../map/adapter'
 import { frame, framePoints, levelOf } from '../map/frame'
@@ -193,7 +194,7 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
     // Decoração semeada pela viagem, em coordenadas (anda junto com o mapa), só em terra e longe das fases.
     const fr = frame(doc)
     const level = fr ? levelOf(fr.bbox) : 'world'
-    const country = doc.scope?.country ?? destById.get(seq[0] ?? '')?.country
+    const country = tripArea(doc).mainCountry
     const key = `${doc.meta.id}:${level}:${fr?.bbox.map((v) => v.toFixed(2)).join(',')}`
     if (settled && fr && level !== 'city' && decoCache.current?.key !== key) {
       const R = rng(key)

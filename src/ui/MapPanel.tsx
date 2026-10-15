@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { days as allDays, placeStates, plural, tripPhase } from '../engine'
 import { countdownTo, todayISO, useApp } from '../app/store'
+import { tripArea } from '../app/area'
 import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 import { LevelLine } from './LevelLine'
@@ -275,8 +276,7 @@ export function MapPanel() {
   const mapView = useApp((s) => s.mapView)
   const setPlacing = useApp((s) => s.setPlacing)
   const it = doc.itinerary
-  const first = doc.destinations.find((d) => d.id === it.stops.find((s) => s.destinationId)?.destinationId)
-  const wm = doc.scope?.localName ?? first?.localName ?? doc.scope?.name ?? first?.name ?? ''
+  const wm = tripArea(doc).localLabel
   const { playing, toggle } = usePlay()
   const shoji = useShoji(mapView.kind === 'city' ? mapView.destId : 'trip')
   const canPlay = allDays(it, doc.places).length > 1

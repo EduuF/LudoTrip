@@ -1,9 +1,10 @@
 import { placeStates } from '../engine'
 import type { BBox, ID } from '../engine'
 import type { TripDoc } from '../app/doc'
+import { fallbackBox } from '../app/area'
 
 // Enquadramento do mapa (spec §8): só os destinos da viagem (paradas e bate-voltas), nunca a casa.
-// Sem nenhum destino localizado, vale o escopo (país, região ou cidade). Funções puras.
+// Sem nenhum destino localizado, vale o país das noites em aberto ou o escopo antigo (`fallbackBox`). Funções puras.
 
 export type Level = 'city' | 'region' | 'country' | 'world'
 
@@ -90,12 +91,8 @@ export function bboxOf(points: { lon: number; lat: number }[]): BBox {
 
 export function frame(doc: TripDoc): Frame | null {
   const points = framePoints(doc)
-  let raw: BBox
-  if (points.length) raw = bboxOf(points)
-  else if (doc.scope?.bbox) raw = doc.scope.bbox
-  else if (doc.scope?.lat !== undefined && doc.scope.lon !== undefined)
-    raw = [doc.scope.lon - 0.12, doc.scope.lat - 0.1, doc.scope.lon + 0.12, doc.scope.lat + 0.1]
-  else return null
+  const raw: BBox | null = points.length ? bboxOf(points) : fallbackBox(doc)
+  if (!raw) return null
   const bbox = pad(raw)
   return { bbox, level: levelOf(bbox), points }
 }
