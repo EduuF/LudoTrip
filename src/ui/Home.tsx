@@ -197,18 +197,38 @@ export function Home() {
                           type="button"
                           role="menuitem"
                           className="danger"
-                          // Segundo toque para apagar a viagem inteira (spec §17.12).
+                          // Segundo toque para apagar a viagem inteira (spec §17.12). Com outras pessoas
+                          // dentro, um painel com o nome da viagem (spec publicação §4.5): afeta todos.
                           onClick={() => {
+                            const others = (t.cloud?.members ?? 1) - 1
+                            if (others > 0) {
+                              setMenu(null)
+                              return openSheet({
+                                kind: 'choice',
+                                title: `Apagar ${t.name} para todos?`,
+                                sub: `${others === 1 ? 'A outra pessoa deixa' : `As outras ${others} pessoas deixam`} de ver a viagem. Ela fica em Apagadas por 30 dias, e você pode recuperar.`,
+                                options: [
+                                  {
+                                    label: `Apagar ${t.name} para todos`,
+                                    run: () => {
+                                      useApp.getState().closeSheet()
+                                      void removeTrip(t.id)
+                                    },
+                                  },
+                                  {
+                                    label: 'Cancelar',
+                                    main: true,
+                                    run: () => useApp.getState().closeSheet(),
+                                  },
+                                ],
+                              })
+                            }
                             if (confirm !== t.id) return setConfirm(t.id)
                             setMenu(null)
                             void removeTrip(t.id)
                           }}
                         >
-                          {confirm === t.id
-                            ? (t.cloud?.members ?? 1) > 1
-                              ? 'Toque de novo para apagar para todos'
-                              : 'Toque de novo para apagar'
-                            : 'Apagar'}
+                          {confirm === t.id ? 'Toque de novo para apagar' : 'Apagar'}
                         </button>
                       )}
                     </PopMenu>

@@ -110,6 +110,7 @@ export function memoryCloud(uidOf: () => string | null) {
           createdAt: t.createdAt,
           role: roleIn(id, uid)!,
           owner: t.owner,
+          members: members.get(id)?.length ?? 1,
         }))
     },
     async upload(doc) {

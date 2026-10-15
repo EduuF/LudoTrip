@@ -247,3 +247,21 @@ describe('aceitar o convite', () => {
     expect(S().screen).toBe('home')
   })
 })
+
+describe('apagar para todos', () => {
+  it('viagem com outras pessoas: painel com o nome, e só então apaga', async () => {
+    const id = await criarNaNuvem()
+    cloud.members
+      .get(id)!
+      .push({ uid: 'bia', name: 'Bia', fullName: null, photo: null, role: 'editor', joinedAt: 1 })
+    act(() => S().goHome())
+    await waitFor(() => expect(S().trips.find((t) => t.id === id)?.cloud?.members).toBe(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Mais opções de Japão na nuvem' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Apagar' }))
+    const d = await dialog()
+    expect(d.getByText('Apagar Japão na nuvem para todos?')).toBeTruthy()
+    expect(d.getByText(/A outra pessoa deixa de ver a viagem/)).toBeTruthy()
+    fireEvent.click(d.getByRole('button', { name: /Apagar Japão na nuvem para todos/ }))
+    await waitFor(() => expect(S().deleted.map((t) => t.id)).toEqual([id]))
+  })
+})
