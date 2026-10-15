@@ -1,5 +1,5 @@
 import { placeStates } from '../engine'
-import type { ID } from '../engine'
+import type { BBox, ID } from '../engine'
 import type { TripDoc } from '../app/doc'
 
 // Enquadramento do mapa (spec §8): só os destinos da viagem (paradas e bate-voltas), nunca a casa.
@@ -7,8 +7,7 @@ import type { TripDoc } from '../app/doc'
 
 export type Level = 'city' | 'region' | 'country' | 'world'
 
-/** [oeste, sul, leste, norte] em graus. */
-export type BBox = [number, number, number, number]
+export type { BBox }
 
 export interface FramePoint {
   destId: ID

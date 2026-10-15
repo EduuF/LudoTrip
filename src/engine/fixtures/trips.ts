@@ -381,6 +381,33 @@ export const caminho = (): BuiltTrip =>
 
 export const ALL_TRIPS = { japao, rio, portugal, europa, cruzeiro, caminho }
 
+/** Noites em aberto por país (Japão e Coreia sem cidade decidida), com Seul no meio. Só para testes. */
+export const asiaAberta = (): BuiltTrip =>
+  buildTrip({
+    name: 'Ásia: cidades em aberto',
+    start: '2030-03-01',
+    lock: 'free',
+    defaultMode: 'train',
+    home: SAO_PAULO,
+    destinations: {
+      seul: { name: 'Seul', country: 'KR', lat: 37.57, lon: 126.98, tz: 'Asia/Seoul' },
+      busan: { name: 'Busan', country: 'KR', lat: 35.18, lon: 129.08, tz: 'Asia/Seoul' },
+      kyoto: { name: 'Kyoto', country: 'JP', lat: 35.01, lon: 135.77, tz: 'Asia/Tokyo' },
+    },
+    stops: [
+      [{ openIn: { country: 'JP', name: 'Japão', localName: '日本', bbox: [129.4, 31, 145.8, 45.5] } }, 3],
+      [{ openIn: { country: 'KR', name: 'Coreia do Sul', bbox: [126.1, 33.1, 129.6, 38.6] } }, 2],
+      ['seul', 3, [['Gyeongbokgung'], [], ['Bukchon']]],
+    ],
+    places: {
+      seul: [
+        ['Gyeongbokgung', 'must', 37.5796, 126.977, 'sight'],
+        ['Bukchon', 'want', 37.5826, 126.983, 'sight'],
+      ],
+      kyoto: [['Fushimi Inari', 'must', 34.9671, 135.7727, 'sight']],
+    },
+  })
+
 /** Viagem longa de propósito (spec §17.10): 50 destinos e 120 noites pela Itália, para medir as escolhas
  *  que crescem com a viagem. Não entra em "Explorar exemplos". */
 export const italiaLonga = (): BuiltTrip => {

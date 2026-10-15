@@ -1,4 +1,5 @@
 import { tripRange } from '../src/engine'
+import type { Itinerary } from '../src/engine'
 import { memberCount, roleOf, upsertUser } from './db'
 import type { Role } from './db'
 import { fail, json } from './http'
@@ -195,12 +196,13 @@ export async function inviteRoutes(c: Ctx): Promise<Response> {
       ? [
           ...new Set(
             doc.itinerary.stops
-              .map((s) => doc.destinations.find((d) => d.id === s.destinationId)?.name)
+              .map((s) => doc.destinations.find((d) => d.id === s.destinationId)?.name ?? s.openIn?.name)
               .filter((n): n is string => !!n),
           ),
         ]
       : []
-    const range = doc ? tripRange(doc.itinerary) : { start: trip.start, end: trip.end }
+    // O RPC devolve tuplas como listas (`bbox`); o motor só lê as datas.
+    const range = doc ? tripRange(doc.itinerary as Itinerary) : { start: trip.start, end: trip.end }
     const traveler = inv.traveler_id
       ? doc?.itinerary.travelers.find((t) => t.id === inv.traveler_id)
       : undefined

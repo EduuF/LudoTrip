@@ -1,10 +1,13 @@
 import { emptyEffects, normalize } from './core'
 import type { OpContext } from './core'
-import type { ID, ISODate, Itinerary, LegMode, Lock, Traveler } from './types'
+import type { ID, ISODate, Itinerary, LegMode, Lock, OpenIn, Traveler } from './types'
 
 export interface NewTripSpec {
-  /** Destinos na ordem da viagem (podem repetir); `null` = noites em aberto ("decido depois"). */
-  destinationIds: (ID | null)[]
+  /**
+   * Destinos na ordem da viagem (podem repetir); `null` = noites em aberto ("decido depois");
+   * `{ openIn }` = noites em aberto num país ("Japão, cidades em aberto").
+   */
+  destinationIds: (ID | null | { openIn: OpenIn })[]
   nights: number
   start: ISODate | null
   defaultMode: LegMode
@@ -29,9 +32,11 @@ export function createItinerary(spec: NewTripSpec, ctx: OpContext): Itinerary {
     pace: 'normal',
     travelers: spec.travelers,
     ...(spec.home ? { home: spec.home } : {}),
-    stops: (n ? spec.destinationIds : [null]).map((destinationId, i) => ({
+    stops: (n ? spec.destinationIds : [null]).map((d, i) => ({
       id: ctx.newId(),
-      destinationId,
+      ...(d !== null && typeof d === 'object'
+        ? { destinationId: null, openIn: d.openIn }
+        : { destinationId: d }),
       days: Array.from({ length: n ? base + (i < extra ? 1 : 0) : total }, () => []),
       lodging: 'hotel' as const,
     })),

@@ -10,6 +10,7 @@ import type {
   LegMode,
   Lock,
   Lodging,
+  OpenIn,
   Place,
   PlaceKind,
   Rarity,
@@ -33,7 +34,7 @@ export interface TripSpec {
   scope?: Scope
   destinations: Record<string, Omit<Destination, 'id' | 'kind'> & { kind?: Destination['kind'] }>
   /** [chave do destino, noites, planos por dia (nomes de itens), pouso?] */
-  stops: [string | null, number, string[][]?, Lodging?][]
+  stops: [string | null | { openIn: OpenIn }, number, string[][]?, Lodging?][]
   /** Itens da mochila por destino: [nome, raridade, lat?, lon?, tipo?]. */
   places: Record<string, [string, Rarity, number?, number?, PlaceKind?][]>
   /** Modo de trechos específicos: [de, para, modo] usando chaves de destino ou "home". */
@@ -101,7 +102,11 @@ export function buildTrip(spec: TripSpec): BuiltTrip {
     ...(spec.home ? { home: spec.home } : {}),
     stops: spec.stops.map(([key, nights, plans, lodging], i) => ({
       id: `s${i + 1}`,
-      destinationId: key === null ? null : destId(key),
+      ...(key === null
+        ? { destinationId: null }
+        : typeof key === 'object'
+          ? { destinationId: null, openIn: key.openIn }
+          : { destinationId: destId(key) }),
       days: Array.from({ length: nights }, (_, d) =>
         (plans?.[d] ?? []).map((name) => ({
           id: `v${++visitN}`,

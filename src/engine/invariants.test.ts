@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
-import { ALL_TRIPS } from './fixtures/trips'
+import { ALL_TRIPS, asiaAberta } from './fixtures/trips'
 import { counterIds } from './fixtures/build'
 import { toCommand } from './fixtures/arbitrary'
 import { addDays } from './dates'
-import { allVisits, timeline } from './core'
+import { allVisits, sameSpot, timeline } from './core'
 import { dispatch } from './commands'
 import type { Command } from './commands'
 import { applyUndo, deepEqual } from './patch'
@@ -66,9 +66,9 @@ function check(before: Itinerary, after: Itinerary, cmd: Command, returned: ID[]
     where,
   ).toEqual([...Array(timeline(after).total + 1).keys()])
   if (after.start) for (const x of ds) expect(x.date, where).toBe(addDays(after.start, x.index))
-  // 9. Nada de cidades iguais lado a lado (nem dois espaços em aberto).
+  // 9. Nada de cidades iguais lado a lado (nem dois espaços em aberto do mesmo país).
   for (let i = 1; i < after.stops.length; i++)
-    expect(after.stops[i]!.destinationId, where).not.toBe(after.stops[i - 1]!.destinationId)
+    expect(sameSpot(after.stops[i - 1]!, after.stops[i]!), where).toBe(false)
   // 10. Regra da ponta: cada cidade anda inteira (um só deslocamento); quem foi editado mantém as datas.
   const pa = positions(before)
   const pb = positions(after)
@@ -95,10 +95,12 @@ function check(before: Itinerary, after: Itinerary, cmd: Command, returned: ID[]
     if (id && deltas.has(id)) expect([...deltas.get(id)!], `${where} ponta ${id}`).toEqual([0])
   // 11. Noites em aberto nunca têm visitas.
   for (const s of after.stops) if (s.destinationId === null) expect(s.days.flat(), where).toEqual([])
+  // 12. Só noites em aberto lembram o país.
+  for (const s of after.stops) if (s.destinationId !== null) expect(s.openIn, where).toBeUndefined()
   expect(after.returned.length, where).toBeLessThanOrEqual(50)
 }
 
-describe.each(Object.entries(ALL_TRIPS))('invariantes: %s', (_name, make) => {
+describe.each(Object.entries({ ...ALL_TRIPS, asiaAberta }))('invariantes: %s', (_name, make) => {
   it(`${RUNS} sequências aleatórias de até 30 comandos`, () => {
     const trip = make()
     fc.assert(

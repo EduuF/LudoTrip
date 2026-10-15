@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { japao, rio } from '../fixtures/trips'
+import { asiaAberta, japao, rio } from '../fixtures/trips'
 import { datesOf, legById, refuse, run, shape, stopOf } from '../fixtures/helpers'
 import { tripRange } from '../derive'
 
@@ -268,5 +268,38 @@ describe('setDestination', () => {
     expect(refuse(r.state, { type: 'setDestination', stopId: 's4', destinationId: 'd-hakone' }).code).toBe(
       'NO_CHANGE',
     )
+  })
+})
+
+describe('noites em aberto num país (openIn)', () => {
+  it('preencher todas as noites tira o país; preencher parte deixa o resto em aberto no país', () => {
+    const t = asiaAberta()
+    const all = run(t.itinerary, { type: 'fillOpen', stopId: 's1', destinationId: 'd-kyoto' }).state
+    expect(stopOf(all, 's1')).toMatchObject({ destinationId: 'd-kyoto' })
+    expect(stopOf(all, 's1').openIn).toBeUndefined()
+    for (const side of ['start', 'end'] as const) {
+      const part = run(t.itinerary, {
+        type: 'fillOpen',
+        stopId: 's1',
+        destinationId: 'd-kyoto',
+        nights: 2,
+        side,
+      }).state
+      expect(stopOf(part, 's1')).toMatchObject({ destinationId: null, openIn: { country: 'JP' } })
+      expect(stopOf(part, 's1').days).toHaveLength(1)
+      const kyoto = part.stops.find((s) => s.destinationId === 'd-kyoto')!
+      expect(kyoto.openIn).toBeUndefined()
+    }
+  })
+
+  it('países diferentes ficam separados; noites em aberto sem país entram nas do país vizinho', () => {
+    const t = asiaAberta()
+    expect(t.itinerary.stops.map((s) => s.openIn?.country ?? s.destinationId)).toEqual(['JP', 'KR', 'd-seul'])
+    // Seul vai para a lixeira: vira noites em aberto sem país, que se juntam à Coreia.
+    const r = run(t.itinerary, { type: 'removeStop', stopId: 's3' }).state
+    expect(r.stops.map((s) => [s.openIn?.country ?? s.destinationId, s.days.length])).toEqual([
+      ['JP', 3],
+      ['KR', 5],
+    ])
   })
 })
