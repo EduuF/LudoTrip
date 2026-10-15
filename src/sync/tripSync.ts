@@ -67,6 +67,8 @@ export class TripSync {
   private stopped = false
   private attempt = 0
   private waiting = false
+  /** Geração da conexão: eventos de uma conexão antiga (fechada por `pause`) são ignorados. */
+  private gen = 0
 
   private readonly o: TripSyncOptions
 
@@ -92,9 +94,24 @@ export class TripSync {
 
   stop(): void {
     this.stopped = true
+    this.gen++
     this.open = false
     this.ch?.close()
     this.ch = null
+  }
+
+  /**
+   * O aparelho avisou que ficou sem rede (evento `offline`): fecha já, em vez de esperar uma conexão
+   * pendurada cair sozinha. O ícone mostra "sem internet" na hora; `poke()` reconecta.
+   */
+  pause(): void {
+    if (!this.ch) return
+    const ch = this.ch
+    this.gen++
+    this.ch = null
+    this.open = false
+    ch.close()
+    this.emit()
   }
 
   /** A rede voltou (evento `online`) ou a tela voltou ao primeiro plano: tenta já. */
@@ -123,10 +140,11 @@ export class TripSync {
 
   private connectNow() {
     if (this.stopped) return
+    const gen = ++this.gen
     this.ch = this.o.connect({
-      onOpen: () => this.onOpen(),
-      onMessage: (m) => this.onMessage(m),
-      onClose: (info) => this.onClose(info),
+      onOpen: () => gen === this.gen && this.onOpen(),
+      onMessage: (m) => gen === this.gen && this.onMessage(m),
+      onClose: (info) => gen === this.gen && this.onClose(info),
     })
   }
 

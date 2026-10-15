@@ -646,6 +646,7 @@ export const useApp = create<AppState>((set, get) => {
               if (g.length) void get().uploadTrips(g.map((x) => x.id))
             })
         })
+        addEventListener('offline', () => sync?.pause())
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') sync?.poke()
         })
