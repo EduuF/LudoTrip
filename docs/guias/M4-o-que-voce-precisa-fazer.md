@@ -68,30 +68,47 @@ Com isso, eu crio o banco D1 e os Workers daqui do seu computador. Você pode re
 
 ## 2. Firebase (só o login)
 
-Vamos criar **dois projetos**:
+São **dois projetos**, cada um com os passos por extenso:
 
-- `ludotrip-dev`, para os testes;
-- `ludotrip`, para o público.
+- `ludotrip-dev`, para os testes (staging): passos 2.1 a 2.4. ✅ **Feito.**
+- `ludotrip`, para o público: passo 2.5, com tudo, inclusive o plano Blaze. **Continue daqui.**
 
-Faça os passos 2.1 a 2.4 primeiro com o `ludotrip-dev`; depois **crie o segundo projeto**, `ludotrip`, e faça os mesmos passos 2.1 a 2.4 nele. O 2.5 é só para o `ludotrip`.
+### 2.1 a 2.4: projeto `ludotrip-dev` ✅
 
-### 2.1 Criar o projeto
+Já concluído:
 
-1. Entre em https://console.firebase.google.com → **Criar um projeto** (ou **Create a project** / **Get started with a Firebase project**).
-2. Nome: `ludotrip-dev`. Aceite o id sugerido ou ajuste para `ludotrip-dev`. → **Continuar**.
-3. **Gemini / Assistência de IA no Firebase:** pode desligar. → **Continuar**.
-4. **Google Analytics:** **desligue** (não vamos usar). → **Criar projeto** → espere → **Continuar**.
+- app web registrado (config recebida);
+- Google e link por e-mail ligados;
+- domínio autorizado `ludotrip-staging.ludotrip.workers.dev`;
+- no Google Cloud (projeto `ludotrip-dev`, Google Auth Platform → Clientes → Web client): URI `https://ludotrip-staging.ludotrip.workers.dev/__/auth/handler` e origem `https://ludotrip-staging.ludotrip.workers.dev`.
 
-### 2.2 Registrar o app web
+Se ainda não conferiu, falta só isto: Google Cloud, projeto `ludotrip-dev` → **Google Auth Platform** → **Branding** (Marca) → **Nome do app** `LudoTrip` e **E-mail de suporte**, o seu → **Salvar**.
 
-1. Na página inicial do projeto, clique no ícone **`</>`** (Web). Se não aparecer: ⚙️ **Configurações do projeto** → **Geral** → **Seus apps** → **Adicionar app** → **Web**.
-2. **Apelido do app:** `web`. **Não** marque "Configurar o Firebase Hosting". → **Registrar app**.
-3. Aparece um bloco `const firebaseConfig = { apiKey: ..., authDomain: ..., projectId: ..., appId: ... }`.
-   - 📋 Copie os valores de `apiKey`, `projectId`, `appId` e `messagingSenderId` e me mande.
-   - Esses valores são **públicos** por natureza: vão para o site de qualquer jeito.
-4. Clique em **Continuar no console**.
+### 2.5 Projeto de produção `ludotrip` (você o criou no Google Cloud)
 
-### 2.3 Ligar os métodos de login
+O projeto `ludotrip` existe no Google Cloud, mas ainda **não tem o Firebase**. Por isso o Google Auth Platform mostra "Google Auth Platform not configured yet". **Não clique em "Get started" lá:** quem configura isso é o Firebase, no passo 2.5.3. Configurar à mão cria uma tela de consentimento separada, que depois precisa ser corrigida.
+
+#### 2.5.1 Ligar o Firebase ao projeto do Google Cloud
+
+1. Entre em https://console.firebase.google.com.
+2. Clique em **Criar um projeto** (ou **Adicionar projeto** / **Create a project**).
+3. Na tela "Insira o nome do projeto", **não digite um nome novo**. Abaixo do campo, clique no link **"Adicionar o Firebase a um projeto do Google Cloud"** (em inglês: _Add Firebase to Google Cloud project_).
+4. Na lista que aparece, escolha **`ludotrip`**.
+5. Marque a aceitação dos termos (se aparecer) → **Continuar**.
+6. Se aparecer uma tela sobre o plano de cobrança, mantenha o atual por enquanto: o Blaze entra no 2.5.6.
+7. **Gemini / Assistência de IA no Firebase:** pode desligar → **Continuar**.
+8. **Google Analytics:** **desligue** → **Adicionar o Firebase** (ou **Continuar**).
+9. Espere terminar → **Continuar**. O projeto `ludotrip` abre no console do Firebase.
+
+#### 2.5.2 Registrar o app web
+
+1. Na página inicial do projeto `ludotrip`, clique no ícone **`</>`** (Web). Se não aparecer: ⚙️ **Configurações do projeto** → **Geral** → **Seus apps** → **Adicionar app** → **Web**.
+2. **Apelido do app:** `web`. **Não** marque "Configurar o Firebase Hosting" → **Registrar app**.
+3. Aparece o bloco `const firebaseConfig = { ... }`. 📋 Me mande `apiKey`, `projectId`, `appId` e `messagingSenderId`.
+   - Confira se o `projectId` é **exatamente** `ludotrip`. Se for outro (por exemplo `ludotrip-12345`), me avise, que eu ajusto do meu lado.
+4. **Continuar no console**.
+
+#### 2.5.3 Ligar os métodos de login
 
 1. Menu da esquerda: **Criação** (Build) → **Authentication** → **Vamos começar** (Get started).
 2. Aba **Método de login** (Sign-in method).
@@ -100,47 +117,43 @@ Faça os passos 2.1 a 2.4 primeiro com o `ludotrip-dev`; depois **crie o segundo
    2. **Nome do projeto exibido** (public-facing name): `LudoTrip`;
    3. **E-mail de suporte:** o seu;
    4. **Salvar**.
+
+   É **este passo** que configura o Google Auth Platform: ele cria a tela "Escolha uma conta" e o cliente "Web client (auto created by Google Service)".
+
 4. **Link por e-mail:**
-   1. clique em **Adicionar novo provedor** → **E-mail/senha**;
-   2. ligue o **primeiro** botão, **E-mail/senha**. O link por e-mail depende dele; o app não vai mostrar campo de senha;
+   1. **Adicionar novo provedor** → **E-mail/senha**;
+   2. ligue o **primeiro** botão, **E-mail/senha** (o app não mostra campo de senha);
    3. ligue o **segundo**, **Link do e-mail (login sem senha)**;
    4. **Salvar**.
 
-### 2.4 Domínios autorizados
+#### 2.5.4 Domínio autorizado
 
 1. Ainda em **Authentication** → aba **Configurações** (Settings) → **Domínios autorizados** → **Adicionar domínio**.
-2. Adicione o domínio do ambiente, **sem** `https://`:
-   - **em `ludotrip-dev`:** `ludotrip-staging.ludotrip.workers.dev`, com o subdomínio do passo 1.2;
-   - **em `ludotrip`:** `ludotrip.ludotrip.workers.dev`. O domínio próprio entra no M6.
-3. Clique em **Adicionar**.
+2. Digite, **sem** `https://`: `ludotrip.ludotrip.workers.dev` → **Adicionar**.
 
-**Endereço de volta do login do Google** (necessário para o login funcionar no iPhone):
+#### 2.5.5 Endereço de volta do login do Google
 
-1. Abra https://console.cloud.google.com e, no seletor de projetos no topo, escolha `ludotrip-dev`.
-2. Menu ☰ → **Google Auth Platform** → **Clientes** (Clients). Em contas antigas: **APIs e serviços** → **Credenciais**.
+1. Abra https://console.cloud.google.com e, no seletor de projetos no topo, escolha **`ludotrip`**.
+2. Menu ☰ → **Google Auth Platform** → **Clientes** (Clients).
+   - Se ainda aparecer "Google Auth Platform not configured yet", espere uns minutos depois do 2.5.3 e recarregue a página. Não clique em "Get started".
 3. Clique em **Web client (auto created by Google Service)**.
-4. Em **URIs de redirecionamento autorizados**, clique em **+ Adicionar URI** e cole:
-   `https://ludotrip-staging.ludotrip.workers.dev/__/auth/handler`.
-5. Em **Origens JavaScript autorizadas**, clique em **+ Adicionar URI** e cole:
-   `https://ludotrip-staging.ludotrip.workers.dev`.
-6. Clique em **Salvar**. Pode levar de 5 minutos a algumas horas para valer.
-7. Quando o projeto `ludotrip` existir (ele é criado no seu próprio 2.1), repita estes passos nele, com `ludotrip.ludotrip.workers.dev`.
-8. Não apague nada que já estiver lá.
-9. Ainda em **Google Auth Platform** → **Branding** (Marca), confira:
-   - **Nome do app:** `LudoTrip`;
-   - **E-mail de suporte:** o seu.
+4. Em **URIs de redirecionamento autorizados** → **+ Adicionar URI** → cole:
+   `https://ludotrip.ludotrip.workers.dev/__/auth/handler`
+5. Em **Origens JavaScript autorizadas** → **+ Adicionar URI** → cole:
+   `https://ludotrip.ludotrip.workers.dev`
+6. **Salvar**. Não apague nada que já estiver lá. Pode levar de 5 minutos a algumas horas para valer.
+7. Ainda em **Google Auth Platform** → **Branding** (Marca): **Nome do app** `LudoTrip`, **E-mail de suporte**, o seu → **Salvar**. É o que aparece na tela "Escolha uma conta".
 
-   É o que aparece na tela "Escolha uma conta".
-
-### 2.5 Plano Blaze e alerta de orçamento (só no `ludotrip`)
+#### 2.5.6 Plano Blaze e alerta de orçamento
 
 **Por quê:** no plano grátis, o login por link de e-mail é limitado a **5 e-mails por dia**. No Blaze o limite é 25 mil por dia. O login continua grátis até 50 mil pessoas ativas por mês, e não vamos ligar nenhum outro produto pago.
 
 1. No console do Firebase, projeto `ludotrip`. No canto inferior esquerdo aparece **Spark** / **Plano sem custo** → **Fazer upgrade** (Upgrade).
-2. Escolha **Blaze**. Selecione ou crie uma conta de faturamento do Google Cloud com o seu cartão. → **Continuar**.
-3. O Firebase oferece **criar um orçamento**. Coloque **US$ 1** e confirme.
+2. Escolha **Blaze**. Selecione ou crie uma conta de faturamento do Google Cloud com o seu cartão → **Continuar**.
+   - Se o projeto já estiver ligado a uma conta de faturamento (porque foi criado no Google Cloud), basta confirmar.
+3. O Firebase oferece **criar um orçamento**: coloque **US$ 1** e confirme.
    - Se não oferecer: https://console.cloud.google.com/billing → a conta de faturamento → **Orçamentos e alertas** → **Criar orçamento**.
-   - Escopo: projeto `ludotrip`. Valor: US$ 1. Alertas: 50%, 90% e 100%. **Concluir**.
+   - Escopo: projeto `ludotrip`. Valor: US$ 1. Alertas: 50%, 90% e 100% → **Concluir**.
    - É só um aviso por e-mail: não para nada. Se chegar um, me avise.
 
 ---
@@ -189,12 +202,12 @@ Fica para o M6, quando houver o domínio de verdade.
 
 ## Checklist para me mandar (só valores públicos)
 
-- [ ] Subdomínio `*.workers.dev` e Account ID (1.2)
+- [x] Subdomínio (`ludotrip.workers.dev`) e Account ID (1.2)
 - [ ] `npx wrangler login` feito (1.4)
-- [ ] `firebaseConfig` do `ludotrip-dev` e do `ludotrip`: `apiKey`, `projectId`, `appId`, `messagingSenderId` (2.2)
-- [ ] Google e Link do e-mail ligados nos dois (2.3)
-- [ ] Domínios e URIs de redirecionamento adicionados nos dois (2.4)
-- [ ] `ludotrip` no Blaze com orçamento de US$ 1 (2.5)
+- [x] `firebaseConfig` do `ludotrip-dev` (2.1–2.4)
+- [ ] `firebaseConfig` do `ludotrip`: `apiKey`, `projectId`, `appId`, `messagingSenderId` (2.5.2)
+- [ ] `ludotrip`: Google e Link do e-mail ligados, domínio e URI de redirecionamento (2.5.3–2.5.5)
+- [ ] `ludotrip` no Blaze com orçamento de US$ 1 (2.5.6)
 - [ ] Sentry: DSN, slug da organização e do projeto (3)
 - [ ] PostHog: Project API key (4)
 - [ ] 3 secrets no GitHub (6)
