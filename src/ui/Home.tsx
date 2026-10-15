@@ -206,6 +206,13 @@ export function Home() {
           </button>
         ))}
       </div>
+      {cloudEnabled ? (
+        <footer className="home-foot">
+          <button type="button" className="link-btn" onClick={() => openSheet({ kind: 'privacy' })}>
+            Privacidade
+          </button>
+        </footer>
+      ) : null}
     </div>
   )
 }

@@ -53,6 +53,8 @@ export type SheetSpec =
   | { kind: 'adopt'; trips: { id: ID; name: string }[] }
   /** Instalar o app (tela de início): os passos, no iPhone ou no Android. */
   | { kind: 'install' }
+  /** Privacidade: o que fica guardado e o interruptor das estatísticas de uso. */
+  | { kind: 'privacy' }
   /** Guardar na nuvem a viagem aberta (o "☁️ Salvar" do topo). */
   | { kind: 'cloudSave' }
 
@@ -65,4 +67,11 @@ export type SignInIntent =
   | { kind: 'none' }
 
 /** Painéis que não dependem de uma viagem aberta (aparecem também em "Suas viagens"). */
-export const NO_DOC_SHEETS = new Set<SheetSpec['kind']>(['choice', 'signin', 'account', 'adopt', 'install'])
+export const NO_DOC_SHEETS = new Set<SheetSpec['kind']>([
+  'choice',
+  'signin',
+  'account',
+  'adopt',
+  'install',
+  'privacy',
+])

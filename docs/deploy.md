@@ -35,7 +35,7 @@ Ele só liga quando a variável do repositório `CLOUDFLARE_READY` vale `1`, o q
   - Cada ação numa viagem é uma linha `msg: "op"`, com `trip`, `opId`, `type`, `result` (`applied` / `noop` / `rejected`), `code` e `version`.
   - Para filtrar uma viagem, use `trip = "<id>"`.
 - **Erros no celular:** Sentry → projeto `ludotrip`. O erro já aponta a linha do código.
-- **Uso do app:** PostHog (UE) → eventos `app_aberto`, `viagem_criada`, `edicao`, `login_oferecido`, `login_feito`, `viagens_subiram`, `conflito`, `offline_fila` e `painel_aberto`. Só chegam de quem disse "Pode".
+- **Uso do app:** PostHog (UE) → eventos `app_aberto`, `viagem_criada`, `edicao`, `login_oferecido`, `login_feito`, `viagens_subiram`, `conflito`, `offline_fila` e `painel_aberto`. Não chegam de quem desligou "Estatísticas de uso" em Privacidade.
 - **Histórico completo de uma viagem:**
   - O `TripRoom` guarda todas as ações aplicadas (tabela `ops`), não só o estado final. Os logs duram 7 dias; esse histórico fica.
   - Ele serve para reconstruir passo a passo como uma viagem chegou a um estado ruim, com o mesmo `runDoc`.

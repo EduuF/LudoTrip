@@ -377,9 +377,10 @@ ops (seq PK AUTOINCREMENT, op_id UNIQUE, uid, action_json, result, at)
   - login oferecido → feito;
   - convite criado → aceito.
 - **Gravação de sessão:** todo texto e todos os campos mascarados, para ver a navegação sem ler conteúdo.
-- **Consentimento:** na primeira abertura, uma faixa curta no tom do app: "Podemos medir como o app é usado (sem ler suas viagens)?" [Pode] [Prefiro não].
-  - Sem resposta, nada é enviado.
-  - A escolha pode ser mudada em "Sua conta".
+- **Opt-out (mudou com o retorno do staging, 2026-10-15):** sem faixa de pergunta. A faixa induzia a recusar e, sem resposta, nada era medido.
+  - As estatísticas de uso ficam ligadas por padrão, por legítimo interesse: não levam conteúdo (nada que a pessoa escreve, nem nomes), a pessoa é um código e a gravação mascara todo texto.
+  - Desligar: interruptor "Estatísticas de uso · ajudam a melhorar o LudoTrip. Não incluem o que você escreve." em "Privacidade" (menu ⋯ da viagem e rodapé de "Suas viagens") e em "Sua conta". Desligado, o PostHog nem carrega.
+  - LGPD precisa de atenção se o app escalar (spec §6.4): a política de privacidade do M6 explica a base legal.
   - Logs técnicos e o Sentry são necessários para o serviço funcionar e não dependem dessa escolha; a política de privacidade explica.
 
 ### 5.8 Recuperação
@@ -472,7 +473,7 @@ Cada marco termina com revisão do mantenedor. **Cada um começa com o guia "O q
 - Fila offline, ícone de nuvem, subida das viagens e todos os casos da §3.5.
 - Endereços `/v/<id>`.
 - A dica "Adicionar à tela inicial" do iPhone (§3.2), usando o manifest que já existe desde o M3.
-- Workers Logs, Sentry e PostHog com consentimento.
+- Workers Logs, Sentry e PostHog (estatísticas ligadas por padrão, desligáveis em Privacidade).
 - **Revisão:** o mantenedor usa sem conta, entra, abre em outro celular e edita offline.
 
 ### M5: colaboração

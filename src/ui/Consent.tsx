@@ -1,39 +1,18 @@
 import { useState } from 'react'
-import { useApp } from '../app/store'
 import { getConsent, metricsAvailable, setConsent } from '../app/telemetry'
 
-// Pergunta, uma vez, se pode medir o uso (spec publicação §5.7). Sem resposta, nada é enviado.
-export function Consent() {
-  const [open, setOpen] = useState(() => metricsAvailable() && getConsent() === null)
-  // Nunca por cima de um painel (escondia "Receber link por e-mail" no ENTRAR): espera ele fechar.
-  const sheetOpen = useApp((s) => !!s.sheet)
-  if (!open || sheetOpen) return null
-  const answer = (v: 'yes' | 'no') => {
-    setOpen(false)
-    void setConsent(v)
-  }
-  return (
-    <div className="consent" role="dialog" aria-label="Medir o uso do app">
-      <p>Podemos medir como o app é usado, sem ler suas viagens? Isso nos ajuda a deixá-lo mais fácil.</p>
-      <div className="row">
-        <button type="button" className="btn small main" onClick={() => answer('yes')}>
-          Pode
-        </button>
-        <button type="button" className="btn small ghost" onClick={() => answer('no')}>
-          Prefiro não
-        </button>
-      </div>
-    </div>
-  )
-}
+// Estatísticas de uso (spec publicação §5.7): ligadas por padrão, sem pergunta. Quem quiser desliga
+// aqui. Nenhum texto que a pessoa escreve entra nelas.
 
-/** O mesmo, depois: um interruptor em "Sua conta". */
 export function ConsentToggle() {
   const [on, setOn] = useState(() => getConsent() === 'yes')
   if (!metricsAvailable()) return null
   return (
     <label className="toggle-row">
-      <span>Medir o uso do app (sem ler suas viagens)</span>
+      <span>
+        <b>Estatísticas de uso</b>
+        <small>Ajudam a melhorar o LudoTrip. Não incluem o que você escreve.</small>
+      </span>
       <input
         type="checkbox"
         role="switch"
@@ -44,5 +23,19 @@ export function ConsentToggle() {
         }}
       />
     </label>
+  )
+}
+
+/** "Privacidade": o que fica guardado, em poucas linhas, e o interruptor das estatísticas. */
+export function PrivacySheet() {
+  return (
+    <>
+      <h2>Privacidade</h2>
+      <p className="sub">
+        Suas viagens ficam neste aparelho e, se você entrar numa conta, na nuvem do LudoTrip. Ninguém mais vê,
+        a não ser quem você convidar.
+      </p>
+      <ConsentToggle />
+    </>
   )
 }

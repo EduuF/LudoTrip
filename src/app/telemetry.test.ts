@@ -16,8 +16,8 @@ describe('telemetria (publicação §5.7)', () => {
     ).toEqual({ type: 'setNights', trigger: 'para guardar suas viagens', count: 2, cloud: true })
   })
 
-  it('sem chaves e sem consentimento, nada carrega e track não quebra', () => {
-    expect(getConsent()).toBeNull()
+  it('sem chaves, nada carrega e track não quebra; sem escolha, as estatísticas ficam ligadas', () => {
+    expect(getConsent()).toBe('yes')
     expect(() => track('edicao', { type: 'rename' })).not.toThrow()
   })
 })

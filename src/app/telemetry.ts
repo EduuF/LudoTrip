@@ -1,11 +1,10 @@
 // Telemetria (spec publicação §5.6–5.7): erros no Sentry e métricas de uso no PostHog (UE).
 // - Sem chaves (testes, GitHub Pages): nada é carregado nem enviado.
-// - Métricas só com consentimento ("Pode"); sem resposta ou "Prefiro não", o PostHog nem carrega.
+// - Métricas ligadas por padrão (opt-out, retorno do staging): estatísticas de uso sem conteúdo, por
+//   legítimo interesse. Quem desliga em "Privacidade" não manda mais nada (o PostHog nem carrega).
 // - Nunca texto digitado nem nomes: os eventos levam só chaves permitidas, com valores curtos.
 // - A pessoa aparece como um código (hash do uid), nunca e-mail.
 // LGPD: o mínimo para um app pequeno; precisa de atenção se o app escalar (spec §6.4).
-
-export type Consent = 'yes' | 'no' | null
 
 export type EventName =
   | 'app_aberto'
@@ -53,12 +52,12 @@ let userHash: string | null = null
 
 const env = () => import.meta.env as ImportMetaEnv & Record<string, string | undefined>
 
-export function getConsent(): Consent {
+/** As estatísticas de uso estão ligadas? Sim, a menos que a pessoa tenha desligado. */
+export function getConsent(): 'yes' | 'no' {
   try {
-    const v = localStorage.getItem(CONSENT_KEY)
-    return v === 'yes' || v === 'no' ? v : null
+    return localStorage.getItem(CONSENT_KEY) === 'no' ? 'no' : 'yes'
   } catch {
-    return null
+    return 'yes'
   }
 }
 
@@ -90,6 +89,8 @@ async function loadPostHog() {
     disable_surveys: true,
     session_recording: { maskAllInputs: true, maskTextSelector: '*' },
   })
+  // Quem desligou e ligou de novo: o PostHog lembra do "desligado" no armazenamento dele.
+  if (ph.has_opted_out_capturing()) ph.opt_in_capturing()
   posthog = ph as unknown as PostHogLike
   if (userHash) posthog.identify(userHash)
 }
@@ -122,7 +123,7 @@ export async function initTelemetry(): Promise<void> {
     })
     sentry = S as unknown as SentryLike
   }
-  if (getConsent() === 'yes') await loadPostHog()
+  if (getConsent() !== 'no') await loadPostHog()
 }
 
 export function track(event: EventName, props?: Props): void {

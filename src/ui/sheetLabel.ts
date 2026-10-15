@@ -18,6 +18,7 @@ export function sheetLabel(spec: SheetSpec, doc: TripDoc | null): SheetLabel {
   if (spec.kind === 'account') return { kind: 'SUA CONTA', name: 'Sua conta' }
   if (spec.kind === 'adopt') return { kind: 'VIAGENS DESTE APARELHO', name: 'Viagens deste aparelho' }
   if (spec.kind === 'install') return { kind: 'INSTALAR O APP', name: 'Instalar o app' }
+  if (spec.kind === 'privacy') return { kind: 'PRIVACIDADE', name: 'Privacidade' }
   if (spec.kind === 'cloudSave') return { kind: 'GUARDAR NA NUVEM', name: 'Guardar na nuvem' }
   if (!doc) return { kind: '', name: '' }
   return docLabel(spec, doc)
@@ -88,6 +89,7 @@ function docLabel(spec: SheetSpec, doc: TripDoc): SheetLabel {
     case 'adopt':
     case 'install':
     case 'cloudSave':
+    case 'privacy':
       return sheetLabel(spec, null)
   }
 }

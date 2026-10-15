@@ -40,6 +40,7 @@ import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import { NO_DOC_SHEETS } from './sheetTypes'
+import { PrivacySheet } from './Consent'
 import type { SheetSpec } from './sheetTypes'
 import { AccountSheet, AdoptSheet, CloudSaveSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
@@ -88,6 +89,8 @@ export function Sheets() {
         <InstallSheet />
       ) : sheet.kind === 'cloudSave' ? (
         <CloudSaveSheet />
+      ) : sheet.kind === 'privacy' ? (
+        <PrivacySheet />
       ) : (
         <Body sheet={sheet} />
       )}

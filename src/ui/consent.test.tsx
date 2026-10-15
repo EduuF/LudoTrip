@@ -1,26 +1,33 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
-import { Consent } from './Consent'
-import { useApp } from '../app/store'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { PrivacySheet } from './Consent'
+import { getConsent } from '../app/telemetry'
 
-// A faixa "Podemos medir…" nunca fica por cima de um painel (ela escondia "Receber link por e-mail").
-describe('faixa de consentimento', () => {
+// Estatísticas de uso (retorno do staging): ligadas por padrão, sem faixa de pergunta; quem quiser
+// desliga em "Privacidade".
+describe('estatísticas de uso (opt-out)', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllEnvs()
-    useApp.setState({ sheet: null })
+    localStorage.removeItem('ludotrip.consent')
   })
 
-  it('aparece sem painel aberto, some com um painel e volta quando ele fecha', () => {
+  it('ligadas por padrão; desligar fica guardado; religar volta', () => {
     vi.stubEnv('VITE_POSTHOG_KEY', 'phc_teste')
-    localStorage.removeItem('ludotrip.consent')
-    useApp.setState({ sheet: null })
-    render(<Consent />)
-    expect(screen.getByRole('dialog', { name: 'Medir o uso do app' })).toBeTruthy()
-    act(() => useApp.setState({ sheet: { kind: 'signin', reason: 'para guardar suas viagens' } }))
-    expect(screen.queryByRole('dialog', { name: 'Medir o uso do app' })).toBeNull()
-    act(() => useApp.setState({ sheet: null }))
-    expect(screen.getByRole('dialog', { name: 'Medir o uso do app' })).toBeTruthy()
+    expect(getConsent()).toBe('yes')
+    render(<PrivacySheet />)
+    const sw = screen.getByRole('switch', { name: /Estatísticas de uso/ }) as HTMLInputElement
+    expect(sw.checked).toBe(true)
+    expect(screen.getByText('Ajudam a melhorar o LudoTrip. Não incluem o que você escreve.')).toBeTruthy()
+    fireEvent.click(sw)
+    expect(getConsent()).toBe('no')
+    fireEvent.click(sw)
+    expect(getConsent()).toBe('yes')
+  })
+
+  it('não existe mais a faixa de pergunta', async () => {
+    const mod = await import('./Consent')
+    expect('Consent' in mod).toBe(false)
   })
 })
