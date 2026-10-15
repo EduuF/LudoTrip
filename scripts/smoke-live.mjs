@@ -21,6 +21,13 @@ const health = await fetch(`${base}/api/health`)
 health?.ok ? ok(`API (${health.env})`) : bad('API não respondeu')
 const handler = await fetch(`${base}/__/auth/handler`)
 handler.ok ? ok('repasse do login (/__/auth/handler)') : bad(`repasse do login: ${handler.status}`)
+// Convites (M5): um link que não existe responde com a frase de "não vale mais", nunca um erro.
+const invite = await fetch(`${base}/api/invites/naoexiste0123456789abc`)
+  .then((r) => r.json())
+  .catch(() => null)
+invite?.reason === 'invalid'
+  ? ok('convite inválido responde "invalid"')
+  : bad('a API de convites não respondeu')
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2 })
