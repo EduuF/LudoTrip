@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { authClient, useApp } from '../app/store'
 import type { SignInResult } from '../auth/authClient'
+import { ConsentToggle } from './Consent'
 
 // Entrar e "Sua conta" (spec publicação §3.3, §3.5). O login nunca é barreira: o painel diz por que
 // entrar ("para convidar"), não mostra erro quando a pessoa fecha a janela do Google, e depois de
@@ -208,6 +209,7 @@ export function AccountSheet() {
           {account.email ? <span className="sub">{account.email}</span> : null}
         </span>
       </div>
+      <ConsentToggle />
       {asking ? (
         <>
           <p className="sub warn-text">

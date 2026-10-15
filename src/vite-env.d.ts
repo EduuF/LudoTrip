@@ -11,4 +11,9 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_PROJECT_ID?: string
   readonly VITE_FIREBASE_APP_ID?: string
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string
+  /** Erros (Sentry) e métricas (PostHog UE). Sem elas, nada é carregado nem enviado. */
+  readonly VITE_SENTRY_DSN?: string
+  readonly VITE_POSTHOG_KEY?: string
+  /** "production" ou "staging". */
+  readonly VITE_APP_ENV?: string
 }

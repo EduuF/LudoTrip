@@ -11,6 +11,7 @@ import { applyTheme, readThemeChoice } from './theme'
 import type { ThemeChoice } from './theme'
 import { markTutorialSeen, tutorialSeen } from './tutorial'
 import { parseRoute } from './routePaths'
+import { captureError, identify, track } from './telemetry'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 import { docProgress } from './tasks'
@@ -294,9 +295,10 @@ export const useApp = create<AppState>((set, get) => {
         // Outra aba com a mesma viagem do aparelho aberta recarrega (spec publicação §3.5).
         channel?.postMessage({ t: 'saved', id: doc.meta.id })
       },
-      () => {
+      (e: unknown) => {
         if (saveWarned) return
         saveWarned = true
+        captureError(e instanceof Error ? e : new Error('falha ao salvar no aparelho'), { kind: 'salvar' })
         toast('Não consegui salvar no aparelho: as mudanças valem só enquanto esta aba estiver aberta.', true)
       },
     )
@@ -338,6 +340,8 @@ export const useApp = create<AppState>((set, get) => {
   const commit = (doc: TripDoc, action: DocAction, opId: string): TripDoc => {
     if (sync && syncTripId === doc.meta.id) {
       void sync.submit({ opId, tripId: doc.meta.id, action, at: Date.now() })
+      const view = sync.view()
+      if (view.status === 'offline') track('offline_fila', { pending: view.pending })
       return doc
     }
     return save(doc)
@@ -442,6 +446,7 @@ export const useApp = create<AppState>((set, get) => {
   const afterSignIn = async () => {
     const account = get().account
     if (account) {
+      track('login_feito', {})
       const last = readLastUid()
       writeLastUid(account.uid)
       const guests = await guestTrips()
@@ -501,6 +506,7 @@ export const useApp = create<AppState>((set, get) => {
     const doc = get().doc
     if (!doc || !list.length) return
     const first = list[0]!
+    track('conflito', { count: list.length, reason: first.reason.code })
     const mins = Math.round((Date.now() - first.op.at) / 60000)
     const when = mins >= 1 ? ` (há ${mins} min)` : ''
     set({
@@ -625,6 +631,7 @@ export const useApp = create<AppState>((set, get) => {
       applyTheme(theme)
       const trips = await repo.list()
       set({ trips: trips.filter((t) => !t.cloud), ready: true, theme, cloudEnabled: !!cloudDeps })
+      track('app_aberto', { cloud: !!cloudDeps })
       if (channel)
         channel.onmessage = (e: MessageEvent<{ t: string; id: string }>) => {
           if (e.data?.t !== 'saved') return
@@ -666,6 +673,7 @@ export const useApp = create<AppState>((set, get) => {
         cloudDeps?.auth.onChange((account) => {
           const was = get().account
           set({ account })
+          void identify(account?.uid ?? null)
           void get()
             .refreshTrips()
             .then(async () => {
@@ -710,6 +718,7 @@ export const useApp = create<AppState>((set, get) => {
         if (copy?.meta.cloud) await openCloudTrip(open.meta.id, copy, copy.meta.cloud, { keepView: true })
       }
       if (done.length) {
+        track('viagens_subiram', { count: done.length })
         set({ justUploaded: done })
         setTimeout(() => set({ justUploaded: [] }), 2400)
         toast(
@@ -729,6 +738,7 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     openSignIn(reason, intent) {
+      track('login_oferecido', { trigger: reason })
       saveIntent(intent ?? null)
       get().openSheet({ kind: 'signin', reason, ...(intent ? { intent } : {}) })
     },
@@ -823,6 +833,10 @@ export const useApp = create<AppState>((set, get) => {
         return false
       }
       const after = commit(r.doc, action, opId)
+      track('edicao', {
+        type: action.type === 'engine' ? action.command.type : action.type,
+        cloud: !!after.meta.cloud,
+      })
       const text = narrate(action, before, after, r.effects)
       set((s) => ({
         doc: after,
@@ -876,6 +890,7 @@ export const useApp = create<AppState>((set, get) => {
     },
 
     openSheet(sheet, opts = {}) {
+      track('painel_aberto', { kind: sheet.kind })
       const cur = get().sheet
       if (!cur || opts.replace) return set({ sheet, sheetDir: 'in', sheetGuard: null })
       set((s) => ({ sheet, sheetBack: [...s.sheetBack, cur].slice(-10), sheetDir: 'in', sheetGuard: null }))
@@ -1019,6 +1034,7 @@ export const useApp = create<AppState>((set, get) => {
       if (up?.ok)
         await repo.save(withCloud(migrate(doc), { owner: account!.uid, role: 'owner', version: up.version }))
       else await persist(doc)
+      track('viagem_criada', { cloud: !!up?.ok })
       await get().refreshTrips()
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })

@@ -1,3 +1,4 @@
+import { Consent } from './ui/Consent'
 import { CloudBadge } from './ui/CloudBadge'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
@@ -219,6 +220,7 @@ export default function App() {
       {screen !== 'trip' ? <Toast /> : null}
       {screen === 'home' ? <Sheets /> : null}
       <Celebrations />
+      <Consent />
     </>
   )
 }
