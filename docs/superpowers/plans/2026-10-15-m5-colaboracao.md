@@ -153,4 +153,4 @@ As mesmas do M4:
 - [x] Guia `docs/guias/M5-o-que-voce-precisa-fazer.md` (o roteiro da revisão da §8 M5).
 - [x] Staging sozinho no push; produção pelo `workflow_dispatch` depois da conferência (`scripts/smoke-live.mjs` ganha a prévia de um convite inválido).
 - [x] `docs/inventario-de-experiencia.md` e `docs/aprendizados.md` atualizados.
-- [ ] **Revisão do mantenedor:** convida uma pessoa para planejar junto e outra para só ver; as três editam ao mesmo tempo, uma offline; depois remove uma delas.
+- [x] **Revisão do mantenedor** (validado com conta real em 15/10/2026): convida uma pessoa para planejar junto e outra para só ver; as três editam ao mesmo tempo, uma offline; depois remove uma delas.
