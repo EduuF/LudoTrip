@@ -10,8 +10,8 @@ vi.stubGlobal(
 )
 
 // Esperas dos testes de interface (findBy/waitFor): com a suíte inteira rodando em paralelo, criar e
-// abrir uma viagem pode passar de 1 s (o padrão); 4 s evita falso negativo sem esconder travamento.
+// abrir uma viagem pode passar de 1 s (o padrão); 8 s evita falso negativo sem esconder travamento.
 if (typeof document !== 'undefined') {
   const { configure } = await import('@testing-library/react')
-  configure({ asyncUtilTimeout: 4000 })
+  configure({ asyncUtilTimeout: 8000 })
 }

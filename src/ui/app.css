@@ -3630,3 +3630,51 @@ html.theme-fading {
   color: var(--beni);
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--beni) 35%, transparent);
 }
+/* Apagadas: o cartão fica apagado (sem a sombra de cor), com "Recuperar". */
+.trip-card.deleted {
+  border-style: dashed;
+  box-shadow: none;
+  opacity: 0.85;
+}
+.trip-card.deleted .c-title {
+  flex: 1;
+  min-width: 0;
+}
+/* /convite/<token>: a prévia do convite, sem conta. */
+.invite-screen {
+  display: grid;
+  gap: 12px;
+  padding-block: 32px;
+  max-width: 520px;
+  margin-inline: auto;
+}
+.invite-brand {
+  margin: 0;
+  font: 12px var(--f-pixel);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.invite-brand em {
+  color: var(--beni);
+  font-style: normal;
+}
+.invite-who {
+  margin: 0;
+  font-size: 16px;
+}
+.invite-title {
+  margin: 0;
+  font: 800 30px/1.15 var(--f-display);
+  text-wrap: balance;
+}
+.invite-route {
+  margin: 0;
+  font: 14px/1.5 var(--f-pixel);
+  color: var(--ai);
+}
+.invite-cast {
+  display: flex;
+  justify-content: flex-start;
+  min-height: 45px;
+}

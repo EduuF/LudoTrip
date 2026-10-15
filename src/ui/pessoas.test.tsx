@@ -202,3 +202,48 @@ describe('Apagadas', () => {
     expect(S().deleted).toEqual([])
   })
 })
+
+describe('aceitar o convite', () => {
+  it('a Bia abre o link sem conta, vê a prévia, entra e cai na viagem com o nome dela no Convidado', async () => {
+    const id = await criarNaNuvem()
+    cloud.nameAs('ana', 'Ana')
+    let url: string | null = null
+    await act(async () => void (url = await S().createInvite('editor', true)))
+    const token = url!.split('/convite/')[1]!
+    // O "Convidado" chega ao servidor antes de a Ana sair.
+    await waitFor(() => expect(S().cloud?.status).toBe('saved'))
+    act(() => S().goHome())
+    await act(() => auth.signOut())
+    cloud.nameAs('bia', 'Bia')
+    await act(() => S().openInvite(token))
+    expect(await screen.findByText('te chamou para planejar junto', { exact: false })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Japão na nuvem' })).toBeTruthy()
+    expect(location.pathname).toBe(`/convite/${token}`)
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar e participar' }))
+    await waitFor(() =>
+      expect(S().sheet).toMatchObject({ kind: 'signin', intent: { kind: 'acceptInvite', token } }),
+    )
+    act(() => auth.signInAs({ uid: 'bia', name: 'Bia', email: 'bia@teste.invalid', picture: null }))
+    await waitFor(() => expect(S().screen).toBe('trip'))
+    expect(S().doc!.meta.id).toBe(id)
+    expect(S().doc!.meta.cloud?.role).toBe('editor')
+    await waitFor(() =>
+      expect(S().doc!.itinerary.travelers.some((t) => t.name === 'Bia' && t.userId === 'bia')).toBe(true),
+    )
+    expect(S().toast?.text).toBe('Você entrou em Japão na nuvem 🎉')
+  })
+
+  it('link já usado: a frase com saída, nunca um erro técnico', async () => {
+    await criarNaNuvem()
+    cloud.nameAs('ana', 'Ana')
+    let url: string | null = null
+    await act(async () => void (url = await S().createInvite('viewer', false)))
+    const token = url!.split('/convite/')[1]!
+    ;[...cloud.invites.values()][0]!.used = true
+    act(() => S().goHome())
+    await act(() => S().openInvite(token))
+    expect(await screen.findByText(/Este convite não vale mais/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Suas viagens' }))
+    expect(S().screen).toBe('home')
+  })
+})

@@ -11,6 +11,7 @@ import { resetTrilhaHint } from './app/tutorial'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
 import { Home } from './ui/Home'
+import { InviteScreen } from './ui/InviteScreen'
 import { Celebrations, Petals, PopMenu, Toast } from './ui/kit'
 import { Mapa } from './ui/Mapa'
 import { Sheets } from './ui/Sheets'
@@ -241,9 +242,17 @@ export default function App() {
   return (
     <>
       <Petals />
-      {!ready ? null : screen === 'trip' ? <Trip /> : screen === 'create' ? <Create /> : <Home />}
+      {!ready ? null : screen === 'trip' ? (
+        <Trip />
+      ) : screen === 'create' ? (
+        <Create />
+      ) : screen === 'invite' ? (
+        <InviteScreen />
+      ) : (
+        <Home />
+      )}
       {screen !== 'trip' ? <Toast /> : null}
-      {screen === 'home' ? <Sheets /> : null}
+      {screen === 'home' || screen === 'invite' ? <Sheets /> : null}
       <Celebrations />
     </>
   )

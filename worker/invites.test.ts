@@ -99,7 +99,7 @@ describe('prévia e aceite', () => {
     const list = (await (await api('/api/trips', { uid: 'c-bia' })).json()) as {
       trips: { id: string; role: string }[]
     }
-    expect(list.trips).toEqual([expect.objectContaining({ id: 'c-unico', role: 'editor' })])
+    expect(list.trips).toEqual([expect.objectContaining({ id: 'c-unico', role: 'editor', members: 2 })])
   })
 
   it('quem já é membro abre a viagem e o convite continua sem uso', async () => {

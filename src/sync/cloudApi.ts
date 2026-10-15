@@ -18,6 +18,8 @@ export interface RemoteTrip {
   createdAt: number
   role: Role
   owner: string
+  /** Quantas pessoas a viagem tem (M5). */
+  members?: number
 }
 
 export type UploadResult =

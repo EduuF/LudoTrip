@@ -39,6 +39,8 @@ export interface CloudMeta {
   owner: string
   role: 'owner' | 'editor' | 'viewer'
   version: number
+  /** Quantas pessoas a viagem tem (só para a lista; M5). */
+  members?: number
 }
 
 export type { Scope }

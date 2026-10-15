@@ -16,6 +16,8 @@ export interface TripRow {
   created_at: number
   updated_at: number
   role: Role
+  /** Quantas pessoas a viagem tem (contando o Dono). */
+  members: number
 }
 
 export async function upsertUser(db: D1Database, who: Identity, now = Date.now()): Promise<void> {
@@ -50,7 +52,8 @@ export async function tripOwner(db: D1Database, tripId: string): Promise<string 
 export async function myTrips(db: D1Database, uid: string): Promise<TripRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT t.id, t.owner_uid, t.name, t.start, t."end", t.version, t.size_bytes, t.created_at, t.updated_at, m.role
+      `SELECT t.id, t.owner_uid, t.name, t.start, t."end", t.version, t.size_bytes, t.created_at, t.updated_at, m.role,
+              (SELECT COUNT(*) FROM members m2 WHERE m2.trip_id = t.id) AS members
        FROM members m JOIN trips t ON t.id = m.trip_id
        WHERE m.uid = ?1 AND t.deleted_at IS NULL ORDER BY t.updated_at DESC`,
     )

@@ -26,6 +26,10 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
+    // Os testes de tela são pesados (jsdom + o app inteiro): metade dos núcleos e 20 s por teste evitam
+    // falso negativo com a suíte toda em paralelo (o CI tem poucos núcleos e não sofre com isso).
+    maxWorkers: '50%',
+    testTimeout: 20_000,
     coverage: {
       include: ['src/engine/**'],
       exclude: ['src/engine/fixtures/**', 'src/engine/**/*.test.ts', 'src/engine/index.ts'],

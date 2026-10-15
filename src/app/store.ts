@@ -125,7 +125,8 @@ export interface AppState {
   resendInvite(invite: PendingInvite): Promise<string | null>
   setMemberRole(uid: string, role: Exclude<Role, 'owner'>): Promise<void>
   removeMember(uid: string, alsoTraveler: boolean): Promise<void>
-  leaveTrip(): Promise<void>
+  /** Sair de uma viagem da nuvem (a aberta, ou `id` da lista). */
+  leaveTrip(id?: string): Promise<void>
   transferTrip(uid: string): Promise<void>
   restoreTrip(id: string): Promise<void>
   loadHistory(before?: number): Promise<{ items: HistoryItem[]; more: boolean } | null>
@@ -221,6 +222,8 @@ let sync: TripSync | null = null
 let syncTripId: string | null = null
 /** Avisos de edições de outros aparelhos chegando em rajada viram um só. */
 let remoteBurst = { at: 0, count: 0 }
+/** Aviso para quando a viagem da nuvem aparecer na tela (abrir a viagem limpa os avisos). */
+let welcome: string | null = null
 /** Viagem pedida pelo endereço (/v/<id>) que ainda depende de saber quem está logado. */
 let pendingRoute: string | null = null
 
@@ -602,6 +605,8 @@ export const useApp = create<AppState>((set, get) => {
           shown = true
           showTrip(doc)
           void get().loadPeople()
+          if (welcome) toast(welcome)
+          welcome = null
         } else if (doc) set({ doc })
         set({ cloud: { status: v.status, pending: v.pending } })
         if (!doc && v.status === 'offline' && !shown)
@@ -892,7 +897,13 @@ export const useApp = create<AppState>((set, get) => {
     async openTrip(id) {
       const loaded = await repo.load(id)
       const listed = get().trips.find((t) => t.id === id)
-      const cloudMeta = loaded?.meta.cloud ?? listed?.cloud
+      // O papel vem da lista (do servidor) quando há: pode ter mudado com a viagem fechada.
+      const cloudMeta = loaded?.meta.cloud
+        ? {
+            ...loaded.meta.cloud,
+            ...(listed?.cloud ? { role: listed.cloud.role, owner: listed.cloud.owner } : {}),
+          }
+        : listed?.cloud
       if (cloudMeta) return openCloudTrip(id, loaded, cloudMeta)
       if (!loaded) return toast('Essa viagem não está mais aqui.', true)
       const doc = refreshExample(migrate(loaded))
@@ -1309,12 +1320,13 @@ export const useApp = create<AppState>((set, get) => {
       toast(`${name} saiu da viagem.`)
     },
 
-    async leaveTrip() {
-      const doc = get().doc
+    async leaveTrip(id) {
+      const tripId = id ?? get().doc?.meta.id
+      const name = get().trips.find((t) => t.id === tripId)?.name ?? get().doc?.meta.name ?? 'a viagem'
       const api = cloudDeps?.people
       const me = get().account?.uid
-      if (!doc || !api || !me) return
-      const r = await api.removeMember(doc.meta.id, me, false)
+      if (!tripId || !api || !me) return
+      const r = await api.removeMember(tripId, me, false)
       if (!r.ok)
         return toast(
           r.reason === 'owner-must-transfer'
@@ -1323,11 +1335,12 @@ export const useApp = create<AppState>((set, get) => {
           true,
         )
       track('saiu_da_viagem', {})
-      stopSync()
-      await repo.remove(doc.meta.id)
-      await cloudDeps?.outbox.clear(doc.meta.id)
-      get().goHome()
-      toast(`Você saiu de ${doc.meta.name}.`)
+      if (syncTripId === tripId) stopSync()
+      await repo.remove(tripId)
+      await cloudDeps?.outbox.clear(tripId)
+      if (get().screen === 'trip') get().goHome()
+      else await get().refreshTrips()
+      toast(`Você saiu de ${name}.`)
     },
 
     async transferTrip(uid) {
@@ -1402,9 +1415,9 @@ export const useApp = create<AppState>((set, get) => {
       track('convite_aceito', { role: r.role, already: r.already })
       set({ invite: null })
       await get().refreshTrips()
+      const name = get().trips.find((t) => t.id === r.tripId)?.name
+      welcome = r.already ? null : name ? `Você entrou em ${name} 🎉` : 'Você entrou na viagem 🎉'
       await get().openTrip(r.tripId)
-      const name = get().doc?.meta.name
-      if (!r.already && name) toast(`Você entrou em ${name} 🎉`)
     },
 
     toggleSound() {

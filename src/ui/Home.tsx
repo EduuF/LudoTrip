@@ -6,6 +6,8 @@ import { useApp } from '../app/store'
 import { PopMenu } from './kit'
 import type { ExampleKey } from '../app/store'
 import { cueCloud } from './stage/cues'
+import { ago, inDays, ROLE_NAMES } from '../app/people'
+import type { TripMeta } from '../app/doc'
 
 // Suas viagens (com renomear e apagar), exemplos para explorar e criar viagem (spec §17.7).
 
@@ -16,6 +18,14 @@ const EXAMPLES: Record<ExampleKey, { title: string; text: string }> = {
   europa: { title: 'Lisboa, Paris e Roma', text: '3 países com voos no meio' },
   cruzeiro: { title: 'Cruzeiro', text: 'navio com escalas como bate-volta' },
   caminho: { title: 'Caminho de Santiago', text: 'uma noite por etapa, a pé' },
+}
+
+/** "☁️ salva na sua conta", "☁️ com 3 pessoas · Planeja junto". */
+function cloudLine(t: TripMeta): string {
+  const c = t.cloud!
+  const n = c.members ?? 1
+  const who = n > 1 ? `☁️ com ${n} pessoas` : '☁️ salva na sua conta'
+  return c.role === 'owner' ? who : `${who} · ${ROLE_NAMES[c.role]}`
 }
 
 export function Home() {
@@ -31,6 +41,9 @@ export function Home() {
   const goCreate = useApp((s) => s.goCreate)
   const removeTrip = useApp((s) => s.removeTrip)
   const renameTrip = useApp((s) => s.renameTrip)
+  const leaveTrip = useApp((s) => s.leaveTrip)
+  const deleted = useApp((s) => s.deleted)
+  const restoreTrip = useApp((s) => s.restoreTrip)
   const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
@@ -135,7 +148,7 @@ export function Home() {
                         {t.example
                           ? 'exemplo para mexer à vontade'
                           : t.cloud
-                            ? '☁️ salva na sua conta'
+                            ? cloudLine(t)
                             : cloudEnabled
                               ? '📱 só neste aparelho'
                               : 'sua viagem'}
@@ -165,19 +178,39 @@ export function Home() {
                       >
                         Renomear
                       </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="danger"
-                        // Segundo toque para apagar a viagem inteira (spec §17.12).
-                        onClick={() => {
-                          if (confirm !== t.id) return setConfirm(t.id)
-                          setMenu(null)
-                          void removeTrip(t.id)
-                        }}
-                      >
-                        {confirm === t.id ? 'Toque de novo para apagar' : 'Apagar'}
-                      </button>
+                      {t.cloud && t.cloud.role !== 'owner' ? (
+                        // Quem não é o Dono sai da viagem (ela continua para os outros).
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="danger"
+                          onClick={() => {
+                            if (confirm !== t.id) return setConfirm(t.id)
+                            setMenu(null)
+                            void leaveTrip(t.id)
+                          }}
+                        >
+                          {confirm === t.id ? 'Toque de novo para sair' : 'Sair da viagem'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="danger"
+                          // Segundo toque para apagar a viagem inteira (spec §17.12).
+                          onClick={() => {
+                            if (confirm !== t.id) return setConfirm(t.id)
+                            setMenu(null)
+                            void removeTrip(t.id)
+                          }}
+                        >
+                          {confirm === t.id
+                            ? (t.cloud?.members ?? 1) > 1
+                              ? 'Toque de novo para apagar para todos'
+                              : 'Toque de novo para apagar'
+                            : 'Apagar'}
+                        </button>
+                      )}
                     </PopMenu>
                   ) : null}
                 </div>
@@ -190,6 +223,28 @@ export function Home() {
                     ☁️ Guardar na nuvem
                   </button>
                 ) : null}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+      {deleted.length ? (
+        <>
+          <h2 className="sec">
+            Apagadas <small>voltam por 30 dias</small>
+          </h2>
+          <div className="trips">
+            {deleted.map((t) => (
+              <div key={t.id} className="trip-card deleted">
+                <span className="c-title">
+                  <h3>{t.name}</h3>
+                  <span className="dates">
+                    apagada {ago(t.deletedAt)} · some {inDays(t.purgeAt)}
+                  </span>
+                </span>
+                <button type="button" className="btn small" onClick={() => void restoreTrip(t.id)}>
+                  Recuperar
+                </button>
               </div>
             ))}
           </div>

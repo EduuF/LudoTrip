@@ -40,7 +40,9 @@ export function mergeTrips(local: TripMeta[], remote: RemoteTrip[] | null, signe
     .filter((m) => byId.has(m.id))
     .map((m) => {
       const r = byId.get(m.id)!
-      return { ...m, name: r.name, updatedAt: Math.max(r.updatedAt, m.updatedAt) }
+      // O papel pode ter mudado com a viagem fechada (o Dono trocou, ou passou a viagem).
+      const cloud = { ...m.cloud!, role: r.role, owner: r.owner, ...(r.members ? { members: r.members } : {}) }
+      return { ...m, name: r.name, updatedAt: Math.max(r.updatedAt, m.updatedAt), cloud }
     })
   const fresh = remote
     .filter((r) => !copies.some((m) => m.id === r.id))
@@ -49,7 +51,7 @@ export function mergeTrips(local: TripMeta[], remote: RemoteTrip[] | null, signe
       name: r.name,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
-      cloud: { owner: r.owner, role: r.role, version: -1 },
+      cloud: { owner: r.owner, role: r.role, version: -1, ...(r.members ? { members: r.members } : {}) },
     }))
   // Uma viagem 📱 que já subiu (mesmo id) aparece uma vez só, como ☁️.
   const guestOnly = guest.filter((m) => !byId.has(m.id))

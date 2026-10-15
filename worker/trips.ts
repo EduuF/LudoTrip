@@ -62,6 +62,7 @@ export async function tripRoutes(c: Ctx): Promise<Response> {
         createdAt: t.created_at,
         role: t.role,
         owner: t.owner_uid,
+        members: t.members,
       })),
     })
   }
