@@ -2984,3 +2984,69 @@ button.tl-stop:active {
 .cloud-badge.offline span {
   color: var(--gold);
 }
+
+/* Conta (spec publicação §3.3): botão no topo de "Suas viagens" e os painéis ENTRAR / SUA CONTA. */
+.home-head {
+  position: relative;
+}
+.home-account,
+.home-account-in {
+  position: absolute;
+  top: 4px;
+  right: 0;
+}
+.home-account {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 18px var(--f-display);
+  overflow: hidden;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.home-account img,
+.account-who img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+.account-who img,
+.account-who .seal {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex: none;
+}
+.account-who > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.account-who .sub {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sheet .warn-text {
+  color: var(--beni);
+}
+.sheet .small-print {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.signin-email {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}

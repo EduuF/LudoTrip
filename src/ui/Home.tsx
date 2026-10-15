@@ -18,6 +18,9 @@ const EXAMPLES: Record<ExampleKey, { title: string; text: string }> = {
 export function Home() {
   const trips = useApp((s) => s.trips)
   const cloudEnabled = useApp((s) => s.cloudEnabled)
+  const account = useApp((s) => s.account)
+  const openSheet = useApp((s) => s.openSheet)
+  const openSignIn = useApp((s) => s.openSignIn)
   const openTrip = useApp((s) => s.openTrip)
   const addExample = useApp((s) => s.addExample)
   const goCreate = useApp((s) => s.goCreate)
@@ -43,6 +46,30 @@ export function Home() {
   return (
     <div className="wrap">
       <header className="home-head">
+        {cloudEnabled ? (
+          account ? (
+            <button
+              type="button"
+              className="home-account"
+              aria-label={`Sua conta: ${account.name ?? account.email ?? ''}`}
+              onClick={() => openSheet({ kind: 'account' })}
+            >
+              {account.picture ? (
+                <img src={account.picture} alt="" referrerPolicy="no-referrer" />
+              ) : (
+                <span>{(account.name ?? account.email ?? '?').slice(0, 1)}</span>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn small home-account-in"
+              onClick={() => openSignIn('para guardar suas viagens')}
+            >
+              Entrar
+            </button>
+          )
+        ) : null}
         <span className="wm" aria-hidden="true">
           旅
         </span>

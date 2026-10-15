@@ -26,13 +26,26 @@ export interface AuthClient {
   signOut(): Promise<void>
 }
 
-/** Login em memória, para testes de tela: `signInAs` entra direto. */
-export function memoryAuth(): AuthClient & { signInAs(account: Account | null): void } {
+/** Login em memória, para testes de tela: `signInAs` entra direto; `failNext` simula um erro. */
+export function memoryAuth(): AuthClient & {
+  signInAs(account: Account | null): void
+  failNext(reason: Exclude<SignInResult, { ok: true }>['reason']): void
+} {
   let account: Account | null = null
+  let fail: Exclude<SignInResult, { ok: true }>['reason'] | null = null
   const subs = new Set<(a: Account | null) => void>()
   const set = (a: Account | null) => {
     account = a
     for (const cb of subs) cb(a)
+  }
+  const result = (then: () => void): SignInResult => {
+    if (fail) {
+      const reason = fail
+      fail = null
+      return { ok: false, reason }
+    }
+    then()
+    return { ok: true }
   }
   return {
     current: () => account,
@@ -42,13 +55,13 @@ export function memoryAuth(): AuthClient & { signInAs(account: Account | null): 
       return () => void subs.delete(cb)
     },
     token: async () => (account ? `token-${account.uid}` : null),
-    signInWithGoogle: async () => (
-      set({ uid: 'google', name: 'Ana', email: 'ana@teste.invalid', picture: null }),
-      { ok: true }
-    ),
-    sendEmailLink: async () => ({ ok: true }),
-    completeEmailLink: async () => ({ ok: true }),
+    signInWithGoogle: async () =>
+      result(() => set({ uid: 'ana', name: 'Ana', email: 'ana@teste.invalid', picture: null })),
+    sendEmailLink: async () => result(() => {}),
+    completeEmailLink: async (_href, email) =>
+      result(() => set({ uid: 'bia', name: null, email: email ?? 'bia@teste.invalid', picture: null })),
     signOut: async () => set(null),
     signInAs: set,
+    failNext: (reason) => void (fail = reason),
   }
 }

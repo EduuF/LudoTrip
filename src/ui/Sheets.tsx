@@ -39,7 +39,9 @@ import { NoteBox, OptButton, SheetFrame, Stepper, Vehicle } from './kit'
 import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
+import { NO_DOC_SHEETS } from './sheetTypes'
 import type { SheetSpec } from './sheetTypes'
+import { AccountSheet, SignInSheet } from './Entrar'
 import { sheetLabel } from './sheetLabel'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
@@ -57,7 +59,7 @@ export function Sheets() {
   const doc = useApp((s) => s.doc)
   const close = useApp((s) => s.closeSheet)
   const backSheet = useApp((s) => s.backSheet)
-  if (!sheet || !doc) return null
+  if (!sheet || (!doc && !NO_DOC_SHEETS.has(sheet.kind))) return null
   const under = stack[stack.length - 1]
   return (
     // Refaz o foco quando o painel troca por outro (não quando um campo do mesmo painel muda).
@@ -70,7 +72,17 @@ export function Sheets() {
       dir={dir}
       editor={EDITORS.has(sheet.kind) && !(sheet.kind === 'task' && !sheet.taskId)}
     >
-      <Body sheet={sheet} />
+      {sheet.kind === 'signin' ? (
+        <SignInSheet
+          key={sheet.step ?? 'start'}
+          reason={sheet.reason}
+          confirmEmail={sheet.step === 'confirmEmail'}
+        />
+      ) : sheet.kind === 'account' ? (
+        <AccountSheet />
+      ) : (
+        <Body sheet={sheet} />
+      )}
     </SheetFrame>
   )
 }

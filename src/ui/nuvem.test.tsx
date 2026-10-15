@@ -229,8 +229,13 @@ describe('viagem da nuvem na tela', () => {
     useApp.setState({ ready: false, screen: 'home', doc: null, trips: [], cloud: null })
     history.replaceState(null, '', `/v/${id}`)
     render(<App />)
-    await waitFor(() => expect(S().toast?.text).toBe('Esta viagem está numa conta. Entre para abrir.'))
+    // Abre ENTRAR dizendo por quê; depois de entrar, a viagem abre (a intenção é retomada).
+    expect(await screen.findByText('Entrar para abrir esta viagem')).toBeTruthy()
     expect(S().screen).toBe('home')
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar com Google' }))
+    await waitFor(() => expect(S().screen).toBe('trip'))
+    expect(S().doc!.meta.id).toBe(id)
+    expect(S().sheet).toBeNull()
   })
 
   it('endereço de uma viagem de outra conta: diz como conseguir acesso', async () => {

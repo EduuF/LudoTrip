@@ -217,6 +217,7 @@ export default function App() {
       <Petals />
       {!ready ? null : screen === 'trip' ? <Trip /> : screen === 'create' ? <Create /> : <Home />}
       {screen !== 'trip' ? <Toast /> : null}
+      {screen === 'home' ? <Sheets /> : null}
       <Celebrations />
     </>
   )

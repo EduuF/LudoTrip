@@ -14,7 +14,8 @@ import { parseRoute } from './routePaths'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 import { docProgress } from './tasks'
-import type { Account, AuthClient } from '../auth/authClient'
+import type { Account, AuthClient, SignInResult } from '../auth/authClient'
+import type { SignInIntent } from '../ui/sheetTypes'
 import type { CloudApi } from '../sync/cloudApi'
 import type { Outbox } from '../sync/outbox'
 import { TripSync } from '../sync/tripSync'
@@ -101,6 +102,14 @@ export interface AppState {
   init(): Promise<void>
   /** Junta as viagens do aparelho com as da conta. */
   refreshTrips(): Promise<void>
+  /** Abre o painel ENTRAR; depois de entrar, faz o que a pessoa queria (`intent`). */
+  openSignIn(reason: string, intent?: SignInIntent): void
+  /** Quantas alterações ainda não foram para a nuvem (para "Sair da conta"). */
+  pendingCount(): Promise<number>
+  /** Sai da conta: tira deste aparelho as cópias das viagens da conta e a fila (privacidade). */
+  signOut(): Promise<void>
+  /** Volta do link de e-mail (/entrar/link). Sem o e-mail guardado aqui, pergunta. */
+  completeEmailLink(email?: string): Promise<SignInResult>
   openTrip(id: string): Promise<void>
   goHome(): void
   goCreate(): void
@@ -161,6 +170,8 @@ let unsubAuth: (() => void) | null = null
 export const configureCloud = (deps: CloudDeps | null) => {
   cloudDeps = deps
 }
+/** O login, para as telas de conta (null sem nuvem). */
+export const authClient = (): AuthClient | null => cloudDeps?.auth ?? null
 /** A viagem da nuvem aberta agora. */
 let sync: TripSync | null = null
 let syncTripId: string | null = null
@@ -168,6 +179,26 @@ let syncTripId: string | null = null
 let remoteBurst = { at: 0, count: 0 }
 /** Viagem pedida pelo endereço (/v/<id>) que ainda depende de saber quem está logado. */
 let pendingRoute: string | null = null
+
+/** O que a pessoa queria ao abrir ENTRAR; sobrevive ao redirecionamento do login do Google. */
+const INTENT_KEY = 'ludotrip.intent'
+const saveIntent = (intent: SignInIntent | null) => {
+  try {
+    if (intent) sessionStorage.setItem(INTENT_KEY, JSON.stringify(intent))
+    else sessionStorage.removeItem(INTENT_KEY)
+  } catch {
+    // sem armazenamento: a intenção vale só nesta página
+  }
+}
+const takeIntent = (): SignInIntent | null => {
+  try {
+    const raw = sessionStorage.getItem(INTENT_KEY)
+    sessionStorage.removeItem(INTENT_KEY)
+    return raw ? (JSON.parse(raw) as SignInIntent) : null
+  } catch {
+    return null
+  }
+}
 let wired = false
 const channel: BroadcastChannel | null =
   typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('ludotrip')
@@ -341,6 +372,23 @@ export const useApp = create<AppState>((set, get) => {
     set((s) => ({ trips: s.trips.map((t) => (t.id === copy.meta.id ? { ...t, name } : t)) }))
   }
 
+  /**
+   * Acabou de entrar (spec publicação §3.3–3.4): as viagens do aparelho sobem (M4.11) e o que a
+   * pessoa queria fazer continua.
+   */
+  const afterSignIn = async () => {
+    const intent = takeIntent()
+    const s = get()
+    // Fecha ENTRAR e volta ao painel de onde se veio (se havia um).
+    if (s.sheet?.kind === 'signin') {
+      if (s.sheetBack.length) s.backSheet()
+      else set({ sheet: null })
+    }
+    if (!intent || intent.kind === 'none') return
+    if (intent.kind === 'openTrip') return get().openTrip(intent.id)
+    if (intent.kind === 'tripSheet' && get().screen === 'trip') get().openSheet({ kind: 'trip' })
+  }
+
   /** O endereço pediu uma viagem: abre, ou diz por que não dá (spec publicação §3.5). */
   const resolvePendingRoute = async () => {
     const id = pendingRoute
@@ -348,7 +396,7 @@ export const useApp = create<AppState>((set, get) => {
     pendingRoute = null
     const account = get().account
     if (get().trips.some((t) => t.id === id)) return get().openTrip(id)
-    if (!account) return toast('Esta viagem está numa conta. Entre para abrir.', true)
+    if (!account) return get().openSignIn('para abrir esta viagem', { kind: 'openTrip', id })
     toast('Você ainda não está nesta viagem. Peça um convite a quem a criou.', true)
   }
 
@@ -398,7 +446,8 @@ export const useApp = create<AppState>((set, get) => {
   /** Abre uma viagem da nuvem: a cópia do aparelho na hora, e o servidor põe em dia (spec §5.2). */
   const openCloudTrip = async (id: string, loaded: TripDoc | null, meta: CloudMeta) => {
     const deps = cloudDeps
-    if (!deps || !get().account) return toast('Esta viagem está numa conta. Entre para abrir.', true)
+    if (!deps) return toast('Esta viagem está numa conta. Entre para abrir.', true)
+    if (!get().account) return get().openSignIn('para abrir esta viagem', { kind: 'openTrip', id })
     stopSync()
     const base =
       loaded && meta.version >= 0 ? { doc: stripCloud(migrate(loaded)), version: meta.version } : null
@@ -521,14 +570,57 @@ export const useApp = create<AppState>((set, get) => {
           else pendingRoute = route.id
         }
       }
+      if (route?.kind === 'emailLink') set({ sheet: { kind: 'signin', reason: 'pelo link do e-mail' } })
       unsubAuth?.()
       unsubAuth =
         cloudDeps?.auth.onChange((account) => {
+          const was = get().account
           set({ account })
           void get()
             .refreshTrips()
-            .then(() => resolvePendingRoute())
+            .then(async () => {
+              if (account && was?.uid !== account.uid) await afterSignIn()
+              await resolvePendingRoute()
+            })
         }) ?? null
+      if (route?.kind === 'emailLink') void get().completeEmailLink()
+    },
+
+    openSignIn(reason, intent) {
+      saveIntent(intent ?? null)
+      get().openSheet({ kind: 'signin', reason, ...(intent ? { intent } : {}) })
+    },
+
+    async pendingCount() {
+      return cloudDeps ? cloudDeps.outbox.count() : 0
+    },
+
+    async signOut() {
+      const deps = cloudDeps
+      if (!deps) return
+      stopSync()
+      for (const t of await repo.list()) if (t.cloud) await repo.remove(t.id)
+      await deps.outbox.clear()
+      await deps.auth.signOut()
+      set({ sheet: null, sheetBack: [] })
+      if (get().screen === 'trip' && get().doc?.meta.cloud) get().goHome()
+      await get().refreshTrips()
+      toast('Você saiu da conta. As viagens deste aparelho continuam aqui.')
+    },
+
+    async completeEmailLink(email) {
+      const deps = cloudDeps
+      if (!deps) return { ok: false, reason: 'error' }
+      const r = await deps.auth.completeEmailLink(location.href, email)
+      if (r.ok || (!r.ok && r.reason !== 'needs-email'))
+        history.replaceState(history.state, '', import.meta.env.BASE_URL || '/')
+      if (!r.ok && r.reason === 'needs-email')
+        set({ sheet: { kind: 'signin', reason: 'pelo link do e-mail', step: 'confirmEmail' } })
+      else if (!r.ok) {
+        set({ sheet: null })
+        toast('Este link de entrar não vale mais. Peça outro.', true)
+      }
+      return r
     },
 
     async refreshTrips() {

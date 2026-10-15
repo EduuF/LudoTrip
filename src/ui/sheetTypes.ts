@@ -39,3 +39,16 @@ export type SheetSpec =
   | { kind: 'autoTask'; key: string }
   /** "Presa a": trocar ao que a tarefa está presa. */
   | { kind: 'taskAbout'; taskId: ID; step?: 'dest' | 'leg' | 'day' | 'place' | 'placeIn'; destId?: ID }
+  /**
+   * Entrar na conta (spec publicação §3.3). `reason` completa o cabeçalho ("para convidar"); `intent`
+   * é o que a pessoa queria fazer, retomado depois de entrar (também depois de um redirecionamento).
+   */
+  | { kind: 'signin'; reason: string; intent?: SignInIntent; step?: 'confirmEmail' }
+  /** Sua conta: quem está logado e "Sair da conta". */
+  | { kind: 'account' }
+
+/** O que fazer depois de entrar. Só dados (vai para o sessionStorage se o login redirecionar). */
+export type SignInIntent = { kind: 'openTrip'; id: string } | { kind: 'tripSheet' } | { kind: 'none' }
+
+/** Painéis que não dependem de uma viagem aberta (aparecem também em "Suas viagens"). */
+export const NO_DOC_SHEETS = new Set<SheetSpec['kind']>(['signin', 'account'])
