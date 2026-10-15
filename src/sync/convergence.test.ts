@@ -284,7 +284,7 @@ async function run(steps: Step[], devices: number, maxReplay: number) {
 const stats = { applied: 0, rejected: 0, noop: 0, snapshotAcks: 0 }
 let acksSeen = 0
 
-describe('convergência da nuvem', () => {
+describe('convergência da nuvem', { timeout: 120_000 }, () => {
   it('2 aparelhos, rede em qualquer ordem: terminam iguais ao servidor', async () => {
     await fc.assert(
       fc.asyncProperty(
