@@ -91,6 +91,16 @@ export function tripArea(doc: TripDoc): TripArea {
   }
 }
 
+/** O meio do país de cada noite em aberto que lembra o país: onde a fase tracejada fica no mapa. */
+export function openCenters(doc: TripDoc): { stopId: string; name: string; lon: number; lat: number }[] {
+  return doc.itinerary.stops.flatMap((s) => {
+    const b = !s.destinationId ? s.openIn?.bbox : undefined
+    return b && s.openIn
+      ? [{ stopId: s.id, name: s.openIn.name, lon: (b[0] + b[2]) / 2, lat: (b[1] + b[3]) / 2 }]
+      : []
+  })
+}
+
 /**
  * Caixa do mapa quando nenhum destino tem lugar no mapa: a soma dos países das noites em aberto, ou o
  * escopo das viagens antigas (a caixa, ou um raio em volta da cidade).

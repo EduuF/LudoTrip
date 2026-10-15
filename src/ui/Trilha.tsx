@@ -756,7 +756,9 @@ export function Trilha() {
               .join(' ')
             const label = stop.destinationId
               ? `${dest?.name}, ${plural(seg.nights, 'noite', 'noites')}`
-              : `${plural(seg.nights, 'noite', 'noites')} em aberto`
+              : stop.openIn
+                ? `${stop.openIn.name}, ${plural(seg.nights, 'noite', 'noites')}, cidades em aberto`
+                : `${plural(seg.nights, 'noite', 'noites')} em aberto`
             return (
               <button
                 key={seg.id}
@@ -782,7 +784,7 @@ export function Trilha() {
               >
                 <span className="nm">
                   <b>{stop.destinationId ? sealOf(dest) : '+'}</b>
-                  {w > 64 ? (stop.destinationId ? dest?.name : 'em aberto') : null}
+                  {w > 64 ? (stop.destinationId ? dest?.name : (stop.openIn?.name ?? 'em aberto')) : null}
                 </span>
                 <span className="n">{seg.nights}</span>
                 {w >= 56 ? (

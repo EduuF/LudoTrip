@@ -1,7 +1,7 @@
 import { placeStates } from '../engine'
 import type { BBox, ID } from '../engine'
 import type { TripDoc } from '../app/doc'
-import { fallbackBox } from '../app/area'
+import { fallbackBox, openCenters } from '../app/area'
 
 // Enquadramento do mapa (spec §8): só os destinos da viagem (paradas e bate-voltas), nunca a casa.
 // Sem nenhum destino localizado, vale o país das noites em aberto ou o escopo antigo (`fallbackBox`). Funções puras.
@@ -91,7 +91,8 @@ export function bboxOf(points: { lon: number; lat: number }[]): BBox {
 
 export function frame(doc: TripDoc): Frame | null {
   const points = framePoints(doc)
-  const raw: BBox | null = points.length ? bboxOf(points) : fallbackBox(doc)
+  // As fases tracejadas (noites em aberto num país) também ficam à vista.
+  const raw: BBox | null = points.length ? bboxOf([...points, ...openCenters(doc)]) : fallbackBox(doc)
   if (!raw) return null
   const bbox = pad(raw)
   return { bbox, level: levelOf(bbox), points }

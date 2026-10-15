@@ -15,6 +15,15 @@ const docOf = (t: BuiltTrip): TripDoc => ({
 })
 
 describe('enquadramento do mapa', () => {
+  it('com cidade e noites em aberto num país: a fase tracejada também fica à vista', () => {
+    const f = frame(docOf(asiaAberta()))!
+    const [w, s, e, n] = f.bbox
+    expect(w).toBeLessThan(126.98)
+    expect(e).toBeGreaterThan((129.4 + 145.8) / 2)
+    expect(s).toBeLessThan((33.1 + 38.6) / 2)
+    expect(n).toBeGreaterThan((31 + 45.5) / 2)
+  })
+
   it('só noites em aberto: a caixa dos países delas', () => {
     const t = asiaAberta()
     const doc = docOf(t)

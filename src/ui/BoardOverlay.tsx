@@ -4,7 +4,7 @@ import { lodgingGaps, placeStates, tripPhase } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
 import { fillOpenChoice } from '../app/choices'
-import { tripArea } from '../app/area'
+import { openCenters, tripArea } from '../app/area'
 import type { MapAdapter } from '../map/adapter'
 import { easeInOut, reducedMotion } from '../map/adapter'
 import { frame, framePoints, levelOf } from '../map/frame'
@@ -593,12 +593,13 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
  * trilha. Tocar escolhe a cidade (quem só vê não tem o toque).
  */
 function OpenPhases({ adapter }: { adapter: MapAdapter }) {
-  const it = useApp((s) => s.doc!.itinerary)
+  const doc = useApp((s) => s.doc!)
   const edit = useCanEdit()
-  const list = it.stops.flatMap((s, i) => {
-    const box = !s.destinationId ? s.openIn?.bbox : undefined
-    const xy = box && adapter.project([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2])
-    return xy && s.openIn ? [{ stopId: s.id, n: i + 1, name: s.openIn.name, x: xy[0], y: xy[1] }] : []
+  const [W] = adapter.size()
+  const list = openCenters(doc).flatMap((o) => {
+    const xy = adapter.project([o.lon, o.lat])
+    const n = doc.itinerary.stops.findIndex((s) => s.id === o.stopId) + 1
+    return xy ? [{ ...o, n, x: xy[0], y: xy[1] }] : []
   })
   return (
     <>
@@ -620,7 +621,9 @@ function OpenPhases({ adapter }: { adapter: MapAdapter }) {
                 }
               : { 'aria-label': label })}
           >
-            <g transform={`translate(${f1(o.x)},${f1(o.y - 30)})`}>
+            <g
+              transform={`translate(${f1(Math.min(Math.max(o.x, w / 2 + 4), W - w / 2 - 4))},${f1(o.y - 30)})`}
+            >
               <rect
                 x={-w / 2}
                 y="-11"
