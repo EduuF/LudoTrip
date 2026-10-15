@@ -45,6 +45,14 @@ import type { SheetSpec } from './sheetTypes'
 import { AccountSheet, AdoptSheet, CloudSaveSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
 import { cueDone, cueLodging } from './stage/cues'
+import {
+  HistorySheet,
+  InviteSheet,
+  MemberSheet,
+  PeopleSheet,
+  PendingInviteSheet,
+  ViewingSheet,
+} from './People'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
 // e os painéis de criar: atividade, hospedagem e "Sua viagem".
@@ -52,7 +60,16 @@ import { cueDone, cueLodging } from './stage/cues'
 const MODES: LegMode[] = ['flight', 'train', 'bus', 'car', 'boat', 'walk', 'bike', 'moto']
 
 /** Painéis que editam algo e salvam sozinhos: terminam em "Pronto ✓" (os de escolha, em "Fechar"). */
-const EDITORS = new Set<SheetSpec['kind']>(['task', 'autoTask', 'visit', 'sticker', 'leg', 'lodging', 'trip'])
+const EDITORS = new Set<SheetSpec['kind']>([
+  'task',
+  'autoTask',
+  'visit',
+  'sticker',
+  'leg',
+  'lodging',
+  'trip',
+  'people',
+])
 
 export function Sheets() {
   const sheet = useApp((s) => s.sheet)
@@ -414,6 +431,24 @@ function Body({ sheet }: { sheet: SheetSpec }) {
 
     case 'taskAbout':
       return <TaskAboutSheet taskId={sheet.taskId} step={sheet.step} destId={sheet.destId} />
+
+    case 'people':
+      return <PeopleSheet />
+
+    case 'invite':
+      return <InviteSheet />
+
+    case 'member':
+      return <MemberSheet uid={sheet.uid} />
+
+    case 'pendingInvite':
+      return <PendingInviteSheet inviteId={sheet.inviteId} />
+
+    case 'history':
+      return <HistorySheet />
+
+    case 'viewing':
+      return <ViewingSheet />
   }
 }
 
@@ -1094,19 +1129,12 @@ function LodgingSheet({ stopId }: { stopId: ID }) {
 function TripSheet() {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
+  const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
   const [name, setName] = useState(doc.meta.name)
-  const [people, setPeople] = useState(it.travelers.map((t) => t.name))
   const saveName = () => {
     const n = name.trim()
     if (n && n !== doc.meta.name) act({ type: 'rename', name: n }, { keep: true })
-  }
-  const savePeople = (list: string[]) => {
-    const names = list.map((n) => n.trim()).filter(Boolean)
-    if (!names.length) return
-    const travelers = names.map((n, i) => ({ ...(it.travelers[i] ?? { id: `t${i + 1}` }), name: n }))
-    if (JSON.stringify(travelers) !== JSON.stringify(it.travelers))
-      act({ type: 'engine', command: { type: 'setTravelers', travelers } }, { keep: true })
   }
   const setHome = (p: PlacePick | null) =>
     act(
@@ -1141,49 +1169,19 @@ function TripSheet() {
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         />
       </label>
-      <div className="field">
+      {/* Quem vai mora em PESSOAS (spec publicação §4.2): aqui, o resumo que leva até lá. */}
+      <button type="button" className="field field-link" onClick={() => openSheet({ kind: 'people' })}>
         <span>Quem vai</span>
-        {people.map((n, i) => (
-          <div key={i} className="row">
-            <input
-              className="input"
-              style={{ flex: 1 }}
-              value={n}
-              aria-label={`Viajante ${i + 1}`}
-              onChange={(e) => setPeople(people.map((x, k) => (k === i ? e.target.value : x)))}
-              onBlur={() => savePeople(people)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-            />
-            {people.length > 1 ? (
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label={`Tirar ${n || 'viajante'}`}
-                onClick={() => {
-                  const next = people.filter((_, k) => k !== i)
-                  setPeople(next)
-                  savePeople(next)
-                }}
-              >
-                ×
-              </button>
-            ) : null}
-          </div>
-        ))}
-        <button
-          type="button"
-          className="btn small ghost"
-          style={{ alignSelf: 'flex-start' }}
-          onClick={() => {
-            // Salva na hora: fechar o painel logo depois não perde a pessoa.
-            const next = [...people, `Viajante ${people.length + 1}`]
-            setPeople(next)
-            savePeople(next)
-          }}
-        >
-          + Mais uma pessoa
+        <span className="row">
+          <b style={{ flex: 1 }}>{it.travelers.map((t) => t.name).join(', ') || 'Ninguém ainda'}</b>
+          <span className="link-like">Pessoas ›</span>
+        </span>
+      </button>
+      {doc.meta.cloud ? (
+        <button type="button" className="btn small ghost" onClick={() => openSheet({ kind: 'history' })}>
+          Histórico: quem mudou o quê
         </button>
-      </div>
+      ) : null}
       <div className="field">
         <span>De onde saem (e para onde voltam)</span>
         {it.home ? (

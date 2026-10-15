@@ -121,6 +121,8 @@ export interface AppState {
   /** CONVIDAR: cria o convite (e o "Convidado" no mapa, se a pessoa vai viajar). Devolve o link. */
   createInvite(role: Exclude<Role, 'owner'>, travels: boolean): Promise<string | null>
   cancelInvite(invite: PendingInvite): Promise<void>
+  /** Reenviar: um link novo com o mesmo papel e o mesmo "Convidado" (o antigo para de valer). */
+  resendInvite(invite: PendingInvite): Promise<string | null>
   setMemberRole(uid: string, role: Exclude<Role, 'owner'>): Promise<void>
   removeMember(uid: string, alsoTraveler: boolean): Promise<void>
   leaveTrip(): Promise<void>
@@ -1262,6 +1264,25 @@ export const useApp = create<AppState>((set, get) => {
       if (t && !t.userId && (get().doc?.itinerary.travelers.length ?? 0) > 1)
         get().act({ type: 'engine', command: { type: 'removeTraveler', id: t.id } }, { keep: true })
       else toast('Convite cancelado: o link não vale mais.')
+    },
+
+    async resendInvite(inv) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc || !api) return null
+      const off = await api.revokeInvite(doc.meta.id, inv.id)
+      if (!off.ok) {
+        toast('Sem internet: não deu para reenviar agora.', true)
+        return null
+      }
+      const r = await api.createInvite(doc.meta.id, inv.role, inv.travelerId ?? undefined)
+      await get().loadPeople()
+      if (!r.ok) {
+        toast('Sem internet: não deu para criar o link novo agora.', true)
+        return null
+      }
+      track('convite_criado', { role: inv.role, travels: !!inv.travelerId })
+      return r.url
     },
 
     async setMemberRole(uid, role) {

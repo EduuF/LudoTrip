@@ -75,7 +75,9 @@ describe('varredura M3.5: bugs', () => {
 
   it('A2 "+ Mais uma pessoa" fica salva mesmo fechando o painel logo depois', async () => {
     const n = useApp.getState().doc!.itinerary.travelers.length
-    const sheet = await tripSheet()
+    const trip = await tripSheet()
+    fireEvent.click(trip.getByRole('button', { name: /Quem vai/ }))
+    const sheet = within(await screen.findByRole('dialog'))
     fireEvent.click(sheet.getByRole('button', { name: '+ Mais uma pessoa' }))
     fireEvent.click(sheet.getByRole('button', { name: 'Pronto ✓' }))
     await waitFor(() => expect(useApp.getState().doc!.itinerary.travelers.length).toBe(n + 1))

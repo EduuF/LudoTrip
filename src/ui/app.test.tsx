@@ -486,11 +486,14 @@ describe('app', () => {
     await waitFor(() => expect(useApp.getState().doc!.meta.name).toBe('Nossa viagem'))
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByRole('status').className).toContain('top')
-    const who = within(dialog).getByLabelText('Viajante 1')
+    expect(within(dialog).getByLabelText('Ida (primeira noite)')).toBeTruthy()
+    // Quem vai mora em PESSOAS (M5): a linha do resumo leva até lá, e o "‹" volta.
+    fireEvent.click(within(dialog).getByRole('button', { name: /Quem vai/ }))
+    const people = within(await screen.findByRole('dialog'))
+    const who = people.getByLabelText('Viajante 1')
     fireEvent.change(who, { target: { value: 'Ana' } })
     fireEvent.blur(who)
     await waitFor(() => expect(useApp.getState().doc!.itinerary.travelers[0]!.name).toBe('Ana'))
-    expect(within(dialog).getByLabelText('Ida (primeira noite)')).toBeTruthy()
   })
 
   it('bate-volta aparece na régua da trilha (Nara no dia 11/04)', () => {

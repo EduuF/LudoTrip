@@ -1,5 +1,7 @@
 import { CloudBadge } from './ui/CloudBadge'
 import { ThemeToggle } from './ui/ThemeToggle'
+import { Faces, ViewingTag } from './ui/People'
+import { canEdit } from './app/people'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
 import { wireRoutes } from './app/routes'
@@ -59,6 +61,7 @@ function Hud() {
           >
             {doc.meta.name}
           </button>
+          <Faces />
           <div className="hud-menu">
             <button
               type="button"
@@ -123,11 +126,15 @@ function Hud() {
         </div>
         {/* Segunda linha (retorno do staging): ações com nome, nada espremido nem escondido. */}
         <div className="hud-actions">
+          <ViewingTag />
           <CloudBadge />
           <ThemeToggle />
-          <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
-            ↶ Desfazer
-          </button>
+          {/* Quem só vê não tem o que desfazer: o botão nem aparece (spec publicação §4.6). */}
+          {canEdit(doc) ? (
+            <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
+              ↶ Desfazer
+            </button>
+          ) : null}
         </div>
       </div>
     </header>

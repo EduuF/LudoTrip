@@ -3470,3 +3470,163 @@ html.theme-fading {
   border-radius: 8px;
   background: color-mix(in srgb, var(--hud-fg) 8%, transparent);
 }
+
+/* --- Colaboração (spec publicação §4): rostos, PESSOAS, CONVIDAR, membro, Histórico --- */
+.faces-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.hud-btn.faces {
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 4px;
+}
+.hud-btn.faces .face + .face {
+  margin-left: -8px;
+}
+.face {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--sakura);
+  color: var(--ink);
+  font: 700 12px/1 var(--f-body);
+  border: 2px solid var(--hud);
+  box-sizing: border-box;
+}
+.face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Quem está com a viagem aberta agora: um anel colorido. */
+.face.online {
+  box-shadow: 0 0 0 2px var(--matcha);
+}
+.face.more {
+  width: 24px;
+  height: 24px;
+  margin-left: -8px;
+  background: var(--hud-fg);
+  color: var(--hud);
+  font: 11px var(--f-pixel);
+}
+.face.invite {
+  width: 28px;
+  height: 28px;
+  background: var(--paper);
+  border: 1.5px dashed var(--ink-soft);
+  color: var(--ink-soft);
+}
+.people-block .face {
+  border-color: var(--paper);
+}
+.hud-btn.invite-plus {
+  font-size: 18px;
+  padding: 0;
+}
+.hud-btn.viewing-tag {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.people-block {
+  display: grid;
+  gap: 6px;
+}
+.people-block h3 {
+  margin: 6px 0 0;
+  font: 12px var(--f-pixel);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.person-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.person-text small {
+  color: var(--ink-soft);
+}
+.person-text h2 {
+  margin: 0;
+}
+.member-head {
+  align-items: center;
+  gap: 12px;
+}
+.traveler-row {
+  align-items: center;
+}
+.traveler-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.invite-link {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--shade);
+  font: 13px/1.4 ui-monospace, 'Courier New', monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.confirm-box {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+}
+.field-link {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+.link-like {
+  color: var(--ai);
+  font-weight: 700;
+}
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.history h3 {
+  margin: 10px 0 2px;
+  font: 12px var(--f-pixel);
+  color: var(--ink-soft);
+}
+/* Ação que tira alguém ou sai: borda vermelha, sem ser o botão principal da tela. */
+.btn.warn {
+  border-color: var(--beni);
+  color: var(--beni);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--beni) 35%, transparent);
+}
