@@ -53,11 +53,11 @@ A recuperação de viagem (volta no tempo do Durable Object) não roda localment
 
 ## Segredos
 
-| Nome                                            | Onde                                                                                              | Para quê                  |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------- |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | GitHub (secrets)                                                                                  | O workflow publicar       |
-| `SENTRY_AUTH_TOKEN`                             | GitHub (secrets)                                                                                  | Enviar os mapas de código |
-| `ADMIN_TOKEN`                                   | Cloudflare (`wrangler secret put ADMIN_TOKEN`, nos dois ambientes) e GitHub (secrets do ambiente) | Recuperar uma viagem      |
+| Nome                                            | Onde                                                                                                                                              | Para quê                  |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | GitHub (secrets)                                                                                                                                  | O workflow publicar       |
+| `SENTRY_AUTH_TOKEN`                             | GitHub (secrets)                                                                                                                                  | Enviar os mapas de código |
+| `ADMIN_TOKEN`                                   | Cloudflare (`wrangler secret bulk arquivo.json`, nos dois ambientes; não `secret put` pelo stdin, que grava vazio) e GitHub (secrets do ambiente) | Recuperar uma viagem      |
 
 Valores públicos ficam em **variables** dos ambientes `staging` e `production` do GitHub: chaves do Firebase, DSN do Sentry, chave do PostHog e `APP_URL`.
 
