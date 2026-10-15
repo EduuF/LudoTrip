@@ -37,19 +37,31 @@ As noites são divididas entre as paradas como hoje (`createItinerary`, `src/eng
 
 ## 3. A parada-país ("cidades em aberto")
 
-- **O que é.** Um `Destination` com `kind: 'country'` (o tipo já existe em `src/engine/types.ts:33-42`). O `country` é o ISO2, e `lat`/`lon` ficam no centro da caixa do país (`countryBounds`). Não tem `tz`.
-- **Rótulo:** "Japão (cidades em aberto)".
+_Revisado depois da leitura do motor: a primeira versão usava um `Destination` com `kind: 'country'`._
+
+- **O que é.** Uma **parada em aberto** (`destinationId: null`), igual ao "Ainda não sei: decido no mapa" de hoje, que agora **lembra o país**.
+  - Campo novo e opcional: `Stop.openIn?: { country: string; name: string; localName?: string; bbox?: BBox }`.
+  - `country` é o ISO2. O `bbox` é calculado na criação com `countryBounds`, que é assíncrono; por isso fica gravado.
+- **Por que não um destino-país.**
+  - O motor já trata a parada em aberto inteira:
+    - aviso `open-nights`;
+    - nenhuma lacuna de hospedagem (`lodgingGaps` pula `destinationId` nulo);
+    - nenhuma visita (`OPEN_HAS_NO_PLANS`);
+    - dia `kind: 'open'`, que aparece como "noite em aberto".
+  - Um destino-país seria uma parada "de verdade": pediria hospedagem, aceitaria atividades e estimaria trechos a partir do centro do país.
+  - Ensinar ao motor que existe um destino que não é destino seria mais caro e mais frágil.
+- **Rótulo:** "Japão (cidades em aberto)", em vez de "noite em aberto", sempre que a parada tiver `openIn`.
 - **No mapa:**
-  - Uma fase tracejada, na posição do centro do país.
-  - Não entra em "Entrar na cidade", porque não há lugares para enquadrar.
-  - Tocar nela abre o painel do destino com a ação primária **"Escolher cidade"**.
+  - Uma fase tracejada no centro do `openIn.bbox`.
+  - Não entra em "Entrar na cidade".
+  - Tocar nela abre a ação **"Escolher cidade"**.
 - **Trocar por uma cidade.**
-  - Usa o comando que já existe, `setDestination` (`src/engine/ops`, coberto em `structure.test.ts:262`), que troca o destino da parada e mantém as visitas.
-  - Antes, a cidade escolhida entra em `destinations` com `addDestination`.
-  - Se a pessoa quiser várias cidades no lugar do país, troca a primeira e soma as outras com "+ Destino". Não há fluxo especial.
+  - Usa o comando que já existe, `fillOpen` (`src/engine/ops/structure.ts:93`). Ele preenche todas as noites ou só parte delas, e o resto continua em aberto.
+  - A busca vem com viés para `openIn.country`.
+  - Ao preencher todas as noites, `fillOpen` apaga o `openIn`. Ao preencher só parte, a parada que sobra em aberto continua com o `openIn`.
+  - Se a pessoa quiser várias cidades, preenche uma parte de cada vez. Não há fluxo novo.
 - **Sem problema inventado.**
-  - As tarefas automáticas (`src/ui/autoTasks.ts:71`) não pedem hospedagem nem trechos para uma parada-país.
-  - A estimativa de trechos (`src/engine/derive.ts:380-401`) aceita um destino sem `tz` e devolve "sem estimativa", em vez de inventar um número.
+  - Nada a fazer nas tarefas nem nas estimativas: a parada é nula, e o motor já a ignora nos dois casos.
 
 ## 4. O escopo vira cálculo: `tripArea(doc)`
 
@@ -57,7 +69,7 @@ Novo módulo puro em `src/app/area.ts`:
 
 ```ts
 interface TripArea {
-  countries: string[]        // ISO2, na ordem das paradas, sem repetir
+  countries: string[]        // ISO2 dos destinos e dos openIn, na ordem das paradas, sem repetir
   mainCountry?: string       // countries[0] ?? doc.scope?.country
   bbox?: [number, number, number, number]
   label: string              // para o nome padrão
@@ -66,8 +78,8 @@ interface TripArea {
 ```
 
 **`bbox`**, a primeira regra que der resultado:
-1. A caixa dos destinos localizados das paradas, contando os bate-voltas e deixando os destinos-país de fora.
-2. A caixa somada dos destinos-país, via `countryBounds`.
+1. A caixa dos destinos localizados das paradas, contando os bate-voltas.
+2. A caixa somada dos `openIn.bbox` das paradas em aberto.
 3. O `doc.scope` legado (`bbox`, ou lat/lon ±0,12°).
 
 **`label`:**
@@ -95,20 +107,23 @@ O campo `scope?: Scope` continua no tipo `TripDoc`, com o comentário "legado: s
 
 ## 6. Dados, sync e compatibilidade
 
-- **Sem migração.** O servidor (Durable Object `TripRoom`) reaplica as ações e só roda `migrate()` ao criar a viagem. Reescrever o doc no aparelho (por exemplo, trocar paradas `null` por destinos-país) faria o aparelho e o servidor divergirem.
+- **Sem migração.** O servidor (Durable Object `TripRoom`) reaplica as ações e só roda `migrate()` ao criar a viagem. Reescrever o doc no aparelho (por exemplo, dar país às paradas `null` antigas) faria o aparelho e o servidor divergirem.
 - Por isso:
   - Não muda `SCHEMA_VERSION`.
   - Nenhuma `DocAction` nova.
   - Não muda o protocolo.
 - As viagens antigas mantêm o `scope` e as paradas `destinationId: null` ("Ainda não sei: decido no mapa"). Tudo isso continua funcionando, e o `null` segue válido no motor.
 - Aparelhos com a versão antiga abrem uma viagem nova sem `scope`. Isso já é permitido hoje (o campo é opcional) e o enquadramento cai nas paradas. O pior caso é a paleta padrão num aparelho desatualizado, o que é aceitável.
+- **`Stop.openIn` é um campo a mais, nada mais.** Aparelhos antigos ignoram o que não conhecem.
+  - Uma viagem "só Japão" aberta num aparelho desatualizado mostra "noite em aberto" e o mapa no nível mundo, até o PWA se atualizar.
+  - O servidor só guarda e reaplica o doc. `fillOpen` roda igual nos dois lados porque o código do motor é o mesmo.
 
 ## 7. Testes
 
 - **`src/app/area.test.ts`:**
   - uma cidade;
   - várias cidades num país;
-  - só destino-país;
+  - só uma parada em aberto com `openIn`;
   - dois países;
   - três países;
   - doc legado com `scope` e paradas `null`;
@@ -118,8 +133,8 @@ O campo `scope?: Scope` continua no tipo `TripDoc`, com o comentário "legado: s
   - só "Japão": uma parada-país;
   - Paris + Roma: o nome padrão é "Viagem para França e Itália";
   - sem chip: não avança.
-- **`src/map/frame.test.ts`:** o fallback para destino-país e para o `scope` legado.
-- **Motor:** `setDestination` trocando uma parada-país por uma cidade mantém as visitas.
+- **`src/map/frame.test.ts`:** o fallback para paradas com `openIn` e para o `scope` legado.
+- **Motor:** `createItinerary` grava o `openIn`; `fillOpen` completo apaga o `openIn`, e o parcial o mantém na parada que sobra em aberto.
 - **`autoTasks`:** nenhuma tarefa de hospedagem para uma parada-país.
 - **Rodada final:** `npm test`, o typecheck, e no celular (`/run`):
   - criar "só Japão";
