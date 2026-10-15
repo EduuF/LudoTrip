@@ -4,13 +4,15 @@ Spec: [`publicacao-contas-colaboracao`](superpowers/specs/2026-10-14-publicacao-
 
 ## Como o app chega ao ar
 
-| Ambiente                          | Endereço                                       | Quando publica                           |
-| --------------------------------- | ---------------------------------------------- | ---------------------------------------- |
-| **Staging** (teste do mantenedor) | `https://staging.ludotrip.app`                 | Sozinho, a cada push na `main`           |
-| **Produção**                      | `https://ludotrip.app` (o `www` leva para ele) | Só quando o mantenedor manda             |
-| GitHub Pages (sem nuvem)          | `https://eduuf.github.io/LudoTrip/`            | A cada push; vira redirecionamento no M6 |
+| Ambiente                          | Endereço                                       | Quando publica                            |
+| --------------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| **Staging** (teste do mantenedor) | `https://staging.ludotrip.app`                 | Sozinho, a cada push na `main`            |
+| **Produção**                      | `https://ludotrip.app` (o `www` leva para ele) | Sozinho, logo depois da staging conferida |
+| GitHub Pages (sem nuvem)          | `https://eduuf.github.io/LudoTrip/`            | A cada push; vira redirecionamento no M6  |
 
-O workflow **Deploy (Cloudflare)** (`.github/workflows/deploy.yml`) faz, em ordem:
+A cada push na `main`, o workflow **Deploy (Cloudflare)** (`.github/workflows/deploy.yml`) publica a staging, confere a staging no ar com `scripts/smoke-live.mjs` e, só se tudo passou, publica a produção. Se a staging ou a conferência falham, a produção fica como estava.
+
+Cada publicação (`.github/workflows/publicar.yml`) faz, em ordem:
 
 1. testes;
 2. build com nuvem;
@@ -24,13 +26,15 @@ Os endereços antigos `*.ludotrip.workers.dev` continuam respondendo.
 
 Ele só liga quando a variável do repositório `CLOUDFLARE_READY` vale `1`, o que acontece depois do guia do M4.
 
-**Publicar em produção:**
+**Republicar à mão** (por exemplo, voltar uma versão: rodar o workflow a partir do commit anterior):
 
 1. GitHub → **Actions**;
 2. **Deploy (Cloudflare)**;
 3. **Run workflow**;
-4. em _Onde publicar_, escolher `production`;
+4. em _Onde publicar_, escolher `staging` ou `production`;
 5. **Run workflow**.
+
+Ou no terminal: `gh workflow run deploy.yml -f target=production`.
 
 ## Onde ver o que aconteceu
 

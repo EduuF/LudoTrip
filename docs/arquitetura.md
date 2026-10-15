@@ -29,12 +29,12 @@ OpenFreeMap (tiles) · Photon (busca)
 
 ## 2. Ambientes e domínios
 
-| Ambiente  | Endereço                                                        | Worker                        | D1                 | Firebase                       | Publica                                           |
-| --------- | --------------------------------------------------------------- | ----------------------------- | ------------------ | ------------------------------ | ------------------------------------------------- |
-| Produção  | `https://ludotrip.app` (+ `www` → principal)                    | `ludotrip` (+ `ludotrip-www`) | `ludotrip`         | projeto `ludotrip`             | `gh workflow run deploy.yml -f target=production` |
-| Staging   | `https://staging.ludotrip.app`                                  | `ludotrip-staging`            | `ludotrip-staging` | projeto `ludotrip-dev`         | sozinho, a cada push na `main`                    |
-| Sem nuvem | `https://eduuf.github.io/LudoTrip/`                             | — (GitHub Pages)              | —                  | —                              | a cada push (vira redirecionamento no M6)         |
-| Local     | `npm run dev` · `node scripts/e2e-cloud.mjs` (`127.0.0.1:8787`) | `wrangler dev`                | local              | login de teste (`TEST_AUTH=1`) | —                                                 |
+| Ambiente  | Endereço                                                        | Worker                        | D1                 | Firebase                       | Publica                                                     |
+| --------- | --------------------------------------------------------------- | ----------------------------- | ------------------ | ------------------------------ | ----------------------------------------------------------- |
+| Produção  | `https://ludotrip.app` (+ `www` → principal)                    | `ludotrip` (+ `ludotrip-www`) | `ludotrip`         | projeto `ludotrip`             | sozinho, a cada push na `main`, depois da staging conferida |
+| Staging   | `https://staging.ludotrip.app`                                  | `ludotrip-staging`            | `ludotrip-staging` | projeto `ludotrip-dev`         | sozinho, a cada push na `main`                              |
+| Sem nuvem | `https://eduuf.github.io/LudoTrip/`                             | — (GitHub Pages)              | —                  | —                              | a cada push (vira redirecionamento no M6)                   |
+| Local     | `npm run dev` · `node scripts/e2e-cloud.mjs` (`127.0.0.1:8787`) | `wrangler dev`                | local              | login de teste (`TEST_AUTH=1`) | —                                                           |
 
 - **Domínio:** `ludotrip.app`, registrado na Cloudflare (mesma conta), DNSSEC ativo. Os Workers usam **Custom Domains** (`routes` com `custom_domain: true` em `wrangler.jsonc` / `wrangler.www.jsonc`): a Cloudflare cria o DNS e o certificado. `.app` é HSTS pré-carregado (só HTTPS).
 - **Login pelo nosso domínio:** `authDomain` do Firebase é o próprio host; o Worker repassa `/__/auth/*` ao `<projeto>.firebaseapp.com` (sem redirecionar), para o Safari não bloquear. Cada domínio precisa estar nos **domínios autorizados** do Firebase e no **cliente OAuth** do Google (redirect `https://<domínio>/__/auth/handler` e origem). Guia: `docs/guias/M6-dominio-o-que-voce-precisa-fazer.md`.
@@ -102,12 +102,12 @@ A nuvem só existe no build com `VITE_CLOUD=1` (staging e produção); o build d
 
 ## 6. CI/CD (GitHub Actions)
 
-| Workflow        | Quando                                       | O que faz                                                                                                                   |
-| --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`        | push e PR                                    | typecheck, lint, testes do app e do servidor, build, e2e.                                                                   |
-| `deploy.yml`    | push na `main` (staging) · manual (produção) | testes, build com nuvem, migrações D1, `wrangler deploy` (e o `www` em produção). Liga com a variável `CLOUDFLARE_READY=1`. |
-| `pages.yml`     | push na `main`                               | a versão sem nuvem no GitHub Pages.                                                                                         |
-| `recuperar.yml` | manual                                       | volta uma viagem no tempo (`/api/admin/restore`).                                                                           |
+| Workflow        | Quando                                                                   | O que faz                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`        | push e PR                                                                | typecheck, lint, testes do app e do servidor, build, e2e.                                                                                                                                               |
+| `deploy.yml`    | push na `main` (staging → conferência → produção) · manual (um ambiente) | chama `publicar.yml` (testes, build com nuvem, migrações D1, `wrangler deploy` e o `www` em produção) e confere a staging com `smoke-live` antes da produção. Liga com a variável `CLOUDFLARE_READY=1`. |
+| `pages.yml`     | push na `main`                                                           | a versão sem nuvem no GitHub Pages.                                                                                                                                                                     |
+| `recuperar.yml` | manual                                                                   | volta uma viagem no tempo (`/api/admin/restore`).                                                                                                                                                       |
 
 **Segredos:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SENTRY_AUTH_TOKEN` (repositório) e `ADMIN_TOKEN` (ambientes do GitHub e Workers). **Variáveis públicas** por ambiente: `VITE_FIREBASE_*`, `VITE_SENTRY_DSN`, `VITE_POSTHOG_KEY`, `SENTRY_ORG`, `SENTRY_PROJECT`, `APP_URL`.
 
