@@ -17,7 +17,15 @@
     "FIREBASE_PROJECT_ID": "ludotrip",
     "APP_ENV": "production",
   },
-  "d1_databases": [{ "binding": "DB", "database_name": "ludotrip", "migrations_dir": "worker/migrations" }],
+  // Bancos no leste da América do Norte (enam): a região do D1 mais perto do Brasil.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ludotrip",
+      "database_id": "0009bcb1-bf4b-4806-9d85-fa1bb853d541",
+      "migrations_dir": "worker/migrations",
+    },
+  ],
   "durable_objects": { "bindings": [{ "name": "TRIPS", "class_name": "TripRoom" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TripRoom"] }],
   "ratelimits": [{ "name": "API", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }],
@@ -32,7 +40,12 @@
       "name": "ludotrip-staging",
       "vars": { "FIREBASE_PROJECT_ID": "ludotrip-dev", "APP_ENV": "staging" },
       "d1_databases": [
-        { "binding": "DB", "database_name": "ludotrip-staging", "migrations_dir": "worker/migrations" },
+        {
+          "binding": "DB",
+          "database_name": "ludotrip-staging",
+          "database_id": "09f26d58-201b-4603-93e5-3ddba694f112",
+          "migrations_dir": "worker/migrations",
+        },
       ],
       "durable_objects": { "bindings": [{ "name": "TRIPS", "class_name": "TripRoom" }] },
       "ratelimits": [{ "name": "API", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }],
