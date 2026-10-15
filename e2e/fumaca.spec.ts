@@ -70,20 +70,16 @@ test('tocar num dia da régua move o cursor; "▶ Ver a viagem" passa os dias so
   await expect(page.getByRole('button', { name: '▶ Ver a viagem' })).toBeVisible()
 })
 
-test('criar viagem com um país e "decido no mapa": nasce com noites em aberto e o escopo', async ({
-  page,
-}) => {
+test('criar viagem só com um país: nasce com noites em aberto no país', async ({ page }) => {
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await page.getByPlaceholder(/Busque: Japão/).fill('romen')
   await page.getByRole('button', { name: /^Romênia/ }).click()
-  await page.getByRole('button', { name: 'Continuar' }).click()
-  await page.getByRole('button', { name: 'Ainda não sei: decido no mapa' }).click()
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
   await expect(page.locator('.tr-month')).toContainText('7 noites')
   // As abas ficam montadas (escondidas): getByRole respeita o `hidden`, getByText não.
-  await expect(page.getByRole('heading', { name: '7 noites em aberto' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Romênia: 7 noites, cidades em aberto' })).toBeVisible()
 })
 
 test('no toque: segurar levanta o destino; arrastar um dia muda a data; soltar na lixeira tira do roteiro', async ({
@@ -244,17 +240,14 @@ test('"+ Atividade aqui": um clique no mapa da cidade abre "Nova atividade"; "Cr
   await expect(page.getByText('Atividade nova: Ginkaku-ji.')).toBeVisible()
 })
 
-test('criar viagem com uma cidade: o passo 2 pergunta por outra cidade, não por "lugares"', async ({
-  page,
-}) => {
+test('criar viagem com uma cidade: sugere outras do mesmo país; o nome é a cidade', async ({ page }) => {
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await page.getByPlaceholder(/Busque: Japão/).fill('Rio de')
   await page.getByRole('button', { name: /^Rio de Janeiro/ }).click()
-  await page.getByRole('button', { name: 'Continuar' }).click()
-  await expect(page.getByRole('heading', { name: /Vão dormir em outra cidade\?/ })).toBeVisible()
-  await expect(page.getByText(/Bate-voltas e passeios/)).toBeVisible()
-  await expect(page.getByText('Outra cidade', { exact: true })).toBeVisible()
+  await expect(page.getByText(/1\. Rio de Janeiro/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '+ São Paulo' })).toBeVisible()
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
+  await expect(page.getByPlaceholder('Viagem para Rio de Janeiro')).toBeVisible()
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()
 })

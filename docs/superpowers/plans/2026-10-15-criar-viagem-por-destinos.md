@@ -40,35 +40,35 @@ src/app/choices.ts         fillOpenChoice com viés no país
 
 ## 1. Motor: `Stop.openIn`
 
-- [ ] `types.ts`:
+- [x] `types.ts`:
   - `export interface OpenIn { country: string; name: string; localName?: string; bbox?: BBox }`;
   - `Stop.openIn?: OpenIn`, com o comentário "só com `destinationId: null`: o país das noites em aberto".
   - Se o `BBox` não existir no motor, defini-lo aqui como `[w, s, e, n]` e fazer `src/map/frame.ts` reexportar.
-- [ ] `create.ts`: o elemento de `NewTripSpec.destinationIds` passa a ser `ID | null | { openIn: OpenIn }`. O objeto gera uma parada `destinationId: null` com `openIn`.
-- [ ] `fillOpen` (`ops/structure.ts:93`):
+- [x] `create.ts`: o elemento de `NewTripSpec.destinationIds` passa a ser `ID | null | { openIn: OpenIn }`. O objeto gera uma parada `destinationId: null` com `openIn`.
+- [x] `fillOpen` (`ops/structure.ts:93`):
   - preenchimento completo (`k === nightsOf(o)`): `delete o.openIn`;
   - preenchimento parcial: a parada que sobra em aberto continua com o `openIn`, e a nova parada nasce sem ele.
-- [ ] Conferir os outros ops que criam ou fundem paradas em aberto (`stretchInto`, `closeOpen`, a lixeira em `:75`, `normalize` em `core.ts:298`):
+- [x] Conferir os outros ops que criam ou fundem paradas em aberto (`stretchInto`, `closeOpen`, a lixeira em `:75`, `normalize` em `core.ts:298`):
   - nenhum deve copiar o `openIn` para uma parada com destino;
   - a lixeira não cria `openIn`.
-- [ ] Testes:
+- [x] Testes:
   - `create.test.ts`: uma parada `openIn` só, e `[openIn, id]` misturado;
   - `structure.test.ts`: `fillOpen` completo e parcial (os dois `side`);
   - `invariants.test.ts`: nenhuma parada com destino tem `openIn`.
 
 ## 2. Nomes da parada em aberto
 
-- [ ] `narrate.ts:33` `stopName`: com `openIn`, devolve `` `${openIn.name} (cidades em aberto)` ``; sem ele, continua "Noites em aberto".
-- [ ] `DayCard.tsx:42`: com `openIn`, "Japão · cidades em aberto"; sem ele, "noite em aberto".
-- [ ] `Roteiro.tsx:519-545` (cartão das noites em aberto):
+- [x] `narrate.ts:33` `stopName`: com `openIn`, devolve `` `${openIn.name} (cidades em aberto)` ``; sem ele, continua "Noites em aberto".
+- [x] `DayCard.tsx:42`: com `openIn`, "Japão · cidades em aberto"; sem ele, "noite em aberto".
+- [x] `Roteiro.tsx:519-545` (cartão das noites em aberto):
   - título "Japão: N noites, cidades em aberto";
   - botão "+ Escolher cidade" (sem `openIn`, continua "+ Escolher destino").
-- [ ] `narration.ts:28`: "Kyoto entrou nas noites em aberto" continua servindo; não muda.
-- [ ] Testes em `narrate.test.ts`, e no teste do DayCard/Roteiro se existir. Se não existir, cobrir pelo e2e da tarefa 7.
+- [x] `narration.ts:28`: "Kyoto entrou nas noites em aberto" continua servindo; não muda.
+- [x] Testes em `narrate.test.ts`, e no teste do DayCard/Roteiro se existir. Se não existir, cobrir pelo e2e da tarefa 7.
 
 ## 3. `tripArea(doc)`
 
-- [ ] `src/app/area.ts`, puro, seguindo a spec §4:
+- [x] `src/app/area.ts`, puro, seguindo a spec §4:
   - `countries`: os destinos das paradas e os `openIn`, na ordem, sem repetir;
   - `mainCountry`: `countries[0] ?? doc.scope?.country`;
   - `bbox`:
@@ -77,37 +77,37 @@ src/app/choices.ts         fillOpenChoice com viés no país
     3. o `scope.bbox`;
     4. o `scope` lat/lon ±0,12°/±0,1° (os mesmos números de `frame.ts:96`);
   - `label` e `localLabel`: 1 destino → nome; 1 país → país; 2 países → "França e Itália"; 3 ou mais → "França, Itália…"; sem nada → `scope.name` → "sua viagem".
-- [ ] O nome do país vem de `COUNTRIES` (`src/providers/countries.ts`), pelo ISO2. O `localName` vem de lá também.
-- [ ] `area.test.ts` cobre todos os casos da spec §7, incluindo os fixtures antigos (`src/engine/fixtures/trips.ts`, que têm `scope`).
-- [ ] `types.ts`: comentário em `TripDoc.scope`: "legado: só viagens criadas antes de 15/10/2026; ler via `tripArea`".
+- [x] O nome do país vem de `COUNTRIES` (`src/providers/countries.ts`), pelo ISO2. O `localName` vem de lá também.
+- [x] `area.test.ts` cobre todos os casos da spec §7, incluindo os fixtures antigos (`src/engine/fixtures/trips.ts`, que têm `scope`).
+- [x] `types.ts`: comentário em `TripDoc.scope`: "legado: só viagens criadas antes de 15/10/2026; ler via `tripArea`".
 
 ## 4. Trocar quem lia `doc.scope`
 
-- [ ] `src/map/frame.ts:93-102`: o `frame()` usa `framePoints` ou, sem eles, `tripArea(doc).bbox`. Para não ter dependência circular, a regra do `bbox` fica em `area.ts` e importa `framePoints` de `frame.ts`. `frame.ts` só chama `tripArea` no fallback; se o ciclo de imports incomodar, extrair `fallbackBox(doc)` para `area.ts` e usar só ele.
-- [ ] `MapPanel.tsx:278`: `tripArea(doc).localLabel`. Manter o `localName` do destino dentro da cidade (`:299`).
-- [ ] `kit.tsx:147`: `palette(tripArea(doc).mainCountry)`.
-- [ ] `BoardOverlay.tsx:196`: `decoKinds(tripArea(doc).mainCountry)`.
-- [ ] `Sheets.tsx:1525-1536` ("+ Destino" / sheet `dest`):
+- [x] `src/map/frame.ts:93-102`: o `frame()` usa `framePoints` ou, sem eles, `tripArea(doc).bbox`. Para não ter dependência circular, a regra do `bbox` fica em `area.ts` e importa `framePoints` de `frame.ts`. `frame.ts` só chama `tripArea` no fallback; se o ciclo de imports incomodar, extrair `fallbackBox(doc)` para `area.ts` e usar só ele.
+- [x] `MapPanel.tsx:278`: `tripArea(doc).localLabel`. Manter o `localName` do destino dentro da cidade (`:299`).
+- [x] `kit.tsx:147`: `palette(tripArea(doc).mainCountry)`.
+- [x] `BoardOverlay.tsx:196`: `decoKinds(tripArea(doc).mainCountry)`.
+- [x] `Sheets.tsx:1525-1536` ("+ Destino" / sheet `dest`):
   - tirar o `within={doc.scope?.country}`;
   - o viés da busca passa a ser o centro de `tripArea(doc).bbox`;
   - aceitar um `country?` opcional no sheet `dest`, usado como `within` quando vier.
-- [ ] `choices.ts:620` `fillOpenChoice`: com `openIn`, título "Que cidade de Japão?" e `country: openIn.country` no sheet.
-- [ ] `grep -rn "scope" src --include=*.ts*`: depois disso, só `area.ts`, `doc.ts`, `types.ts`, `store.ts` (exemplos) e testes leem `scope`.
-- [ ] Testes: `frame.test.ts` cobre o fallback para `openIn` e para o `scope` legado. A paleta de uma viagem de exemplo não muda.
+- [x] `choices.ts:620` `fillOpenChoice`: com `openIn`, título "Que cidade de Japão?" e `country: openIn.country` no sheet.
+- [x] `grep -rn "scope" src --include=*.ts*`: depois disso, só `area.ts`, `doc.ts`, `types.ts`, `store.ts` (exemplos) e testes leem `scope`.
+- [x] Testes: `frame.test.ts` cobre o fallback para `openIn` e para o `scope` legado. A paleta de uma viagem de exemplo não muda.
 
 ## 5. Mapa: a fase tracejada
 
-- [ ] `BoardOverlay.tsx`: para cada parada em aberto com `openIn.bbox`, desenhar uma fase tracejada no centro da caixa:
+- [x] `BoardOverlay.tsx`: para cada parada em aberto com `openIn.bbox`, desenhar uma fase tracejada no centro da caixa:
   - o mesmo componente de fase, com o estilo "em aberto";
   - número da fase na ordem das paradas.
-- [ ] Não entra na trilha pontilhada nem em `route.ts`. O grupo fica onde estava (`route.ts:35`).
-- [ ] Tocar na fase chama `fillOpenChoice(stopId)`. Não abre "Entrar na cidade".
-- [ ] Animação: nenhuma nova. Se surgir uma, seguir `docs/animacoes.md`.
-- [ ] Teste: `e2e/mapa.spec.ts` ganha um caso: uma viagem "só Japão" mostra a fase, e tocar nela abre "Que cidade de Japão?".
+- [x] Não entra na trilha pontilhada nem em `route.ts`. O grupo fica onde estava (`route.ts:35`).
+- [x] Tocar na fase chama `fillOpenChoice(stopId)`. Não abre "Entrar na cidade".
+- [x] Animação: nenhuma nova. Se surgir uma, seguir `docs/animacoes.md`.
+- [x] Teste: `e2e/mapa.spec.ts` ganha um caso: uma viagem "só Japão" mostra a fase, e tocar nela abre "Que cidade de Japão?".
 
 ## 6. Criação: o passo único
 
-- [ ] `Create.tsx`:
+- [x] `Create.tsx`:
   - `STEPS = ['Pra onde', 'Quando', 'Quem vai', 'Como', 'Nome']`;
   - some o estado `scope`/`undecided`, e fica `picks: PlacePick[]`;
   - o passo 0 tem:
@@ -124,29 +124,29 @@ src/app/choices.ts         fillOpenChoice com viés no país
     - não grava `scope`;
     - a checagem de voo usa o primeiro destino localizado ou o centro do primeiro `openIn.bbox`;
   - o nome padrão é `` `Viagem para ${tripArea(draftDoc).label}` ``. Calcular a partir de um doc rascunho ou de uma função `areaLabel(picks)` que `tripArea` também usa.
-- [ ] Remover o "Ainda não sei: decido no mapa". O país cobre esse caso. Sem país e sem cidade, não se cria uma viagem.
-- [ ] `create.test.tsx`, reescrito:
+- [x] Remover o "Ainda não sei: decido no mapa". O país cobre esse caso. Sem país e sem cidade, não se cria uma viagem.
+- [x] `create.test.tsx`, reescrito:
   - Tóquio + Kyoto: 2 paradas, sem `scope`, nome "Viagem para Japão";
   - só Japão: 1 parada `null` com `openIn.country === 'JP'`;
   - Paris + Roma: "Viagem para França e Itália";
   - sem chip: não avança;
   - reordenar troca a ordem das paradas.
-- [ ] Atualizar o comentário do topo de `Create.tsx`.
+- [x] Atualizar o comentário do topo de `Create.tsx`.
 
 ## 7. Revisão no app
 
-- [ ] `npm run e2e`, mais o caso novo de `mapa.spec.ts`.
-- [ ] `/run` no celular (viewport mobile):
+- [x] `npm run e2e`, mais o caso novo de `mapa.spec.ts`.
+- [x] `/run` no celular (viewport mobile):
   - criar "só Japão": cair no mapa enquadrado no Japão com a fase tracejada; "Escolher cidade" → Kyoto com 2 de 5 noites; ver a parada em aberto que sobra continuar "Japão (cidades em aberto)";
   - criar Paris + Roma: mapa na Europa, nome "Viagem para França e Itália", paleta da França;
   - abrir a viagem de exemplo antiga do Japão: o enquadramento, a marca-d'água e a paleta continuam iguais.
-- [ ] Contar os controles da tela de criação, antes e depois (CLAUDE.md, "Revelar progressivamente"). O número não pode subir.
+- [x] Contar os controles da tela de criação, antes e depois (CLAUDE.md, "Revelar progressivamente"). O número não pode subir.
 
 ## 8. Docs e fechamento
 
-- [ ] Spec v2, `2026-10-13-ludotrip-v2-design.md`:
+- [x] Spec v2, `2026-10-13-ludotrip-v2-design.md`:
   - §7, passos 1 e 2: viram o passo único, com link para a spec nova;
   - §8, "Enquadramento": "sem parada localizada, a caixa do país das noites em aberto, ou o escopo das viagens antigas".
-- [ ] `docs/arquitetura.md`: se descreve `scope`, uma linha sobre `tripArea` e `openIn`.
-- [ ] Checks completos: `typecheck`, `lint`, `test`, `test:worker`, `e2e`, `build`.
-- [ ] Commit final e push da branch. O PR e o merge ficam para o mantenedor decidir.
+- [x] `docs/arquitetura.md`: se descreve `scope`, uma linha sobre `tripArea` e `openIn`.
+- [x] Checks completos: `typecheck`, `lint`, `test`, `test:worker`, `e2e`, `build`.
+- [x] Commit final e push da branch. O PR e o merge ficam para o mantenedor decidir.

@@ -2,6 +2,12 @@
 
 _Design aprovado em 15/10/2026. Muda a §7 e parte da §8 da [spec v2](2026-10-13-ludotrip-v2-design.md)._
 
+**Como ficou na implementação:**
+- `TripArea` não tem `bbox`. A caixa de reserva do mapa é `fallbackBox(doc)`, e `openCenters(doc)` dá o meio de cada país das noites em aberto, para o mapa e para o enquadramento. Assim não há ciclo entre `src/app/area.ts` e `src/map/frame.ts`.
+- O enquadramento com cidades também conta o meio dos países das noites em aberto, para a fase tracejada não sair da tela.
+- Na criação, os chips só se removem (×). Reordenar fica com a trilha, que já arrasta as paradas. Uma seta sozinha não diz a intenção (CLAUDE.md).
+- "+ Destino" continua com `within`: é só preferência de ordem na lista própria, não restrição. Vale o país pedido (noites em aberto) ou o `mainCountry`.
+
 ## 1. Por quê
 
 Hoje a criação (`src/ui/Create.tsx`) tem dois passos:
