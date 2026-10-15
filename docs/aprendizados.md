@@ -210,6 +210,8 @@ O mantenedor testou o laboratório no Japão e apontou: passagem sem volta, moch
 
 ### Ferramentas e ambiente
 
+- **Windows + Git Bash:** scripts Python com acentos ou aspas complicadas vão para um arquivo (ferramenta Write, na pasta de rascunho) em vez de heredoc; heredoc com aspas misturadas quebra o shell. Depois de `prettier --write`, um trecho pode mudar de forma: releia antes de substituir texto exato.
+- **Testes de tela em paralelo** derrubam por tempo numa máquina carregada: `maxWorkers: '50%'`, `testTimeout` de 20 s e `asyncUtilTimeout` de 8 s (`vite.config.ts`, `src/test/setup.ts`).
 - **O painel de navegador roda o servidor de desenvolvimento** (`.claude/launch.json` com `npm --prefix …/LudoTrip run dev`), com scripts e console.
   - A simulação de celular (`resize_window` mobile) **desloca as coordenadas do mouse**: o clique cai em outro elemento. **Regra:** para testar fluxos, clicar pela própria página (`element.click()` via javascript) e usar capturas só para olhar.
 - **Heredoc longo no Bash falha** ("unexpected EOF"), mesmo com aspas. **Regra:** escrever o script com a ferramenta de arquivo e rodar o arquivo.
