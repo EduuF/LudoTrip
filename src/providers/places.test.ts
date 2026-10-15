@@ -80,7 +80,98 @@ describe('busca online de lugares (Photon)', () => {
     expect(url).toContain('lat=45.6')
     const b = await searchOnline('bras', { lat: 45.6, lon: 25.6, limit: 5 })
     expect(b).toBe(a)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Uma em inglês e uma no idioma local; a segunda busca vem do cache.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const langs = fetchMock.mock.calls.map((c) =>
+      new URL(String((c as unknown[])[0])).searchParams.get('lang'),
+    )
+    expect(langs.sort()).toEqual(['default', 'en'])
+  })
+
+  it('nomes em português: local no Brasil, inglês aportuguesado fora dele', async () => {
+    const en = {
+      features: [
+        feature(
+          {
+            osm_type: 'N',
+            osm_id: 1,
+            name: 'Christ the Redeemer',
+            countrycode: 'BR',
+            city: 'Rio de Janeiro',
+            osm_key: 'tourism',
+            osm_value: 'attraction',
+          },
+          -43.21,
+          -22.95,
+        ),
+        feature(
+          {
+            osm_type: 'W',
+            osm_id: 2,
+            name: 'Uminomori Park',
+            countrycode: 'JP',
+            city: 'Tokyo',
+            osm_key: 'leisure',
+            osm_value: 'park',
+          },
+          139.81,
+          35.6,
+        ),
+        feature(
+          {
+            osm_type: 'N',
+            osm_id: 3,
+            name: 'Hanazono Shrine',
+            countrycode: 'JP',
+            osm_key: 'amenity',
+            osm_value: 'place_of_worship',
+          },
+          139.7,
+          35.69,
+        ),
+      ],
+    }
+    const local = {
+      features: [
+        feature(
+          { osm_type: 'N', osm_id: 1, name: 'Cristo Redentor', countrycode: 'BR', city: 'Rio de Janeiro' },
+          -43.21,
+          -22.95,
+        ),
+        feature(
+          { osm_type: 'W', osm_id: 2, name: '海の森公園', countrycode: 'JP', city: '東京都' },
+          139.81,
+          35.6,
+        ),
+      ],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((u: string) => {
+        const lang = new URL(u).searchParams.get('lang')
+        return Promise.resolve(new Response(JSON.stringify(lang === 'en' ? en : local), { status: 200 }))
+      }),
+    )
+    const r = await searchOnline('qualquer')
+    expect(r.map((x) => x.name)).toEqual(['Cristo Redentor', 'Parque Uminomori', 'Santuário Hanazono'])
+    expect(r[1]!.detail).toBe('parque · Tóquio')
+  })
+
+  it('se o idioma local falhar, segue só com o inglês', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((u: string) =>
+        new URL(u).searchParams.get('lang') === 'en'
+          ? Promise.resolve(new Response(JSON.stringify(SAMPLE), { status: 200 }))
+          : Promise.reject(new Error('falhou')),
+      ),
+    )
+    expect((await searchOnline('bras')).map((x) => x.name)).toEqual([
+      'Brașov',
+      'Romênia',
+      'Castelul Bran',
+      'La Ceaun',
+    ])
   })
 
   it('sem rede ou com erro, devolve lista vazia (a lista própria continua)', async () => {
