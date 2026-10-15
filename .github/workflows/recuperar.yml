@@ -1,0 +1,37 @@
+name: Recuperar uma viagem
+
+# Volta uma viagem da nuvem para um instante dos últimos 30 dias (spec publicação §5.8).
+# Actions → "Recuperar uma viagem" → Run workflow → id da viagem (o que aparece em /v/<id>) e o horário.
+# A resposta traz um marcador para desfazer a volta, se preciso.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Ambiente'
+        type: choice
+        options: [production, staging]
+        default: production
+      trip:
+        description: 'Id da viagem (o que vem depois de /v/ no endereço)'
+        required: true
+      when:
+        description: 'Voltar para (horário de Brasília, AAAA-MM-DD HH:MM)'
+        required: true
+
+jobs:
+  recuperar:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Recuperar
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          BASE: ${{ vars.APP_URL }}
+          TRIP: ${{ inputs.trip }}
+          WHEN: ${{ inputs.when }}
+        run: |
+          at=$(TZ=America/Sao_Paulo date -d "$WHEN" +%s000)
+          curl --fail-with-body -sS -X POST "$BASE/api/admin/restore" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+            -d "{\"tripId\":\"$TRIP\",\"at\":$at}"

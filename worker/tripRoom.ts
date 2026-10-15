@@ -160,6 +160,19 @@ export class TripRoom extends DurableObject<AppEnv> {
     this.schema()
   }
 
+  /**
+   * Volta a viagem para um instante (spec §5.8): a próxima sessão do objeto começa com o armazenamento
+   * daquele momento. Devolve o marcador de "antes da volta", para desfazer a volta se preciso.
+   */
+  async restoreTo(at: number): Promise<string> {
+    const bookmark = await this.ctx.storage.getBookmarkForTime(at)
+    const undo = await this.ctx.storage.onNextSessionRestoreBookmark(bookmark)
+    for (const ws of this.ctx.getWebSockets()) ws.close(1012, 'restaurada')
+    this.cache = null
+    this.ctx.abort('restaurar')
+    return undo
+  }
+
   /** Tira uma pessoa (M5): fecha as conexões dela na hora. */
   async kick(uid: string): Promise<void> {
     for (const ws of this.ctx.getWebSockets(uid)) {

@@ -64,3 +64,38 @@ describe('repasse do login (/__/auth) para o Firebase', () => {
     ])
   })
 })
+
+describe('administração', () => {
+  const call = (token: string | null, envOver: Partial<AppEnv> = {}) =>
+    import('./index').then(({ default: worker }) =>
+      worker.fetch(
+        new Request(`${BASE}/api/admin/restore`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: JSON.stringify({ tripId: 'v-x', at: Date.now() - 1000 }),
+        }),
+        { ...(env as AppEnv), ...envOver },
+        { waitUntil: () => {}, passThroughOnException: () => {}, props: {} } as unknown as ExecutionContext,
+      ),
+    )
+
+  it('sem o segredo configurado, ninguém entra; segredo errado ou ausente dá 403', async () => {
+    expect((await call('qualquer')).status).toBe(403)
+    expect((await call(null, { ADMIN_TOKEN: 'certo' })).status).toBe(403)
+    expect((await call('errado', { ADMIN_TOKEN: 'certo' })).status).toBe(403)
+  })
+
+  it('com o segredo, valida o pedido (id e horário dentro de 30 dias)', async () => {
+    const { default: worker } = await import('./index')
+    const r = await worker.fetch(
+      new Request(`${BASE}/api/admin/restore`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer certo' },
+        body: JSON.stringify({ tripId: 'v x', at: Date.now() }),
+      }),
+      { ...(env as AppEnv), ADMIN_TOKEN: 'certo' },
+      { waitUntil: () => {}, passThroughOnException: () => {}, props: {} } as unknown as ExecutionContext,
+    )
+    expect(await r.json()).toEqual({ reason: 'invalid' })
+  })
+})
