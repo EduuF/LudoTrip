@@ -46,3 +46,16 @@ test('o mapa de tiles ocupa o painel inteiro e continua depois de ir e voltar de
   expect(Math.abs(m.c!.height - m.b!.height)).toBeLessThan(3)
   await expect(page.getByRole('button', { name: 'Kyoto: entrar no mapa da cidade' })).toBeVisible()
 })
+
+test('viagem só com o país: a fase tracejada no mapa leva a escolher a cidade', async ({ page }) => {
+  await page.getByRole('button', { name: 'Criar viagem' }).click()
+  await page.getByPlaceholder(/Busque: Japão/).fill('japa')
+  await page.getByText('Japão', { exact: true }).click()
+  await expect(page.getByText(/1\. Japão · cidades em aberto/)).toBeVisible()
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Criar viagem' }).click()
+  const fase = page.getByRole('button', { name: 'Japão: escolher cidade' })
+  await expect(fase).toBeVisible({ timeout: 20_000 })
+  await fase.click()
+  await expect(page.getByText('Que cidade de Japão?')).toBeVisible()
+})

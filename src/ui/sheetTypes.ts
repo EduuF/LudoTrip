@@ -16,7 +16,13 @@ export interface Opt {
 export type SheetSpec =
   | { kind: 'choice'; title: string; sub?: string; options: Opt[] }
   | { kind: 'leg'; legId: ID }
-  | { kind: 'dest'; title: string; pick: (destId: ID) => void }
+  | {
+      kind: 'dest'
+      title: string
+      pick: (destId: ID) => void
+      /** País para buscar primeiro ("Que cidade de Japão?"). */
+      country?: string
+    }
   | { kind: 'split'; stopId: ID; destId: ID; nights: number; after: number }
   | { kind: 'insert'; index: number; destId: ID; nights: number }
   | { kind: 'fill'; stopId: ID; destId: ID; nights: number; side: 'start' | 'end' }

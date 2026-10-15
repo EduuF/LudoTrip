@@ -536,12 +536,16 @@ function OpenCard({ stop, index }: { stop: Stop; index: number }) {
   return (
     <article className="card open-nights" id={`c-${stop.id}`}>
       <div className="c-title">
-        <h3>{plural(n, 'noite em aberto', 'noites em aberto')}</h3>
+        <h3>
+          {stop.openIn
+            ? `${stop.openIn.name}: ${plural(n, 'noite', 'noites')}, cidades em aberto`
+            : plural(n, 'noite em aberto', 'noites em aberto')}
+        </h3>
         <div className="dates">{when}</div>
       </div>
       <div className="row">
         <button type="button" className="btn small main" onClick={() => fillOpenChoice(stop.id)}>
-          + Escolher destino
+          {stop.openIn ? '+ Escolher cidade' : '+ Escolher destino'}
         </button>
         {same ? (
           <button

@@ -39,7 +39,8 @@ export function DayCard() {
   } else if (d.kind === 'aboard') {
     where = leg ? `a bordo: ${legName(it, leg, names)}` : 'noite a bordo'
     actDest = legTo(leg)
-  } else if (d.kind === 'open') where = 'noite em aberto'
+  } else if (d.kind === 'open')
+    where = stop?.openIn ? `${stop.openIn.name} · cidades em aberto` : 'noite em aberto'
   else if (leg) where = `chega em ${destName(d.destinationId)}`
   else where = `em ${destName(d.destinationId)}`
 
@@ -120,7 +121,7 @@ export function DayCard() {
       {d.kind === 'open' && d.stopId ? (
         <div className="row">
           <button type="button" className="btn small main" onClick={() => fillOpenChoice(d.stopId!)}>
-            + Escolher destino
+            {stop?.openIn ? '+ Escolher cidade' : '+ Escolher destino'}
           </button>
         </div>
       ) : null}

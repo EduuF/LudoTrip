@@ -623,7 +623,8 @@ export function fillOpenChoice(stopId: ID) {
   const n = s.days.length
   S().openSheet({
     kind: 'dest',
-    title: 'Que destino fica nessas noites?',
+    title: s.openIn ? `Que cidade de ${s.openIn.name}?` : 'Que destino fica nessas noites?',
+    ...(s.openIn ? { country: s.openIn.country } : {}),
     pick: (destId) =>
       n === 1
         ? S().act({ type: 'engine', command: { type: 'fillOpen', stopId, destinationId: destId } })

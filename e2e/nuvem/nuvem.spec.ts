@@ -31,8 +31,6 @@ async function criarViagem(page: Page, nome: string) {
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await page.getByPlaceholder(/Busque: Japão/).fill('romen')
   await page.getByRole('button', { name: /^Romênia/ }).click()
-  await page.getByRole('button', { name: 'Continuar' }).click()
-  await page.getByRole('button', { name: 'Ainda não sei: decido no mapa' }).click()
   for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Continuar' }).click()
   await page.getByRole('button', { name: 'Criar viagem' }).click()
   await expect(page.getByText('VIAGEM CRIADA!')).toBeVisible()

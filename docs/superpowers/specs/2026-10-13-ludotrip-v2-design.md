@@ -277,14 +277,13 @@ Todos os formatos usam a mesma gramática:
 
 ## 7. Criar uma viagem (~60 s)
 
-_Como implementado no M3._
+_Como implementado no M3; os passos 1 e 2 viraram um só em 15/10/2026 ([spec](2026-10-15-criar-viagem-por-destinos-design.md))._
 
-1. **Pra onde?** Um país, uma região ou uma cidade: vira o **escopo** da viagem (`TripDoc.scope`), que enquadra o mapa e dá nome e marca-d'água mesmo sem nenhuma parada decidida. Busca na lista própria (sem rede) e no mundo todo (Photon). "De onde vocês saem?" é opcional.
-2. **Por onde?** Com um país: as cidades e lugares, na ordem imaginada (sugestões do país), ou **"Ainda não sei: decido no mapa"** (a viagem nasce com as noites em aberto). Com uma cidade: ela já é o primeiro lugar; dá para somar outra cidade ou um bate-volta.
-3. **Quando?** Primeira noite (ou em branco: dia 1, dia 2…) e quantas noites.
-4. **Quem vai?** 1–4 ou "uma galera" (Kombi).
-5. **Como vão se mover?** Define o meio padrão dos trechos (a ida e a volta viram avião quando a casa é longe).
-6. **Nome** e **"VIAGEM CRIADA!"**: cai na tela do Mapa, enquadrada no escopo, com a trilha pronta para mexer.
+1. **Pra onde vocês vão?** Os destinos (cidade, região, parque, ilha), na ordem imaginada, com sugestões do país do último escolhido. Um **país** sem cidade vira noites em aberto que lembram o país (`Stop.openIn`: "Japão, cidades em aberto"). Busca na lista própria (sem rede) e no mundo todo (Photon). "De onde vocês saem?" é opcional. A viagem não grava mais escopo: país, nome e marca-d'água saem de `tripArea` (`src/app/area.ts`).
+2. **Quando?** Primeira noite (ou em branco: dia 1, dia 2…) e quantas noites.
+3. **Quem vai?** 1–4 ou "uma galera" (Kombi).
+4. **Como vão se mover?** Define o meio padrão dos trechos (a ida e a volta viram avião quando a casa é longe).
+5. **Nome** (padrão: "Viagem para Japão", "Viagem para França e Itália") e **"VIAGEM CRIADA!"**: cai na tela do Mapa, enquadrada nos destinos, com a trilha pronta para mexer.
 
 Todos os passos têm um padrão razoável; nenhum trava.
 
@@ -294,7 +293,7 @@ _Como implementado no M3 (`src/map`, `src/ui/MapCanvas.tsx`, `BoardOverlay.tsx`,
 
 - **Duas camadas.** Por baixo, o mapa de verdade: tiles vetoriais do OpenStreetMap (OpenFreeMap, esquema OpenMapTiles) desenhados pelo MapLibre GL com o estilo **washi** (`src/map/style/washi.ts`: papel, mar com seigaiha, contornos de tinta, parques matcha, rios, fronteiras tracejadas, ruas só de perto, nenhum rótulo). Por cima, a **nossa camada SVG** em pixels: fases numeradas (estrela quando o destino está pronto), trilha pontilhada sobre areia com a parte percorrida em vermelho, pílulas sem sobreposição (`relax` e `placeLabels` da v1), decoração pixel semeada por país, seta para casa e o grupo em pixel. A camada só conhece um **adaptador** (`project`, `unproject`, `fit`, `onMove`).
 - **Papel.** Sem WebGL, sem rede ou dentro do artifact, o adaptador "papel" (`d3-geo` + `world-atlas`) desenha os contornos. É também o primeiro quadro (antes dos tiles chegarem) e o dublê dos testes.
-- **Enquadramento** (`frame.ts`, puro): só os destinos das paradas e os bate-voltas, nunca a casa; sem parada localizada, o escopo (caixa do país ou um raio em volta da cidade). O nível (cidade, região, país, mundo) sai da extensão.
+- **Enquadramento** (`frame.ts`, puro): só os destinos das paradas e os bate-voltas, nunca a casa; as fases tracejadas (noites em aberto num país) também ficam à vista; sem parada localizada, a caixa dos países das noites em aberto ou, nas viagens antigas, o escopo (caixa do país ou um raio em volta da cidade). O nível (cidade, região, país, mundo) sai da extensão.
 - **Entrar na cidade.** Tocar numa fase: porta de shoji e `flyTo` na caixa dos lugares; as figurinhas com coordenadas viram pontos com selo por tipo (景 食 買 山 駅 宿), cada dia vira uma trilha pontilhada colorida e o dia escolhido acende (o resto esmaece); fichas de dias no cabeçalho; "⚑ N sem lugar" leva a marcar com um toque; segurar no mapa (ou "+ Lugar aqui") cria um lugar já posicionado.
 - **O tempo anda.** O cursor de dia (trilha, fichas, cartão do dia, "▶ Ver a viagem") move o grupo pela trilha (`route.ts` dá a posição pura; a camada anima como fração do caminho, 0,45–2,4 s, coraçãozinho ao chegar). Dentro da cidade, o grupo pula para o primeiro lugar do dia; ao "ver a viagem", o mapa segue a cidade de cada dia.
 - **Bonequinhos:** de 1 a 4, lado a lado; 5 ou mais, a Kombi. Editar nomes e visual: subprojeto 2.
@@ -670,7 +669,7 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
 - **Cursor de dia:** tocar numa data ou arrastar pela régua, tocar num destino da trilha (vai para o primeiro dia dele e rola o roteiro até o cartão), as fichas da cidade e "▶ Ver a viagem" movem o mesmo cursor; mapa, cartão do dia e trilha seguem.
 - Tocar numa fase entra na cidade (§8); "◀ Mapa" volta. **Dentro da cidade, mudar o dia muda a cidade** (trilha, régua, cartão do dia e "▶ Ver a viagem" seguem a mesma regra do `setCursorDay`).
   \1- **Tiles (M3.3):** o mapa de tiles nasce já enquadrado e só substitui o papel quando os primeiros tiles estão desenhados (`idle`); nunca um mar vazio no lugar do contorno.
-- Depois de criar a viagem, a pessoa cai aqui, com o mapa enquadrado no escopo.
+- Depois de criar a viagem, a pessoa cai aqui, com o mapa enquadrado nos destinos.
 
 ### 17.3 Roteiro: a Trilha (visão geral, aprovada)
 

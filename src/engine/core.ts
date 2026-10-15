@@ -229,12 +229,23 @@ export function newStop(
   return { id: ctx.newId(), destinationId, days: Array.from({ length: nights }, () => []), lodging }
 }
 
+/**
+ * Duas paradas vizinhas viram uma só? Mesmo destino; noites em aberto só se separam quando são de
+ * países diferentes ("Japão" e "Coreia, cidades em aberto").
+ */
+export function sameSpot(a: Stop, b: Stop): boolean {
+  if (a.destinationId !== b.destinationId) return false
+  if (a.destinationId !== null || !a.openIn || !b.openIn) return true
+  return a.openIn.country === b.openIn.country
+}
+
 export function mergeAdjacent(it: Itinerary, eff: Effects) {
   it.stops = it.stops.filter((s) => nightsOf(s) > 0)
   for (let i = 0; i < it.stops.length - 1; i++) {
     const a = it.stops[i]!
     const b = it.stops[i + 1]!
-    if (a.destinationId === b.destinationId) {
+    if (sameSpot(a, b)) {
+      if (!a.openIn && b.openIn) a.openIn = b.openIn
       a.days = [...a.days, ...b.days]
       a.tentative = a.tentative || b.tentative || undefined
       if (!a.tentative) delete a.tentative

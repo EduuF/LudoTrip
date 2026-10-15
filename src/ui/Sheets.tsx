@@ -15,6 +15,8 @@ import {
 } from '../engine'
 import type { Booking, ID, LegMode, Lodging, PlaceKind, Rarity, Slot } from '../engine'
 import { uid, useApp } from '../app/store'
+import { tripArea } from '../app/area'
+import { frame } from '../map/frame'
 import type { DocAction } from '../app/doc'
 import {
   aboardChoice,
@@ -277,7 +279,13 @@ function Body({ sheet }: { sheet: SheetSpec }) {
       return <Times legId={sheet.legId} />
 
     case 'dest':
-      return <DestPicker title={sheet.title} pick={sheet.pick} />
+      return (
+        <DestPicker
+          title={sheet.title}
+          pick={sheet.pick}
+          {...(sheet.country ? { country: sheet.country } : {})}
+        />
+      )
 
     case 'where': {
       const name = destName(sheet.destId)
@@ -1466,9 +1474,21 @@ function Dates() {
 const DEST_CHIPS = 8
 const norm = (t: string) => fold(t).trim()
 
-function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void }) {
+function DestPicker({
+  title,
+  pick,
+  country,
+}: {
+  title: string
+  pick: (destId: ID) => void
+  country?: string
+}) {
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
+  // A busca começa pelo país pedido (noites em aberto) ou pelo da viagem, e perto de onde a viagem está.
+  const within = country ?? tripArea(doc).mainCountry
+  const box = frame(doc)?.bbox
+  const bias = box ? { lat: (box[1] + box[3]) / 2, lon: (box[0] + box[2]) / 2 } : undefined
   // Fichas: os guardados (fora da viagem) primeiro, depois os da viagem, do fim para o começo.
   const inTrip = doc.itinerary.stops.map((s) => s.destinationId).filter((x): x is ID => !!x)
   const saved = doc.destinations.filter((d) => !inTrip.includes(d.id))
@@ -1522,7 +1542,7 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
           id="busca-destino"
           placeholder="Busque: Lisboa, Cusco, Seul…"
           kinds={['city']}
-          within={doc.scope?.country}
+          within={within}
           exclude={doc.destinations.map((d) => d.name)}
           mine={doc.destinations.map((d) => ({
             id: d.id,
@@ -1530,11 +1550,7 @@ function DestPicker({ title, pick }: { title: string; pick: (destId: ID) => void
             detail: inTrip.includes(d.id) ? 'já na viagem · de novo' : 'guardado',
           }))}
           onMine={pick}
-          bias={
-            doc.scope?.lat !== undefined && doc.scope.lon !== undefined
-              ? { lat: doc.scope.lat, lon: doc.scope.lon }
-              : undefined
-          }
+          bias={bias}
           onPick={add}
         />
       </label>

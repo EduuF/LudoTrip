@@ -63,3 +63,26 @@ describe('criar viagem', () => {
     expect(it_.stops.map((s) => s.days.length)).toEqual([1, 1, 1])
   })
 })
+
+describe('criar viagem com país sem cidade', () => {
+  const JP = {
+    country: 'JP',
+    name: 'Japão',
+    bbox: [129.4, 31, 145.8, 45.5] as [number, number, number, number],
+  }
+  it('o país vira noites em aberto que lembram o país', () => {
+    const only = createItinerary(
+      { destinationIds: [{ openIn: JP }], nights: 7, start: null, defaultMode: 'train', travelers: [] },
+      counterIds('n'),
+    )
+    expect(only.stops).toEqual([expect.objectContaining({ destinationId: null, openIn: JP })])
+    const mixed = createItinerary(
+      { destinationIds: ['a', { openIn: JP }], nights: 6, start: null, defaultMode: 'train', travelers: [] },
+      counterIds('n'),
+    )
+    expect(mixed.stops.map((s) => [s.destinationId, s.openIn?.country, s.days.length])).toEqual([
+      ['a', undefined, 3],
+      [null, 'JP', 3],
+    ])
+  })
+})

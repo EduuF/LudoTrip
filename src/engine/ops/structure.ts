@@ -104,6 +104,7 @@ export function fillOpen(
     fail('OUT_OF_RANGE', { stopId: o.id, max: nightsOf(o) })
   if (k === nightsOf(o)) {
     o.destinationId = a.destinationId
+    delete o.openIn
   } else {
     const stop = newStop(ctx, a.destinationId, k)
     const i = stopIndex(it, o.id)

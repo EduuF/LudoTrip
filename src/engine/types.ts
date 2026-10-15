@@ -41,7 +41,13 @@ export interface Destination {
   kind: 'city' | 'region' | 'park' | 'vessel' | 'country'
 }
 
-/** Para onde é a viagem (país, região ou cidade): enquadra o mapa e dá o tema, mesmo sem parada decidida. */
+/** [oeste, sul, leste, norte] em graus. */
+export type BBox = [number, number, number, number]
+
+/**
+ * Legado (viagens criadas antes de 15/10/2026): para onde era a viagem. Ler só via `tripArea`
+ * (`src/app/area.ts`); viagens novas não gravam.
+ */
 export interface Scope {
   name: string
   localName?: string
@@ -50,8 +56,16 @@ export interface Scope {
   country?: string
   lat?: number
   lon?: number
-  /** [oeste, sul, leste, norte] em graus. */
-  bbox?: [number, number, number, number]
+  bbox?: BBox
+}
+
+/** O país de noites em aberto ("Japão, cidades em aberto"): enquadra o mapa e dá nome sem cidade decidida. */
+export interface OpenIn {
+  /** ISO 3166-1 alpha-2. */
+  country: string
+  name: string
+  localName?: string
+  bbox?: BBox
 }
 
 /** Tipo de lugar: dá o selo no mapa da cidade. */
@@ -91,6 +105,8 @@ export type DayPlan = Visit[]
 export interface Stop {
   id: ID
   destinationId: ID | null
+  /** Só com `destinationId: null`: o país dessas noites em aberto. */
+  openIn?: OpenIn
   days: DayPlan[]
   tentative?: boolean
   lodging: Lodging

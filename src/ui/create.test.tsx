@@ -38,48 +38,67 @@ afterEach(cleanup)
 
 const next = () => fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 
+const search = async (text: string, pick: string) => {
+  fireEvent.change(screen.getByPlaceholderText(/Busque: Japão/), { target: { value: text } })
+  fireEvent.click(await screen.findByText(pick))
+}
+
+const create = async () => {
+  next()
+  next()
+  next()
+  next()
+  fireEvent.click(screen.getByRole('button', { name: 'Criar viagem' }))
+  await waitFor(() => expect(useApp.getState().screen).toBe('trip'))
+  return useApp.getState().doc!
+}
+
 describe('criar viagem', () => {
-  it('um país como destino, "decido no mapa": a viagem nasce com noites em aberto e o escopo do país', async () => {
-    fireEvent.change(screen.getByPlaceholderText(/Busque: Japão/), { target: { value: 'romen' } })
-    fireEvent.click(await screen.findByText('Romênia'))
-    expect(screen.getByText(/Romênia · país/)).toBeTruthy()
-    next()
-    expect(screen.getByText(/Em quais cidades/)).toBeTruthy()
-    const btn = screen.getByRole('button', { name: /Escolha um lugar ou/ })
-    expect((btn as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Ainda não sei: decido no mapa' }))
-    next()
-    next()
-    next()
-    next()
-    expect(screen.getByText(/cidades a decidir/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Criar viagem' }))
-    await waitFor(() => expect(useApp.getState().screen).toBe('trip'))
-    const doc = useApp.getState().doc!
-    expect(doc.scope).toMatchObject({ name: 'Romênia', kind: 'country', country: 'RO' })
-    expect(doc.scope!.bbox![0]).toBeGreaterThan(19)
-    expect(doc.itinerary.stops).toEqual([expect.objectContaining({ destinationId: null })])
+  it('sem destino não dá para seguir', () => {
+    const btn = screen.getByRole('button', { name: 'Diga pra onde' }) as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+  })
+
+  it('só um país: a viagem nasce com noites em aberto nele, sem escopo', async () => {
+    await search('japa', 'Japão')
+    expect(screen.getByText(/1\. Japão · cidades em aberto/)).toBeTruthy()
+    const doc = await create()
+    expect(doc.scope).toBeUndefined()
+    expect(doc.destinations).toEqual([])
+    expect(doc.itinerary.stops).toEqual([
+      expect.objectContaining({ destinationId: null, openIn: expect.objectContaining({ country: 'JP' }) }),
+    ])
+    expect(doc.itinerary.stops[0]!.openIn!.bbox![0]).toBeGreaterThan(120)
     expect(doc.itinerary.stops[0]!.days).toHaveLength(7)
+    expect(doc.meta.name).toBe('Viagem para Japão')
     expect(await screen.findByText('VIAGEM CRIADA!')).toBeTruthy()
   })
 
-  it('uma cidade como destino já entra como primeiro lugar; dá para somar um bate-volta', async () => {
-    fireEvent.change(screen.getByPlaceholderText(/Busque: Japão/), { target: { value: 'rio de' } })
-    fireEvent.click(await screen.findByText('Rio de Janeiro'))
-    next()
-    expect(screen.getByText(/Vão dormir em/)).toBeTruthy()
-    expect(screen.getByText('1. Rio de Janeiro ×')).toBeTruthy()
-    fireEvent.change(screen.getByPlaceholderText(/Busque: Kyoto/), { target: { value: 'petr' } })
-    fireEvent.click(await screen.findByText('Petrópolis'))
-    expect(screen.getByText('2. Petrópolis ×')).toBeTruthy()
-    next()
-    next()
-    next()
-    next()
-    fireEvent.click(screen.getByRole('button', { name: 'Criar viagem' }))
-    await waitFor(() => expect(useApp.getState().screen).toBe('trip'))
-    const doc = useApp.getState().doc!
-    expect(doc.scope).toMatchObject({ name: 'Rio de Janeiro', kind: 'city', country: 'BR' })
+  it('país e cidade sugerida: na ordem escolhida; tirar um destino', async () => {
+    await search('japa', 'Japão')
+    fireEvent.click(screen.getByRole('button', { name: '+ Kyoto' }))
+    expect(screen.getByText(/2\. Kyoto/)).toBeTruthy()
+    await search('rio de', 'Rio de Janeiro')
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar Rio de Janeiro' }))
+    const doc = await create()
+    expect(doc.itinerary.stops.map((s) => s.openIn?.country ?? s.destinationId)).toEqual(['JP', 'd-1'])
+    expect(doc.destinations).toEqual([expect.objectContaining({ id: 'd-1', name: 'Kyoto', country: 'JP' })])
+    expect(doc.meta.name).toBe('Viagem para Japão')
+  })
+
+  it('cidades de dois países: "Viagem para França e Itália"', async () => {
+    await search('paris', 'Paris')
+    await search('roma', 'Roma')
+    const doc = await create()
+    expect(doc.scope).toBeUndefined()
     expect(doc.itinerary.stops.map((s) => s.destinationId)).toEqual(['d-1', 'd-2'])
+    expect(doc.meta.name).toBe('Viagem para França e Itália')
+  })
+
+  it('uma cidade só: o nome é a cidade', async () => {
+    await search('rio de', 'Rio de Janeiro')
+    const doc = await create()
+    expect(doc.meta.name).toBe('Viagem para Rio de Janeiro')
+    expect(doc.itinerary.stops.map((s) => s.destinationId)).toEqual(['d-1'])
   })
 })
