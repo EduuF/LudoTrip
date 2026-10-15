@@ -1,0 +1,9 @@
+// www.ludotrip.app → ludotrip.app (301), com o caminho e a busca. Um Worker à parte para o principal
+// continuar servindo os arquivos do app direto, sem passar por código (run_worker_first).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ludotrip-www",
+  "main": "worker/www.ts",
+  "compatibility_date": "2026-10-13",
+  "routes": [{ "pattern": "www.ludotrip.app", "custom_domain": true }],
+}

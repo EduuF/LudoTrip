@@ -13,6 +13,9 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/__/auth/*"],
   },
+  // Domínio próprio (Custom Domain: a Cloudflare cria o DNS e o certificado). O www tem um Worker só
+  // dele, que leva para o principal (wrangler.www.jsonc).
+  "routes": [{ "pattern": "ludotrip.app", "custom_domain": true }],
   "vars": {
     "FIREBASE_PROJECT_ID": "ludotrip",
     "APP_ENV": "production",
@@ -38,6 +41,7 @@
     // URL de teste do mantenedor: publicado a cada push na main (spec §2.4).
     "staging": {
       "name": "ludotrip-staging",
+      "routes": [{ "pattern": "staging.ludotrip.app", "custom_domain": true }],
       "vars": { "FIREBASE_PROJECT_ID": "ludotrip-dev", "APP_ENV": "staging" },
       "d1_databases": [
         {
