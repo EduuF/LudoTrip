@@ -85,26 +85,26 @@ As mesmas do plano anterior, com estes acréscimos:
 
 **Por quê:** spec §5.2. `runDoc` gera `u${++seq}`, e dois aparelhos offline colidiriam.
 
-- [ ] Teste em `doc.test.ts`:
+- [x] Teste em `doc.test.ts`:
   - `runDoc(doc, action, { opId })` gera ids `${opId.slice(0,12)}.${n}`;
   - a mesma ação com o mesmo `opId` sobre o mesmo doc gera o mesmo resultado (determinismo);
   - `opId`s diferentes nunca geram o mesmo id;
   - sem `opId` (testes antigos e viagens de exemplo), usa um `opId` gerado por `crypto.randomUUID()` no store, nunca dentro do `runDoc`.
-- [ ] `runDoc(doc, action, ctx: { opId: string })`. `newId` usa `ctx.opId`. `seq` deixa de ser usado para ids novos.
+- [x] `runDoc(doc, action, ctx: { opId: string })`. `newId` usa `ctx.opId`. `seq` deixa de ser usado para ids novos.
   - `migrate()` mantém o campo para viagens antigas, sem efeito. Ids antigos `uN` continuam válidos.
-- [ ] O store cria o `opId` em `act()` e o guarda no `undoStack`.
-- [ ] Propriedade (fast-check): para sequências aleatórias de ações, reaplicar com os mesmos `opId`s sobre o doc inicial dá exatamente o mesmo doc.
-- [ ] Commit: `Ids novos vêm da ação (opId), não de um contador`.
+- [x] O store cria o `opId` em `act()` e o guarda no `undoStack`.
+- [x] Propriedade (fast-check): para sequências aleatórias de ações, reaplicar com os mesmos `opId`s sobre o doc inicial dá exatamente o mesmo doc.
+- [x] Commit: `Ids novos vêm da ação (opId), não de um contador`.
 
 ## M4.2 — Desfazer por item nas coleções do documento
 
 **Por quê:** spec §5.2. O passo `col` restaura a lista inteira e apagaria o trabalho de outra pessoa.
 
-- [ ] Testes em `doc.test.ts`:
+- [x] Testes em `doc.test.ts`:
   - desfazer `setPlace` de A, depois que outra ação mudou B na mesma lista, mantém B;
   - desfazer quando o próprio item mudou depois devolve `CHANGED_SINCE`;
   - add, remove e set de places, destinations, bookings, tasks e `taskMeta` (por chave); `rename` (meta.name).
-- [ ] `UndoStep` passa a ser:
+- [x] `UndoStep` passa a ser:
 
   ```ts
   { kind: 'it'; patch: Patch }
@@ -114,19 +114,19 @@ As mesmas do plano anterior, com estes acréscimos:
 
   O `undoDoc` confere que o item atual é igual ao `after` (`deepEqual`, de `patch.ts`) antes de restaurar o `before`. Se o item foi removido, reinsere na posição `index` (limitada ao tamanho da lista).
 
-- [ ] O `snapshot(key)` é substituído por um registro por item dentro de cada `case`.
-- [ ] As invariantes antigas de Desfazer continuam passando.
-- [ ] Commit: `Desfazer por item: nunca apaga o que outra pessoa mudou na mesma lista`.
+- [x] O `snapshot(key)` é substituído por um registro por item dentro de cada `case`.
+- [x] As invariantes antigas de Desfazer continuam passando.
+- [x] Commit: `Desfazer por item: nunca apaga o que outra pessoa mudou na mesma lista`.
 
 ## M4.3 — Ação `revert` (Desfazer como ação)
 
-- [ ] Teste: `runDoc(doc, { type: 'revert', steps })` tem o mesmo efeito do `undoDoc`. É recusado com `CHANGED_SINCE` quando cabe e gera os próprios passos (dá para "refazer" pelo Desfazer do Desfazer, se um dia for preciso).
-- [ ] O `undo()` do store passa a ser `act({ type: 'revert', steps })`. Assim a nuvem trata o Desfazer como qualquer outra ação.
-- [ ] Commit.
+- [x] Teste: `runDoc(doc, { type: 'revert', steps })` tem o mesmo efeito do `undoDoc`. É recusado com `CHANGED_SINCE` quando cabe e gera os próprios passos (dá para "refazer" pelo Desfazer do Desfazer, se um dia for preciso).
+- [x] O `undo()` do store passa a ser `act({ type: 'revert', steps })`. Assim a nuvem trata o Desfazer como qualquer outra ação.
+- [x] Commit.
 
 ## M4.4 — Protocolo e fila de saída (cliente, sem rede)
 
-- [ ] `src/sync/protocol.ts`:
+- [x] `src/sync/protocol.ts`:
 
   ```ts
   export const PROTOCOL = 1
@@ -141,55 +141,55 @@ As mesmas do plano anterior, com estes acréscimos:
     | { t: 'gone'; reason: 'deleted' | 'removed' }
   ```
 
-- [ ] `outbox.ts` (IndexedDB via `idb-keyval`, store próprio `ludotrip/outbox`):
+- [x] `outbox.ts` (IndexedDB via `idb-keyval`, store próprio `ludotrip/outbox`):
   - `push`, `peekAll(tripId)`, `ack(opId)`, `count()`;
   - testes com o `RepoIO` falso, já usado em `repo.test.ts`.
-- [ ] `rebase(serverDoc, pending)`: reaplica as pendentes em ordem com os mesmos `opId`s e devolve `{ doc, refused: { opId, reason }[] }`.
-- [ ] Testes de `rebase`:
+- [x] `rebase(serverDoc, pending)`: reaplica as pendentes em ordem com os mesmos `opId`s e devolve `{ doc, refused: { opId, reason }[] }`.
+- [x] Testes de `rebase`:
   - pendentes que não conflitam se somam;
   - pendente cujo alvo sumiu vai para `refused`.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.5 — Worker base, D1 e login no servidor
 
-- [ ] Carregar as skills `workers-best-practices` e `wrangler`. Instalar `wrangler`, `@cloudflare/vitest-plugin`, `@cloudflare/workers-types` e `jose`.
-- [ ] `wrangler.jsonc`:
+- [x] Carregar as skills `workers-best-practices` e `wrangler`. Instalar `wrangler`, `@cloudflare/vitest-plugin`, `@cloudflare/workers-types` e `jose`.
+- [x] `wrangler.jsonc`:
   - `main: worker/index.ts`, `compatibility_date` de hoje;
   - `assets: { directory: "dist", not_found_handling: "single-page-application", run_worker_first: ["/api/*", "/__/auth/*"] }`;
   - D1 `DB`, Durable Object `TRIPS` (`TripRoom`, `new_sqlite_classes`), `ratelimits` `API` (120/60 s);
   - `observability.enabled` e `observability.traces.enabled`;
   - `env.staging` com o próprio D1 e o próprio nome de Worker.
-- [ ] `npx wrangler types`, gerando `worker/env.d.ts`.
-- [ ] `worker/migrations/0001_init.sql` com `users`, `trips` e `members` (spec §5.1; `invites` fica para o M5).
-- [ ] `vitest.workers.config.ts` com `cloudflareTest({ wrangler: { configPath: './wrangler.jsonc' } })`.
-- [ ] Script `test:worker`. O CI roda os dois projetos de teste.
-- [ ] `auth.ts`, com testes que geram as chaves com o `jose` e passam um JWKS local:
+- [x] `npx wrangler types`, gerando `worker/env.d.ts`.
+- [x] `worker/migrations/0001_init.sql` com `users`, `trips` e `members` (spec §5.1; `invites` fica para o M5).
+- [x] `vitest.workers.config.ts` com `cloudflareTest({ wrangler: { configPath: './wrangler.jsonc' } })`.
+- [x] Script `test:worker`. O CI roda os dois projetos de teste.
+- [x] `auth.ts`, com testes que geram as chaves com o `jose` e passam um JWKS local:
   - token válido devolve `uid`;
   - rejeita assinatura de outra chave, `aud` ou `iss` de outro projeto, token vencido, `alg` diferente de RS256 e `sub` vazio.
-- [ ] `index.ts`:
+- [x] `index.ts`:
   - `GET /api/health` → 200 com a conferência do D1;
   - `GET /api/me` (autenticado) → cria ou atualiza `users`;
   - `/api/test/token` só com `TEST_AUTH=1`.
   - **Teste:** com o `wrangler.jsonc` de produção, `TEST_AUTH` não existe.
-- [ ] Proxy `/__/auth/*` para `https://${FIREBASE_PROJECT}.firebaseapp.com`, transparente: mesmo método, corpo e cabeçalhos, sem 302.
+- [x] Proxy `/__/auth/*` para `https://${FIREBASE_PROJECT}.firebaseapp.com`, transparente: mesmo método, corpo e cabeçalhos, sem 302.
   - **Teste:** GET e POST chegam ao destino com o mesmo caminho e query.
-- [ ] `log.ts`: uma linha JSON por requisição com `reqId`, rota, status, ms, `uidHash` (8 hex do SHA-256), versão do app.
+- [x] `log.ts`: uma linha JSON por requisição com `reqId`, rota, status, ms, `uidHash` (8 hex do SHA-256), versão do app.
   - **Teste:** e-mail e token nunca aparecem no log.
-- [ ] Rate limit por `uid` (ou IP sem login). Excedido → 429 com corpo `{ reason: 'rate' }`.
-- [ ] Commit.
+- [x] Rate limit por `uid` (ou IP sem login). Excedido → 429 com corpo `{ reason: 'rate' }`.
+- [x] Commit.
 
 ## M4.6 — `TripRoom` (Durable Object)
 
-- [ ] Carregar a skill `durable-objects` e ler a página de WebSockets com hibernação e a da API SQLite.
-- [ ] Tabelas `doc` e `ops` (spec §5.1), criadas no construtor com `blockConcurrencyWhile` só para o esquema.
-- [ ] RPC:
+- [x] Carregar a skill `durable-objects` e ler a página de WebSockets com hibernação e a da API SQLite.
+- [x] Tabelas `doc` e `ops` (spec §5.1), criadas no construtor com `blockConcurrencyWhile` só para o esquema.
+- [x] RPC:
   - `init(doc, ownerUid)`: cria a viagem, idempotente para o mesmo dono; recusa outro dono com `{ reason: 'owned' }`;
   - `meta()`;
   - `exportDoc()`.
-- [ ] `fetch` com WebSocket:
+- [x] `fetch` com WebSocket:
   - o Worker confere o token e o papel no D1 antes de repassar (`stub.fetch`);
   - o DO chama `acceptWebSocket` e guarda `{ uid, role }` com `serializeAttachment`.
-- [ ] `webSocketMessage`:
+- [x] `webSocketMessage`:
   - `hello`: com protocolo antigo, manda `upgrade`; senão, `snapshot` se `sinceVersion` estiver longe ou as ops que faltam.
   - `op`:
     1. `opId` repetido devolve o resultado gravado;
@@ -199,7 +199,7 @@ As mesmas do plano anterior, com estes acréscimos:
     5. transmite `applied` a todos e manda `rejected` só a quem enviou;
     6. atualiza `trips` no D1 (nome, datas, `updated_at`, `size_bytes`) com `ctx.waitUntil`.
   - Viagem acima de 1 MB: recusa `{ reason: 'too-big' }`.
-- [ ] Testes (Vitest no runtime dos Workers):
+- [x] Testes (Vitest no runtime dos Workers):
   - estado persiste entre chamadas;
   - viagens diferentes não se misturam;
   - mesmo `opId` duas vezes aplica uma vez;
@@ -209,139 +209,139 @@ As mesmas do plano anterior, com estes acréscimos:
   - protocolo antigo recebe `upgrade`;
   - 1 MB recusado;
   - log estruturado de cada op (tipo, resultado, ms).
-- [ ] Rotas:
+- [x] Rotas:
   - `POST /api/trips` (subir viagem: `init` + `members` com dono);
   - `GET /api/trips` (minhas viagens, do D1);
   - `GET /api/trips/:id/ws`;
   - `DELETE /api/trips/:id` (só o dono; no M4, apaga de vez; "Apagadas" vem no M5).
-- [ ] Testes de permissão: não membro não abre o WS (403); outro usuário não apaga.
-- [ ] Commit.
+- [x] Testes de permissão: não membro não abre o WS (403); outro usuário não apaga.
+- [x] Commit.
 
 ## M4.7 — Convergência (propriedade)
 
-- [ ] `src/sync/convergence.test.ts`: um servidor simulado (o mesmo `runDoc` + `ops` em memória) e 2–3 clientes `syncClient` com transporte falso que pode atrasar, reordenar entre clientes e ficar offline.
-- [ ] fast-check gera sequências de ações válidas a partir das fixtures (incluindo `revert`).
-- [ ] Ao fim, com todos online e as filas vazias:
+- [x] `src/sync/convergence.test.ts`: um servidor simulado (o mesmo `runDoc` + `ops` em memória) e 2–3 clientes `syncClient` com transporte falso que pode atrasar, reordenar entre clientes e ficar offline.
+- [x] fast-check gera sequências de ações válidas a partir das fixtures (incluindo `revert`).
+- [x] Ao fim, com todos online e as filas vazias:
   - todos os `doc` são iguais ao do servidor;
   - cada `opId` foi aplicado uma vez ou recusado com motivo.
-- [ ] 1.000 execuções no CI.
-- [ ] Commit.
+- [x] 1.000 execuções no CI.
+- [x] Commit.
 
 ## M4.8 — `syncClient`, `cloudRepo` e o store
 
-- [ ] `syncClient`:
+- [x] `syncClient`:
   - abre o WS com o token;
   - `hello` com a versão local;
   - aplica `snapshot` e `applied` com `rebase`;
   - reconecta com espera de 1, 2, 4… até 30 s, e na hora com o evento `online`;
   - expõe `status: 'saved' | 'sending' | 'offline'` e `pending`.
-- [ ] O store:
+- [x] O store:
   - `act()` continua otimista; se a viagem é ☁️, também faz `outbox.push` e `syncClient.send`;
   - `rejected` vira o painel de escolha da §5.3, um `sheet` `choice` com o texto do `describeError` + "(Bia, há 5 min)";
   - `applied` de outra pessoa vira aviso com `narrate`, agrupando rajadas de menos de 3 s;
   - `undoStack` só com ações próprias.
-- [ ] `TripMeta` ganha `cloud?: { owner: string; version: number }`. O `localRepo` guarda a cópia ☁️.
-- [ ] "Suas viagens" mistura as 📱 locais com as ☁️ da conta (`GET /api/trips`, com cache local para abrir offline).
-- [ ] Viagem ☁️ nunca baixada e sem rede: a mensagem da §5.4.
-- [ ] Viagem criada com alguém logado já nasce ☁️ (`POST /api/trips` assim que houver rede; até lá fica na fila como `init`).
-- [ ] Duas abas: `BroadcastChannel('ludotrip')` avisa as viagens 📱 salvas para a outra aba recarregar.
-- [ ] Testes jsdom com `fakeAuth` e transporte falso:
+- [x] `TripMeta` ganha `cloud?: { owner: string; version: number }`. O `localRepo` guarda a cópia ☁️.
+- [x] "Suas viagens" mistura as 📱 locais com as ☁️ da conta (`GET /api/trips`, com cache local para abrir offline).
+- [x] Viagem ☁️ nunca baixada e sem rede: a mensagem da §5.4.
+- [x] Viagem criada com alguém logado já nasce ☁️ (`POST /api/trips` assim que houver rede; até lá fica na fila como `init`).
+- [x] Duas abas: `BroadcastChannel('ludotrip')` avisa as viagens 📱 salvas para a outra aba recarregar.
+- [x] Testes jsdom com `fakeAuth` e transporte falso:
   - status do ícone nos 3 estados;
   - aviso de edição alheia;
   - painel de conflito;
   - viagem não baixada offline;
   - duas abas.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.9 — Endereços
 
-- [ ] `routes.ts`: `parse(location)` / `format(state)` para `/`, `/v/<id>` e `/entrar/link`.
+- [x] `routes.ts`: `parse(location)` / `format(state)` para `/`, `/v/<id>` e `/entrar/link`.
   - O store atualiza a URL com `history.replaceState` ao abrir uma viagem ou voltar para a home. É `replaceState`, não `pushState`: o M3.8 continua dono do histórico, com uma entrada nossa.
-- [ ] Ao abrir o app em `/v/<id>`:
+- [x] Ao abrir o app em `/v/<id>`:
   - abre a viagem, como "estar dentro"; o primeiro Voltar leva à home, sem sair;
   - sem conta e viagem ☁️ → painel ENTRAR "para abrir esta viagem";
   - conta sem acesso → a mensagem da §3.5.
-- [ ] Testes jsdom e e2e:
+- [x] Testes jsdom e e2e:
   - recarregar dentro da viagem volta à viagem;
   - Voltar a partir do link direto vai à home;
   - os testes do M3.8 continuam passando.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.10 — Login de verdade e o painel ENTRAR
 
 _Precisa do guia: os projetos Firebase e as chaves no `.env.local` e nos secrets._
 
-- [ ] Ler de novo `firebase.google.com/docs/auth/web/redirect-best-practices` e `/email-link-auth` (pode ter mudado). Instalar `firebase` (só `firebase/app` e `firebase/auth`, carregados sob demanda para não pesar a carga inicial).
-- [ ] `firebaseAuth.ts`:
+- [x] Ler de novo `firebase.google.com/docs/auth/web/redirect-best-practices` e `/email-link-auth` (pode ter mudado). Instalar `firebase` (só `firebase/app` e `firebase/auth`, carregados sob demanda para não pesar a carga inicial).
+- [x] `firebaseAuth.ts`:
   - `authDomain` = o host do próprio app;
   - Google com `signInWithPopup`; no app instalado (`display-mode: standalone`) ou com pop-up bloqueado, usa `signInWithRedirect`;
   - link por e-mail com `sendSignInLinkToEmail`:
     - `url` = `<origem>/entrar/link`, `handleCodeInApp: true`;
     - o e-mail fica no `localStorage`;
     - em `/entrar/link`, `isSignInWithEmailLink` → `signInWithEmailLink`; sem o e-mail guardado, pergunta "Confirme seu e-mail".
-- [ ] `Entrar.tsx` (spec §3.3):
+- [x] `Entrar.tsx` (spec §3.3):
   - `sheetLabel` com o tipo "ENTRAR" e o motivo;
   - empilha sobre o painel de origem;
   - estados: inicial, enviando, "Abra o link neste mesmo celular" com "Reenviar" depois de 60 s e "Trocar e-mail", sem internet, pop-up fechado (volta calado).
-- [ ] **Intenção retomada:** `openSignIn({ reason, then })` guarda a intenção. Depois do login, sobe as viagens e executa o `then`, por exemplo reabrir "Sua viagem".
-- [ ] "Sua conta" (no painel "Sua viagem" e na home):
+- [x] **Intenção retomada:** `openSignIn({ reason, then })` guarda a intenção. Depois do login, sobe as viagens e executa o `then`, por exemplo reabrir "Sua viagem".
+- [x] "Sua conta" (no painel "Sua viagem" e na home):
   - foto e nome;
   - "Sair da conta" com o painel da fila pendente (§3.5);
   - ao sair, apaga a cópia ☁️ e a fila.
-- [ ] Testes jsdom com `fakeAuth`: os estados do painel, a intenção retomada, sair com pendências.
-- [ ] Commit.
+- [x] Testes jsdom com `fakeAuth`: os estados do painel, a intenção retomada, sair com pendências.
+- [x] Commit.
 
 ## M4.11 — Subir as viagens e os casos estranhos
 
-- [ ] `upload.ts`, seguindo a spec §3.4 e §3.5:
+- [x] `upload.ts`, seguindo a spec §3.4 e §3.5:
   - primeiro login do aparelho: sobe todas as 📱;
   - aparelho que já teve outra conta (`localStorage` `ludotrip.lastUid`): pergunta com a lista e as caixas desmarcadas;
   - `owned` → "Levar uma cópia" (id novo);
   - falha no meio deixa a viagem 📱 e tenta de novo depois.
-- [ ] Animação de subida: os cartões voam do 📱 para a ☁️ (GSAP já usado), seguida do aviso "N viagens guardadas na sua conta ✓".
-- [ ] Selos 📱 e ☁️ nos cartões e no painel "Sua viagem"; tocar em 📱 abre ENTRAR "para guardar na nuvem".
-- [ ] Ícone de nuvem no topo da viagem ☁️ (§5.4), com o texto ao tocar.
-- [ ] **Gatilhos (§3.2):**
+- [x] Animação de subida: os cartões voam do 📱 para a ☁️ (GSAP já usado), seguida do aviso "N viagens guardadas na sua conta ✓".
+- [x] Selos 📱 e ☁️ nos cartões e no painel "Sua viagem"; tocar em 📱 abre ENTRAR "para guardar na nuvem".
+- [x] Ícone de nuvem no topo da viagem ☁️ (§5.4), com o texto ao tocar.
+- [x] **Gatilhos (§3.2):**
   - tarefa do app "Guardar a viagem na nuvem ☁️" em `autoTasks` (3+ edições, viagem 📱, com "Não preciso");
   - aviso de risco no Safari do iPhone fora da tela de início, ou com `persist()` negado, no máximo a cada 3 dias (`localStorage`);
   - a dica "Adicionar à tela inicial" com 3 passos ilustrados.
-- [ ] Testes (jsdom + e2e com `fakeAuth`):
+- [x] Testes (jsdom + e2e com `fakeAuth`):
   - sem conta → criar → entrar → a viagem fica ☁️ e continua aberta;
   - segunda conta no mesmo aparelho → pergunta desmarcada;
   - `owned` → cópia;
   - rede cai no meio → continua 📱 e sobe depois;
   - 2 contextos do Playwright (dois aparelhos da mesma conta) veem as edições um do outro;
   - `context.setOffline(true)` → editar → voltar → enviado.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.12 — Telemetria: Sentry e PostHog
 
-- [ ] `telemetry.ts`: `track(evento, props)`, `captureError(e)`, `identify(uidHash)`. Sem chaves (testes, GitHub Pages), não faz nada.
-- [ ] PostHog:
+- [x] `telemetry.ts`: `track(evento, props)`, `captureError(e)`, `identify(uidHash)`. Sem chaves (testes, GitHub Pages), não faz nada.
+- [x] PostHog:
   - `api_host` `https://eu.i.posthog.com`, `cookieless_mode: 'on_reject'`;
   - gravação de sessão com todo texto e todos os campos mascarados;
   - os eventos da spec §5.7, nos pontos certos do store.
   - **Teste:** nenhuma propriedade carrega texto digitado (lista de chaves permitidas).
-- [ ] `Consent.tsx`: faixa na primeira abertura, "Podemos medir como o app é usado (sem ler suas viagens)?" [Pode] [Prefiro não]. A escolha fica em "Sua conta". Sem resposta, nada é enviado.
-- [ ] Sentry:
+- [x] `Consent.tsx`: faixa na primeira abertura, "Podemos medir como o app é usado (sem ler suas viagens)?" [Pode] [Prefiro não]. A escolha fica em "Sua conta". Sem resposta, nada é enviado.
+- [x] Sentry:
   - `@sentry/react` com error boundary;
   - `@sentry/vite-plugin` envia os mapas de código no build do CI (`SENTRY_AUTH_TOKEN`) e os apaga do `dist`;
   - `uid` em hash;
   - também captura as falhas de sincronização e as recusas inesperadas.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.13 — Deploy e CI
 
-- [ ] `.github/workflows/deploy.yml`:
+- [x] `.github/workflows/deploy.yml`:
   - push na `main`: testes e `wrangler deploy --env staging` (URL de teste do mantenedor), com `cloudflare/wrangler-action@v4`;
   - `workflow_dispatch`: produção;
   - antes do deploy, `wrangler d1 migrations apply` no ambiente certo;
   - as variáveis `VITE_*` (Firebase, PostHog, Sentry) vêm dos secrets e variables do GitHub.
-- [ ] O workflow do Pages continua igual (sem nuvem).
-- [ ] `docs/deploy.md`: deploy, migração do D1, `wrangler rollback`, recuperação de uma viagem no tempo (§5.8) e onde ver os logs.
-- [ ] Rota de administração `POST /api/admin/restore`, protegida por um segredo `ADMIN_TOKEN` com comparação em tempo constante: volta um `TripRoom` para um horário.
+- [x] O workflow do Pages continua igual (sem nuvem).
+- [x] `docs/deploy.md`: deploy, migração do D1, `wrangler rollback`, recuperação de uma viagem no tempo (§5.8) e onde ver os logs.
+- [x] Rota de administração `POST /api/admin/restore`, protegida por um segredo `ADMIN_TOKEN` com comparação em tempo constante: volta um `TripRoom` para um horário.
   - **Teste:** sem o token, 403.
-- [ ] Commit.
+- [x] Commit.
 
 ## M4.14 — Fechamento
 
