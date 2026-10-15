@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { useApp } from '../app/store'
 import { getConsent, metricsAvailable, setConsent } from '../app/telemetry'
 
 // Pergunta, uma vez, se pode medir o uso (spec publicação §5.7). Sem resposta, nada é enviado.
 export function Consent() {
   const [open, setOpen] = useState(() => metricsAvailable() && getConsent() === null)
-  if (!open) return null
+  // Nunca por cima de um painel (escondia "Receber link por e-mail" no ENTRAR): espera ele fechar.
+  const sheetOpen = useApp((s) => !!s.sheet)
+  if (!open || sheetOpen) return null
   const answer = (v: 'yes' | 'no') => {
     setOpen(false)
     void setConsent(v)
