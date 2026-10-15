@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, PointerEvent as RPointerEvent } from 'react'
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  MouseEvent as RMouseEvent,
+  PointerEvent as RPointerEvent,
+} from 'react'
 import {
   addDays,
   bookingStatus,
@@ -21,6 +26,7 @@ import { blockIntent, boundaryCommand, endIntent, shelfIntent } from '../app/tri
 import type { BlockIntent, ShelfIntent } from '../app/trilha/intent'
 import { cityName, previewLines } from '../app/choices'
 import { colorOf, sealOf } from './colors'
+import { useCanEdit } from './useCanEdit'
 import { PixelTrash, Vehicle } from './kit'
 import { isCoarse, MOUSE_DISTANCE } from './pointer'
 
@@ -66,6 +72,7 @@ type Scrub = { mode: 'scrub' } | { mode: 'pan'; x: number; left: number; moved: 
 
 export function Trilha() {
   const doc = useApp((s) => s.doc)!
+  const editable = useCanEdit()
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const say = useApp((s) => s.say)
@@ -641,9 +648,11 @@ export function Trilha() {
   const destsInTrip = new Set(it.stops.map((s) => s.destinationId).filter(Boolean))
   // Só os destinos guardados (fora da trilha): os da trilha entram no meio de outro pelo "+ Adicionar destino".
   const shelf = doc.destinations.filter((d) => !destsInTrip.has(d.id))
-  const blockHint = coarse
-    ? 'Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.'
-    : 'Clique para ver os dias no roteiro; arraste para mudar a data ou a ordem.'
+  const blockHint = !editable
+    ? `${coarse ? 'Toque' : 'Clique'} para ver os dias no roteiro.`
+    : coarse
+      ? 'Toque para ver os dias no roteiro; segure e arraste para mudar a data ou a ordem.'
+      : 'Clique para ver os dias no roteiro; arraste para mudar a data ou a ordem.'
   const chipHint = coarse
     ? 'toque para escolher onde entra, ou segure e arraste para a trilha'
     : 'clique para escolher onde entra, ou arraste para a trilha'
@@ -755,17 +764,21 @@ export function Trilha() {
                 className={cls}
                 style={style}
                 aria-label={`${label}. ${blockHint}`}
-                // Teclado (Enter, espaço): abre o destino, como o toque.
+                // Teclado (Enter, espaço): abre o destino, como o toque. Quem só vê não arrasta: o clique abre.
                 onClick={(e) => {
-                  if (e.detail !== 0) return
+                  if (e.detail !== 0 && editable) return
                   setCursorDay(stopStart(stop.id))
                   focusOn(`c-${stop.id}`, 'mapa')
                 }}
-                onPointerDown={(e) => onLiftDown(e, 'block', stop.id)}
-                onPointerMove={onLiftMove}
-                onPointerUp={(e) => onLiftUp(e, 'block', stop.id)}
-                onPointerCancel={onLiftCancel}
-                onContextMenu={(e) => e.preventDefault()}
+                {...(editable
+                  ? {
+                      onPointerDown: (e: RPointerEvent<HTMLButtonElement>) => onLiftDown(e, 'block', stop.id),
+                      onPointerMove: onLiftMove,
+                      onPointerUp: (e: RPointerEvent<HTMLButtonElement>) => onLiftUp(e, 'block', stop.id),
+                      onPointerCancel: onLiftCancel,
+                      onContextMenu: (e: RMouseEvent) => e.preventDefault(),
+                    }
+                  : {})}
               >
                 <span className="nm">
                   <b>{stop.destinationId ? sealOf(dest) : '+'}</b>
@@ -794,7 +807,7 @@ export function Trilha() {
           })}
 
           {/* Pegadores das divisas e da volta: pílulas com setas, que acenam ao abrir a viagem */}
-          {view.stops.slice(0, -1).map((s, i) => {
+          {(editable ? view.stops.slice(0, -1) : []).map((s, i) => {
             const next = view.stops[i + 1]!
             const x = stopStart(next.id) * dw
             const active = drag?.kind === 'handle' && drag.index === i
@@ -816,22 +829,24 @@ export function Trilha() {
               </button>
             )
           })}
-          <button
-            type="button"
-            className={`tr-handle${it.lock === 'fixed' ? ' locked' : ''}${drag?.kind === 'end' ? ' active' : ''}${nudge ? ' nudge' : ''}`}
-            style={{ left: tl.departureIndex * dw }}
-            aria-label={
-              it.lock === 'fixed' ? 'Volta marcada' : 'Volta: arraste, ou use as setas ← →, para mudar'
-            }
-            onKeyDown={(e) => onHandleKey(e, 'end')}
-            title={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste: a volta'}
-            onPointerDown={(e) => onHandleDown(e, 'end')}
-            onPointerMove={onHandleMove}
-            onPointerUp={onHandleUp}
-            onPointerCancel={() => setDrag(null)}
-          >
-            <i />
-          </button>
+          {editable ? (
+            <button
+              type="button"
+              className={`tr-handle${it.lock === 'fixed' ? ' locked' : ''}${drag?.kind === 'end' ? ' active' : ''}${nudge ? ' nudge' : ''}`}
+              style={{ left: tl.departureIndex * dw }}
+              aria-label={
+                it.lock === 'fixed' ? 'Volta marcada' : 'Volta: arraste, ou use as setas ← →, para mudar'
+              }
+              onKeyDown={(e) => onHandleKey(e, 'end')}
+              title={it.lock === 'fixed' ? 'Volta marcada' : 'Arraste: a volta'}
+              onPointerDown={(e) => onHandleDown(e, 'end')}
+              onPointerMove={onHandleMove}
+              onPointerUp={onHandleUp}
+              onPointerCancel={() => setDrag(null)}
+            >
+              <i />
+            </button>
+          ) : null}
 
           {/* Marcas do que vai acontecer ao soltar */}
           {lifted?.intent.kind === 'reorder' ? (
@@ -941,43 +956,45 @@ export function Trilha() {
         </div>
       </div>
 
-      <div className="shelf" aria-label="Destinos guardados: arraste para a trilha">
-        {shelf.length ? <span className="shelf-t">GUARDADOS · ARRASTE PARA A TRILHA</span> : null}
-        {shelf.map((d) => (
+      {editable ? (
+        <div className="shelf" aria-label="Destinos guardados: arraste para a trilha">
+          {shelf.length ? <span className="shelf-t">GUARDADOS · ARRASTE PARA A TRILHA</span> : null}
+          {shelf.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              className="chip-dest"
+              style={{ ['--c' as string]: colorOf(doc.destinations, d.id) }}
+              onPointerDown={(e) => onLiftDown(e, 'shelf', d.id)}
+              onPointerMove={onLiftMove}
+              onPointerUp={(e) => onLiftUp(e, 'shelf', d.id)}
+              onClick={(e) => e.detail === 0 && openSheet({ kind: 'where', destId: d.id })}
+              onPointerCancel={onLiftCancel}
+              onContextMenu={(e) => e.preventDefault()}
+              aria-label={`${d.name}: ${chipHint}`}
+            >
+              <span className="seal sm" style={{ ['--c' as string]: colorOf(doc.destinations, d.id) }}>
+                {sealOf(d)}
+              </span>
+              {d.name}
+            </button>
+          ))}
           <button
-            key={d.id}
             type="button"
-            className="chip-dest"
-            style={{ ['--c' as string]: colorOf(doc.destinations, d.id) }}
-            onPointerDown={(e) => onLiftDown(e, 'shelf', d.id)}
-            onPointerMove={onLiftMove}
-            onPointerUp={(e) => onLiftUp(e, 'shelf', d.id)}
-            onClick={(e) => e.detail === 0 && openSheet({ kind: 'where', destId: d.id })}
-            onPointerCancel={onLiftCancel}
-            onContextMenu={(e) => e.preventDefault()}
-            aria-label={`${d.name}: ${chipHint}`}
+            className="chip-dest add"
+            onClick={() =>
+              openSheet({
+                kind: 'dest',
+                title: 'Que destino entra na viagem?',
+                pick: (destId) => openSheet({ kind: 'where', destId }),
+              })
+            }
           >
-            <span className="seal sm" style={{ ['--c' as string]: colorOf(doc.destinations, d.id) }}>
-              {sealOf(d)}
-            </span>
-            {d.name}
+            + Adicionar destino
           </button>
-        ))}
-        <button
-          type="button"
-          className="chip-dest add"
-          onClick={() =>
-            openSheet({
-              kind: 'dest',
-              title: 'Que destino entra na viagem?',
-              pick: (destId) => openSheet({ kind: 'where', destId }),
-            })
-          }
-        >
-          + Adicionar destino
-        </button>
-      </div>
-      {hint ? (
+        </div>
+      ) : null}
+      {hint && editable ? (
         <p className="tr-hint">
           {coarse
             ? 'Segure um destino para arrastar · toque para ver os dias · ◂▸ muda as noites.'

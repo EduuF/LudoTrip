@@ -8,6 +8,8 @@ export interface Opt {
   run: () => void
   main?: boolean
   disabled?: boolean
+  /** Só navega (não edita): continua para quem só vê. */
+  nav?: boolean
 }
 
 /** Painéis que sobem de baixo. Guardam só o que precisam; o resto vem do estado atual. */

@@ -302,7 +302,12 @@ export function Stepper({
 
 export function OptButton({ o }: { o: Opt }) {
   return (
-    <button type="button" className={`opt${o.main ? ' main' : ''}`} disabled={o.disabled} onClick={o.run}>
+    <button
+      type="button"
+      className={`opt${o.main ? ' main' : ''}${o.nav ? ' nav' : ''}`}
+      disabled={o.disabled}
+      onClick={o.run}
+    >
       <b>{o.label}</b>
       {(o.detail ?? []).map((d, i) => (
         <span key={i}>{d}</span>

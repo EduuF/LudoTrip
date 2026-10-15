@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { MouseEvent as RMouseEvent, PointerEvent as RPointerEvent } from 'react'
 import type { DayRef, ID } from '../engine'
+import { useCanEdit } from './useCanEdit'
 
 // O contrato do arraste de atividades (chipDrag.tsx tem o provedor): tipos, contexto, hook e os
 // manipuladores que cada chip espalha nos seus botões.
@@ -17,7 +18,11 @@ export interface ChipDrag {
 }
 
 export const ChipDragCtx = createContext<ChipDrag | null>(null)
-export const useChipDrag = () => useContext(ChipDragCtx)
+/** O arraste de atividades; quem só vê não arrasta (null: o toque só abre). */
+export const useChipDrag = () => {
+  const drag = useContext(ChipDragCtx)
+  return useCanEdit() ? drag : null
+}
 
 /** Os manipuladores de um chip: ponteiro para arrastar, clique de teclado para abrir. */
 export function chipHandlers(drag: ChipDrag | null, item: ChipItem, onTap: () => void) {

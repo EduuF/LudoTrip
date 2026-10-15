@@ -8,6 +8,7 @@ import type { Task, TaskAbout } from '../app/tasks'
 import { issueQuick, issueWhere } from './autoTasks'
 import { NoteBox, OptButton } from './kit'
 import { DayPicker, TimelinePicker } from './TimelinePicker'
+import { useCanEdit } from './useCanEdit'
 
 // Tarefas (spec §17.11): o painel de uma tarefa escrita por quem viaja (criar e editar), o de uma
 // tarefa que o app vê sozinho (prazo, quem faz, anotações, "Não preciso"), o "Presa a" e a seção
@@ -500,6 +501,7 @@ export function TaskSection({
 }) {
   const tasks = useApp((s) => s.doc?.tasks) ?? NO_TASKS
   const openSheet = useApp((s) => s.openSheet)
+  const edit = useCanEdit()
   const mine = tasks.filter((t) => isAbout(t, about))
   if (compact && !mine.length) return null
   return (
@@ -511,7 +513,7 @@ export function TaskSection({
       {mine.map((t) => (
         <TaskLine key={t.id} task={t} onOpen={() => openSheet({ kind: 'task', taskId: t.id })} />
       ))}
-      {compact ? null : (
+      {compact || !edit ? null : (
         <button
           type="button"
           className="btn small ghost"
@@ -528,18 +530,26 @@ export function TaskSection({
 /** Uma tarefa escrita, em uma linha: marcar feita e abrir. */
 export function TaskLine({ task, onOpen, tag }: { task: Task; onOpen: () => void; tag?: string }) {
   const act = useApp((s) => s.act)
+  const edit = useCanEdit()
   const items = task.items ?? []
   return (
     <div className={`task-line${task.done ? ' done' : ''}`}>
-      <button
-        type="button"
-        className={`check${task.done ? ' on' : ''}`}
-        aria-pressed={!!task.done}
-        aria-label={`${task.title}: ${task.done ? 'feita (desmarcar)' : 'marcar como feita'}`}
-        onClick={() => act({ type: 'setTask', id: task.id, patch: { done: !task.done } }, { keep: true })}
-      >
-        {task.done ? '✓' : ''}
-      </button>
+      {/* Quem só vê vê se está feita, mas não marca. */}
+      {!edit ? (
+        <span className={`check${task.done ? ' on' : ''}`} aria-label={task.done ? 'feita' : 'por fazer'}>
+          {task.done ? '✓' : ''}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className={`check${task.done ? ' on' : ''}`}
+          aria-pressed={!!task.done}
+          aria-label={`${task.title}: ${task.done ? 'feita (desmarcar)' : 'marcar como feita'}`}
+          onClick={() => act({ type: 'setTask', id: task.id, patch: { done: !task.done } }, { keep: true })}
+        >
+          {task.done ? '✓' : ''}
+        </button>
+      )}
       <button type="button" className="task-open" onClick={onOpen} aria-label={`${task.title}: abrir`}>
         <b>{task.title}</b>
         <small>

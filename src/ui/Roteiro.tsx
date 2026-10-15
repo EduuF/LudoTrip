@@ -35,6 +35,7 @@ import { colorOf, sealOf } from './colors'
 import { isCoarse } from './pointer'
 import { RARITY } from './rarity'
 import { Seal, Stepper, Vehicle } from './kit'
+import { useCanEdit } from './useCanEdit'
 import { TaskSection } from './TaskViews'
 
 // Roteiro (spec §17.4): a lista na ordem da viagem, em acordeão: um destino aberto por vez (o do dia
@@ -91,6 +92,7 @@ export function RoteiroList() {
 
 /** "… Adicionar destino … Volta": mais um lugar antes de voltar para casa. */
 function AddDestCard() {
+  if (!useCanEdit()) return null
   return (
     <button type="button" className="card add-dest" onClick={addDestination}>
       <span className="plus" aria-hidden="true">
@@ -110,6 +112,7 @@ function AddDestCard() {
 
 function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days: Day[]; open: boolean }) {
   const doc = useApp((s) => s.doc)!
+  const edit = useCanEdit()
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
   const toggleStop = useApp((s) => s.toggleStop)
@@ -269,26 +272,37 @@ function CityCard({ stop, index, days, open }: { stop: Stop; index: number; days
             </span>
           </button>
         </h3>
-        <button type="button" className="icon-btn" aria-label={`Mais opções de ${name}`} onClick={menu}>
-          ⋯
-        </button>
+        {edit ? (
+          <button type="button" className="icon-btn" aria-label={`Mais opções de ${name}`} onClick={menu}>
+            ⋯
+          </button>
+        ) : null}
       </div>
       {open ? (
         <>
           <div className="row">
-            <Stepper
-              value={n}
-              min={0}
-              label={`Noites em ${name}`}
-              onMinus={() => minusNight(stop.id)}
-              onPlus={() => plusNight(stop.id)}
-            />
+            {edit ? (
+              <Stepper
+                value={n}
+                min={0}
+                label={`Noites em ${name}`}
+                onMinus={() => minusNight(stop.id)}
+                onPlus={() => plusNight(stop.id)}
+              />
+            ) : (
+              <span className="pill">{plural(n, 'noite', 'noites')}</span>
+            )}
             <span className="spacer" />
             {pills}
           </div>
           <div className="days">
             {mine.map((d) => (
-              <DayRow key={d.index} day={d} destId={stop.destinationId} menu={() => dayMenu(d)} />
+              <DayRow
+                key={d.index}
+                day={d}
+                destId={stop.destinationId}
+                {...(edit ? { menu: () => dayMenu(d) } : {})}
+              />
             ))}
             {departure.map((d) => (
               <DayRow key="dep" day={d} destId={stop.destinationId} title="dia da volta" />
@@ -355,6 +369,7 @@ export function DayRow({
   /** Sem a coluna da data (o cartão do dia já a mostra). */
   compact?: boolean
 }) {
+  const edit = useCanEdit()
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
   const drag = useChipDrag()
@@ -399,7 +414,7 @@ export function DayRow({
             </button>
           )
         })}
-        {day.ref && destId ? (
+        {day.ref && destId && edit ? (
           visits.length ? (
             <button
               type="button"
@@ -468,7 +483,7 @@ function CatalogRow({ destId }: { destId: ID }) {
         key={p.id}
         type="button"
         className={`mini r-${p.rarity} loose${ds.length ? ' placed' : ''}${lifted ? ' lifted' : ''}`}
-        aria-label={`${p.name}${when ? `, em ${when}` : ', sem dia'}: ${coarse ? 'toque para ver, ou segure e arraste até um dia' : 'clique para ver, ou arraste até um dia'}`}
+        aria-label={`${p.name}${when ? `, em ${when}` : ', sem dia'}: ${!drag ? `${coarse ? 'toque' : 'clique'} para ver` : coarse ? 'toque para ver, ou segure e arraste até um dia' : 'clique para ver, ou arraste até um dia'}`}
         {...chipHandlers(drag, item, () => openSheet({ kind: 'sticker', placeId: p.id }))}
       >
         <span className="gems">{RARITY[p.rarity].gems}</span>
@@ -482,7 +497,9 @@ function CatalogRow({ destId }: { destId: ID }) {
       <span className="loose-t">
         {dropZone
           ? 'SOLTE AQUI PARA TIRAR DO DIA'
-          : `ATIVIDADES DE ${name.toUpperCase()} · ${coarse ? 'segure e arraste até um dia' : 'arraste até um dia'}`}
+          : !drag
+            ? `ATIVIDADES DE ${name.toUpperCase()}`
+            : `ATIVIDADES DE ${name.toUpperCase()} · ${coarse ? 'segure e arraste até um dia' : 'arraste até um dia'}`}
       </span>
       <div className="slots">
         {loose.map((p) => chip(p.id))}
@@ -587,6 +604,7 @@ function fmtMinutes(m: number): string {
 }
 
 function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
+  const edit = useCanEdit()
   const doc = useApp((s) => s.doc)!
   const act = useApp((s) => s.act)
   const openSheet = useApp((s) => s.openSheet)
@@ -696,6 +714,8 @@ function LegCard({ leg, days }: { leg: Leg; days: Day[] }) {
           Passagem: não precisa{skipTicket.reason ? ` (${skipTicket.reason})` : ''}
         </button>
       )
+    else if (!has && NEEDS_TICKET.has(leg.mode) && !edit)
+      ticket = <span className="ticket">Passagem: falta comprar</span>
     else if (!has && NEEDS_TICKET.has(leg.mode))
       ticket = (
         <button

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   bookingStatus,
   dayLabel,
@@ -45,6 +46,7 @@ import type { SheetSpec } from './sheetTypes'
 import { AccountSheet, AdoptSheet, CloudSaveSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
 import { cueDone, cueLodging } from './stage/cues'
+import { canEdit } from '../app/people'
 import {
   HistorySheet,
   InviteSheet,
@@ -60,6 +62,19 @@ import {
 const MODES: LegMode[] = ['flight', 'train', 'bus', 'car', 'boat', 'walk', 'bike', 'moto']
 
 /** Painéis que editam algo e salvam sozinhos: terminam em "Pronto ✓" (os de escolha, em "Fechar"). */
+/** Painéis que quem só vê usa normalmente (não editam a viagem, ou já sabem do papel). */
+const VIEWER_OK = new Set<SheetSpec['kind']>([
+  'signin',
+  'account',
+  'adopt',
+  'install',
+  'privacy',
+  'people',
+  'member',
+  'history',
+  'viewing',
+])
+
 const EDITORS = new Set<SheetSpec['kind']>([
   'task',
   'autoTask',
@@ -80,6 +95,9 @@ export function Sheets() {
   const backSheet = useApp((s) => s.backSheet)
   if (!sheet || (!doc && !NO_DOC_SHEETS.has(sheet.kind))) return null
   const under = stack[stack.length - 1]
+  // Só vê (spec publicação §4.6): os painéis da viagem abrem só para leitura. Os de pessoas, conta e
+  // Histórico cuidam do papel sozinhos.
+  const readOnly = !!doc && !canEdit(doc) && !VIEWER_OK.has(sheet.kind)
   return (
     // Refaz o foco quando o painel troca por outro (não quando um campo do mesmo painel muda).
     <SheetFrame
@@ -91,7 +109,9 @@ export function Sheets() {
       dir={dir}
       editor={EDITORS.has(sheet.kind) && !(sheet.kind === 'task' && !sheet.taskId)}
     >
-      {sheet.kind === 'choice' ? (
+      {readOnly ? (
+        <ViewOnly>{sheet.kind === 'choice' ? <ChoiceBody sheet={sheet} /> : <Body sheet={sheet} />}</ViewOnly>
+      ) : sheet.kind === 'choice' ? (
         <ChoiceBody sheet={sheet} />
       ) : sheet.kind === 'signin' ? (
         <SignInSheet
@@ -113,6 +133,34 @@ export function Sheets() {
         <Body sheet={sheet} />
       )}
     </SheetFrame>
+  )
+}
+
+/**
+ * Só vê: o painel abre para ler. Campos ficam só de leitura e botões de editar somem; os que só navegam
+ * (classe `nav`: "Ver no mapa da cidade", "Pessoas ›", "Histórico") continuam.
+ */
+function ViewOnly({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const lock = () =>
+      el.querySelectorAll('input, textarea, select, button:not(.nav)').forEach((x) => {
+        if (x instanceof HTMLButtonElement || x instanceof HTMLSelectElement) x.disabled = true
+        else if (x instanceof HTMLInputElement && ['checkbox', 'radio', 'range'].includes(x.type))
+          x.disabled = true
+        else if (x instanceof HTMLInputElement || x instanceof HTMLTextAreaElement) x.readOnly = true
+      })
+    lock()
+    const watch = new MutationObserver(lock)
+    watch.observe(el, { subtree: true, childList: true })
+    return () => watch.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className="view-only">
+      {children}
+    </div>
   )
 }
 
@@ -718,7 +766,9 @@ function AboutActivity({ placeId }: { placeId: ID }) {
       />
       {p.lat !== undefined && p.lon !== undefined ? (
         <>
-          <OptButton o={{ label: 'Ver no mapa da cidade', run: () => enterCity(p.destinationId) }} />
+          <OptButton
+            o={{ label: 'Ver no mapa da cidade', nav: true, run: () => enterCity(p.destinationId) }}
+          />
           <a
             className="opt"
             href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`}
@@ -1170,7 +1220,7 @@ function TripSheet() {
         />
       </label>
       {/* Quem vai mora em PESSOAS (spec publicação §4.2): aqui, o resumo que leva até lá. */}
-      <button type="button" className="field field-link" onClick={() => openSheet({ kind: 'people' })}>
+      <button type="button" className="field field-link nav" onClick={() => openSheet({ kind: 'people' })}>
         <span>Quem vai</span>
         <span className="row">
           <b style={{ flex: 1 }}>{it.travelers.map((t) => t.name).join(', ') || 'Ninguém ainda'}</b>
@@ -1178,7 +1228,7 @@ function TripSheet() {
         </span>
       </button>
       {doc.meta.cloud ? (
-        <button type="button" className="btn small ghost" onClick={() => openSheet({ kind: 'history' })}>
+        <button type="button" className="btn small ghost nav" onClick={() => openSheet({ kind: 'history' })}>
           Histórico: quem mudou o quê
         </button>
       ) : null}

@@ -7,6 +7,7 @@ import { colorOf, sealOf } from './colors'
 import { Seal } from './kit'
 import { PLACE_KINDS } from './placeKinds'
 import { RARITY } from './rarity'
+import { useCanEdit } from './useCanEdit'
 
 // Atividades (spec §17.5): tudo o que vocês querem fazer, por destino, em cartões com cara de coleção.
 // Moldura pela prioridade: Se der (prata), Quero (azul), Imperdível (dourada, brilha enquanto está sem dia).
@@ -57,6 +58,7 @@ export function ActivityCard({
 export function Atividades() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
+  const edit = useCanEdit()
   const act = useApp((s) => s.act)
   const it = doc.itinerary
   const states = placeStates(it, doc.places)
@@ -92,7 +94,7 @@ export function Atividades() {
               </i>
             </div>
           </div>
-          {note === 'guardado' ? (
+          {note === 'guardado' && edit ? (
             <button
               type="button"
               className="icon-btn"
@@ -113,14 +115,16 @@ export function Atividades() {
               ×
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn small"
-            onClick={() => openSheet({ kind: 'newActivity', destId })}
-            aria-label={`Nova atividade em ${d?.name ?? 'destino'}`}
-          >
-            + Atividade
-          </button>
+          {edit ? (
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => openSheet({ kind: 'newActivity', destId })}
+              aria-label={`Nova atividade em ${d?.name ?? 'destino'}`}
+            >
+              + Atividade
+            </button>
+          ) : null}
         </div>
         <div className="stickers">
           {mine.map((p) => (
@@ -155,9 +159,11 @@ export function Atividades() {
         <div className="empty">
           <b>Nenhum destino ainda.</b>
           As atividades ficam por destino: comece por um.
-          <button type="button" className="btn main" style={{ marginTop: 10 }} onClick={addDestination}>
-            + Adicionar destino
-          </button>
+          {edit ? (
+            <button type="button" className="btn main" style={{ marginTop: 10 }} onClick={addDestination}>
+              + Adicionar destino
+            </button>
+          ) : null}
         </div>
       ) : null}
       {order.map((id) => page(id))}

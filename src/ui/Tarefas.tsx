@@ -8,6 +8,7 @@ import { issueQuick, issueWhere } from './autoTasks'
 import { LevelLine } from './LevelLine'
 import { DueTag, TaskLine } from './TaskViews'
 import { CloudQuest } from './Entrar'
+import { useCanEdit } from './useCanEdit'
 
 // Tarefas (spec §17.6, §17.11): uma lista só, por prazo, com o que o app vê sozinho (passagem por
 // comprar, hospedagem, imperdível sem dia…) e o que quem viaja escreve (com prazo, link, itens, quem faz).
@@ -33,6 +34,7 @@ type Row =
 export function Tarefas() {
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
+  const edit = useCanEdit()
   const [mine, setMine] = useState<ID | null>(null)
   const [showDone, setShowDone] = useState(false)
   const it = doc.itinerary
@@ -68,7 +70,8 @@ export function Tarefas() {
   }
   const autoRow = (r: Extract<Row, { kind: 'auto' }>) => {
     const i = r.issue
-    const q = issueQuick(i)
+    // Quem só vê não resolve tarefas: sem o botão de resolver na hora.
+    const q = edit ? issueQuick(i) : null
     const w = issueWhere(i)
     // XP só onde é dado de fato (com a ação que resolve, na viagem com datas).
     const reward = it.start || i.kind === 'must-unscheduled' ? REWARD[i.kind] : undefined
@@ -135,13 +138,15 @@ export function Tarefas() {
           ))}
       </div>
       <div className="row" style={{ marginTop: 10 }}>
-        <button
-          type="button"
-          className="btn main"
-          onClick={() => openSheet({ kind: 'task', about: { kind: 'trip' } })}
-        >
-          + Tarefa
-        </button>
+        {edit ? (
+          <button
+            type="button"
+            className="btn main"
+            onClick={() => openSheet({ kind: 'task', about: { kind: 'trip' } })}
+          >
+            + Tarefa
+          </button>
+        ) : null}
         {travelers.length > 1 ? (
           <div className="segs" role="group" aria-label="De quem">
             <button

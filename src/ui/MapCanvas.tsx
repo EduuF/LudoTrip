@@ -10,6 +10,7 @@ import { currentTheme } from '../app/theme'
 import { FADE, isFading } from './daylight'
 import { BoardOverlay } from './BoardOverlay'
 import { CityOverlay } from './CityOverlay'
+import { useCanEdit } from './useCanEdit'
 
 // O mapa de verdade (spec §8): começa no papel (instantâneo, sem rede) e troca para os tiles do
 // OpenStreetMap no estilo washi assim que há WebGL e rede. A nossa camada SVG fica por cima dos dois.
@@ -17,6 +18,7 @@ import { CityOverlay } from './CityOverlay'
 const HOLD_MS = 550
 
 export function MapCanvas() {
+  const editable = useCanEdit()
   const doc = useApp((s) => s.doc)!
   const mapView = useApp((s) => s.mapView)
   const placing = useApp((s) => s.placing)
@@ -122,7 +124,7 @@ export function MapCanvas() {
   }
   const hold = useRef<{ x: number; y: number; t: number } | null>(null)
   const onPointerDown = (e: RPointerEvent<HTMLDivElement>) => {
-    if (!cityId || placing) return
+    if (!cityId || placing || !editable) return
     const { clientX: x, clientY: y } = e
     clearTimeout(hold.current?.t)
     hold.current = {

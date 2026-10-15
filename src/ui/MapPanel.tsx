@@ -5,6 +5,7 @@ import { reducedMotion } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 import { LevelLine } from './LevelLine'
 import { cueBigDay } from './stage/cues'
+import { useCanEdit } from './useCanEdit'
 
 // O painel do mapa (spec §17.2): o mapa da viagem (ou da cidade aberta) com a contagem regressiva e o
 // resumo por cima, "+ Adicionar destino" / "+ Atividade aqui" e "▶ Ver a viagem" (os dias passam sozinhos e o grupo
@@ -18,6 +19,7 @@ const PLAY_MS = 1400
 const PLAY_MS_REDUCED = 900
 
 function Countdown() {
+  const edit = useCanEdit()
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
   const it = doc.itinerary
@@ -64,7 +66,7 @@ function Countdown() {
         type="button"
         className="cd-open"
         onClick={open}
-        aria-label={`Faltam ${days} dias para a viagem. Toque para mudar as datas`}
+        aria-label={`Faltam ${days} dias para a viagem. Toque para ${edit ? 'mudar' : 'ver'} as datas`}
       >
         <span className="cd-row">
           <span className="lbl">FALTAM</span>
@@ -267,6 +269,7 @@ function useShoji(key: string) {
 }
 
 export function MapPanel() {
+  const edit = useCanEdit()
   const doc = useApp((s) => s.doc)!
   const openSheet = useApp((s) => s.openSheet)
   const mapView = useApp((s) => s.mapView)
@@ -304,7 +307,7 @@ export function MapPanel() {
         </div>
       ) : null}
       <div className="map-acts">
-        {mapView.kind === 'city' ? (
+        {!edit ? null : mapView.kind === 'city' ? (
           <button type="button" className="btn small" onClick={() => setPlacing('new')}>
             + Atividade aqui
           </button>

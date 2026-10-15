@@ -3678,3 +3678,25 @@ html.theme-fading {
   justify-content: flex-start;
   min-height: 45px;
 }
+/* Só vê: o painel abre para ler. Botões de editar somem (não ficam cinza); campos viram texto. Os que
+   só navegam ("Ver no mapa", "Pessoas ›") levam a classe `nav` e continuam. */
+.view-only {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: contents;
+}
+.view-only button:not(.nav),
+.view-only .stepper,
+.view-only input[type='checkbox'] {
+  display: none;
+}
+.view-only :is(input, textarea, select) {
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+  opacity: 1;
+  padding-inline: 0;
+  -webkit-text-fill-color: currentColor;
+}
