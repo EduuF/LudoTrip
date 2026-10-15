@@ -1,5 +1,7 @@
 # Domínio próprio: o que você precisa fazer
 
+> **Concluído em 15/10/2026.** `ludotrip.app` (produção), `www.ludotrip.app` (leva ao principal) e `staging.ludotrip.app` no ar, com DNSSEC ativo. Conferido com `scripts/smoke-live.mjs`.
+
 O LudoTrip sai dos endereços provisórios (`ludotrip.ludotrip.workers.dev` e `ludotrip-staging.ludotrip.workers.dev`) para um domínio próprio:
 
 - **produção:** `ludotrip.app` (e `www.ludotrip.app`, que leva para o principal);

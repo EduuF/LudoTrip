@@ -4,18 +4,23 @@ Spec: [`publicacao-contas-colaboracao`](superpowers/specs/2026-10-14-publicacao-
 
 ## Como o app chega ao ar
 
-| Ambiente                          | Endereço                                                               | Quando publica                           |
-| --------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
-| **Staging** (teste do mantenedor) | `https://ludotrip-staging.<subdomínio>.workers.dev`                    | Sozinho, a cada push na `main`           |
-| **Produção**                      | `https://ludotrip.<subdomínio>.workers.dev` (no M6, o domínio próprio) | Só quando o mantenedor manda             |
-| GitHub Pages (sem nuvem)          | `https://eduuf.github.io/LudoTrip/`                                    | A cada push; vira redirecionamento no M6 |
+| Ambiente                          | Endereço                                       | Quando publica                           |
+| --------------------------------- | ---------------------------------------------- | ---------------------------------------- |
+| **Staging** (teste do mantenedor) | `https://staging.ludotrip.app`                 | Sozinho, a cada push na `main`           |
+| **Produção**                      | `https://ludotrip.app` (o `www` leva para ele) | Só quando o mantenedor manda             |
+| GitHub Pages (sem nuvem)          | `https://eduuf.github.io/LudoTrip/`            | A cada push; vira redirecionamento no M6 |
 
 O workflow **Deploy (Cloudflare)** (`.github/workflows/deploy.yml`) faz, em ordem:
 
 1. testes;
 2. build com nuvem;
 3. migrações do D1;
-4. `wrangler deploy`.
+4. `wrangler deploy` (os domínios estão em `routes` no `wrangler.jsonc`);
+5. em produção, também o Worker do `www` (`wrangler.www.jsonc`), que só redireciona para `ludotrip.app`.
+
+Os endereços antigos `*.ludotrip.workers.dev` continuam respondendo.
+
+**Conferir um ambiente no ar** (API, repasse do login, app sem erros e o Google aceitando o endereço de volta, sem entrar em conta nenhuma): `node scripts/smoke-live.mjs https://ludotrip.app`.
 
 Ele só liga quando a variável do repositório `CLOUDFLARE_READY` vale `1`, o que acontece depois do guia do M4.
 
