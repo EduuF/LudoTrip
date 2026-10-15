@@ -7,3 +7,4 @@ Skills usadas pelo Claude Code neste repositório (instaladas aqui, nunca global
 | `durable-objects`, `workers-best-practices`, `wrangler`, `cloudflare-email-service` | [cloudflare/skills](https://github.com/cloudflare/skills), copiadas sem mudanças em 2026-10-14 | Apache-2.0 |
 
 Para atualizar, copie de novo a pasta da skill do repositório de origem e registre a data aqui.
+| `web-motion-design` | [dylantarre/animation-principles](https://github.com/dylantarre/animation-principles), copiada sem mudanças em 2026-10-15 | MIT |
