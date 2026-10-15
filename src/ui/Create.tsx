@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { createItinerary, haversineKm } from '../engine'
-import type { Destination, LegMode } from '../engine'
+import type { Destination, LegMode, NewTripSpec } from '../engine'
 import { setLocalBack, uid, useApp } from '../app/store'
-import type { Scope, TripDoc } from '../app/doc'
+import type { TripDoc } from '../app/doc'
+import { areaLabel } from '../app/area'
 import { CITIES } from '../providers/cities'
 import { countryBounds } from '../providers/countries'
 import { PlaceSearch } from './PlaceSearch'
 import type { PlacePick } from './PlaceSearch'
 import { Stepper, Travelers } from './kit'
 
-// Criar viagem em passos curtos (spec §7 e §17.7): para onde (país, região ou cidade), por onde,
-// quando, quem, como, nome. Tudo pode ser ajustado depois no mapa e na trilha.
+// Criar viagem em passos curtos (spec §7 e spec 2026-10-15): pra onde (os destinos, na ordem; um país
+// sem cidade vira noites em aberto nele), quando, quem, como, nome. Tudo pode ser ajustado depois.
 
 const MOVES: { label: string; hint: string; mode: LegMode }[] = [
   { label: 'Avião', hint: 'entre lugares longe', mode: 'flight' },
@@ -20,15 +21,20 @@ const MOVES: { label: string; hint: string; mode: LegMode }[] = [
   { label: 'A pé ou bike', hint: 'trilha em etapas', mode: 'walk' },
 ]
 
-const STEPS = ['Pra onde', 'Por onde', 'Quando', 'Quem vai', 'Como', 'Nome']
+const STEPS = ['Pra onde', 'Quando', 'Quem vai', 'Como', 'Nome']
+
+/** Onde fica uma escolha no mapa, para saber se a casa é longe (a cidade, ou o meio do país). */
+async function pointOf(p: PlacePick): Promise<{ lat: number; lon: number } | null> {
+  if (p.kind === 'city') return p.lat !== undefined && p.lon !== undefined ? { lat: p.lat, lon: p.lon } : null
+  const b = await countryBounds(p.id)
+  return b ? { lat: (b[1] + b[3]) / 2, lon: (b[0] + b[2]) / 2 } : null
+}
 
 export function Create() {
   const goHome = useApp((s) => s.goHome)
   const addTrip = useApp((s) => s.addTrip)
   const [step, setStep] = useState(0)
-  const [scope, setScope] = useState<PlacePick | null>(null)
   const [picks, setPicks] = useState<PlacePick[]>([])
-  const [undecided, setUndecided] = useState(false)
   const [home, setHome] = useState<PlacePick | null>(null)
   const [start, setStart] = useState('')
   const [nights, setNights] = useState(7)
@@ -37,57 +43,56 @@ export function Create() {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const isCountry = scope?.kind === 'country'
-  const tripName = name.trim() || (scope ? `Viagem para ${scope.name}` : 'Minha viagem')
-  const suggestions = isCountry
-    ? CITIES.filter((c) => c.country === scope.country && !picks.some((p) => p.name === c.name)).slice(0, 8)
+  const label = areaLabel(picks)
+  const tripName = name.trim() || (picks.length ? `Viagem para ${label}` : 'Minha viagem')
+  const lastCountry = picks[picks.length - 1]?.country
+  const suggestions = lastCountry
+    ? CITIES.filter((c) => c.country === lastCountry && !picks.some((p) => p.name === c.name)).slice(0, 8)
     : []
-
-  const pickScope = (p: PlacePick) => {
-    setScope(p)
-    setPicks(p.kind === 'city' ? [p] : [])
-    setUndecided(false)
+  const add = (p: PlacePick) => {
+    if (!picks.some((x) => x.kind === p.kind && x.name === p.name)) setPicks([...picks, p])
   }
 
   const finish = async () => {
-    if (!scope) return
+    if (!picks.length) return
     setBusy(true)
-    const destinations: Destination[] = picks.map((c, i) => ({
-      id: `d-${i + 1}`,
-      name: c.name,
-      kind: c.kind === 'city' ? (c.destKind ?? 'city') : 'city',
-      ...(c.localName ? { localName: c.localName } : {}),
-      ...(c.country ? { country: c.country } : {}),
-      ...(c.kind === 'city' && c.lat !== undefined && c.lon !== undefined ? { lat: c.lat, lon: c.lon } : {}),
-      ...(c.kind === 'city' && c.tz ? { tz: c.tz } : {}),
-    }))
-    const bbox = scope.kind === 'country' ? await countryBounds(scope.id) : null
-    const tripScope: Scope =
-      scope.kind === 'country'
-        ? {
-            name: scope.name,
-            kind: 'country',
-            country: scope.country,
-            ...(scope.localName ? { localName: scope.localName } : {}),
+    const destinations: Destination[] = []
+    const order: NewTripSpec['destinationIds'] = []
+    for (const c of picks) {
+      if (c.kind === 'country') {
+        const bbox = await countryBounds(c.id)
+        order.push({
+          openIn: {
+            country: c.country,
+            name: c.name,
+            ...(c.localName ? { localName: c.localName } : {}),
             ...(bbox ? { bbox } : {}),
-          }
-        : {
-            name: scope.name,
-            kind: 'city',
-            ...(scope.localName ? { localName: scope.localName } : {}),
-            ...(scope.country ? { country: scope.country } : {}),
-            ...(scope.lat !== undefined && scope.lon !== undefined ? { lat: scope.lat, lon: scope.lon } : {}),
-          }
-    const first =
-      destinations.find((d) => d.lat !== undefined) ?? (tripScope.lat !== undefined ? tripScope : null)
+          },
+        })
+        continue
+      }
+      const id = `d-${destinations.length + 1}`
+      destinations.push({
+        id,
+        name: c.name,
+        kind: c.destKind ?? 'city',
+        ...(c.localName ? { localName: c.localName } : {}),
+        ...(c.country ? { country: c.country } : {}),
+        ...(c.lat !== undefined && c.lon !== undefined ? { lat: c.lat, lon: c.lon } : {}),
+        ...(c.tz ? { tz: c.tz } : {}),
+      })
+      order.push(id)
+    }
+    let first: { lat: number; lon: number } | null = null
+    for (const c of picks) if ((first = await pointOf(c))) break
     const far =
-      home?.kind === 'city' && home.lat !== undefined && home.lon !== undefined && first?.lat !== undefined
-        ? haversineKm({ lat: home.lat, lon: home.lon }, { lat: first.lat, lon: first.lon! }) > 700
+      home?.kind === 'city' && home.lat !== undefined && home.lon !== undefined && first
+        ? haversineKm({ lat: home.lat, lon: home.lon }, first) > 700
         : mode === 'flight'
     let n = 0
     const itinerary = createItinerary(
       {
-        destinationIds: destinations.length ? destinations.map((d) => d.id) : [null],
+        destinationIds: order,
         nights,
         start: start || null,
         defaultMode: mode,
@@ -109,7 +114,6 @@ export function Create() {
     const doc: TripDoc = {
       meta: { id: uid('t'), name: tripName, createdAt: now, updatedAt: now },
       itinerary,
-      scope: tripScope,
       destinations,
       places: [],
       bookings: [],
@@ -124,7 +128,7 @@ export function Create() {
     return () => setLocalBack(null)
   }, [step, goHome])
 
-  const canNext = step === 0 ? !!scope : step === 1 ? picks.length > 0 || undecided || !isCountry : true
+  const canNext = step === 0 ? picks.length > 0 : true
 
   return (
     <div className="wrap">
@@ -145,24 +149,53 @@ export function Create() {
       {step === 0 ? (
         <>
           <h1 className="title">
-            Pra onde <em>vamos?</em>
+            Pra onde <em>vocês vão?</em>
           </h1>
-          <p className="note">Um país, uma região ou uma cidade. Dá para mudar tudo depois.</p>
+          <p className="note">
+            As cidades, parques ou ilhas, na ordem que imaginam. Ainda não sabem as cidades? Escolham só o
+            país. Dá para mudar tudo depois.
+          </p>
+          {picks.length ? (
+            <div className="pills" style={{ marginTop: 10 }}>
+              {picks.map((c, i) => (
+                <button
+                  key={`${c.kind}-${c.name}`}
+                  type="button"
+                  className="pill"
+                  onClick={() => setPicks(picks.filter((_, k) => k !== i))}
+                  aria-label={`Tirar ${c.name}`}
+                >
+                  {i + 1}. {c.name}
+                  {c.kind === 'country' ? ' · cidades em aberto' : ''} ×
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="field" style={{ marginTop: 12 }}>
-            <span>Destino da viagem</span>
-            {scope ? (
-              <button type="button" className="pill" onClick={() => setScope(null)}>
-                {scope.name} {scope.kind === 'country' ? '· país' : ''} ×
-              </button>
-            ) : (
-              <PlaceSearch
-                id="destino"
-                placeholder="Busque: Japão, Romênia, Rio…"
-                kinds={['country', 'city']}
-                onPick={pickScope}
-              />
-            )}
+            <span>{picks.length ? 'Mais um destino' : 'Destinos'}</span>
+            <PlaceSearch
+              id="destino"
+              placeholder="Busque: Japão, Kyoto, Patagônia…"
+              kinds={['country', 'city']}
+              {...(lastCountry ? { within: lastCountry } : {})}
+              exclude={picks.map((p) => p.name)}
+              onPick={add}
+            />
           </div>
+          {suggestions.length ? (
+            <div className="pills" style={{ marginTop: 10 }}>
+              {suggestions.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  className="pill"
+                  onClick={() => add({ kind: 'city', ...c })}
+                >
+                  + {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="field" style={{ marginTop: 16 }}>
             <span>De onde vocês saem? (opcional)</span>
             {home ? (
@@ -177,84 +210,6 @@ export function Create() {
       ) : null}
 
       {step === 1 ? (
-        <>
-          <h1 className="title">
-            {isCountry ? (
-              <>
-                Em quais cidades <em>vão dormir?</em>
-              </>
-            ) : (
-              <>
-                Vão dormir em <em>outra cidade?</em>
-              </>
-            )}
-          </h1>
-          <p className="note">
-            {isCountry
-              ? `As cidades de ${scope!.name} onde vocês dormem, na ordem que imaginam. Ou deixe para decidir no mapa.`
-              : `${scope!.name} já está. Bate-voltas e passeios (o que fazer lá) entram depois, no roteiro. Pode pular.`}
-          </p>
-          {picks.length ? (
-            <div className="pills" style={{ marginTop: 10 }}>
-              {picks.map((c, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className="pill"
-                  onClick={() => setPicks(picks.filter((_, k) => k !== i))}
-                  aria-label={`Tirar ${c.name}`}
-                >
-                  {i + 1}. {c.name} ×
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <div className="field" style={{ marginTop: 12 }}>
-            <span>{isCountry ? 'Cidades' : 'Outra cidade'}</span>
-            <PlaceSearch
-              id="lugar"
-              placeholder="Busque: Kyoto, Lisboa, Bucareste…"
-              kinds={['city']}
-              within={scope?.country}
-              exclude={picks.map((p) => p.name)}
-              onPick={(p) => {
-                setPicks([...picks, p])
-                setUndecided(false)
-              }}
-            />
-          </div>
-          {suggestions.length ? (
-            <div className="pills" style={{ marginTop: 10 }}>
-              {suggestions.map((c) => (
-                <button
-                  key={c.name}
-                  type="button"
-                  className="pill"
-                  onClick={() => {
-                    setPicks([...picks, { kind: 'city', ...c }])
-                    setUndecided(false)
-                  }}
-                >
-                  + {c.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {isCountry && !picks.length ? (
-            <button
-              type="button"
-              className={`btn small${undecided ? ' main' : ''}`}
-              aria-pressed={undecided}
-              style={{ marginTop: 14 }}
-              onClick={() => setUndecided(!undecided)}
-            >
-              Ainda não sei: decido no mapa
-            </button>
-          ) : null}
-        </>
-      ) : null}
-
-      {step === 2 ? (
         <>
           <h1 className="title">
             <em>Quando?</em>
@@ -288,7 +243,7 @@ export function Create() {
         </>
       ) : null}
 
-      {step === 3 ? (
+      {step === 2 ? (
         <>
           <h1 className="title">
             Quem <em>vai?</em>
@@ -313,7 +268,7 @@ export function Create() {
         </>
       ) : null}
 
-      {step === 4 ? (
+      {step === 3 ? (
         <>
           <h1 className="title">
             Como vão <em>se mover?</em>
@@ -336,7 +291,7 @@ export function Create() {
         </>
       ) : null}
 
-      {step === 5 ? (
+      {step === 4 ? (
         <>
           <h1 className="title">
             Nome da <em>viagem</em>
@@ -352,11 +307,7 @@ export function Create() {
             />
           </div>
           <p className="note">
-            {scope?.name} ·{' '}
-            {picks.length
-              ? `${picks.length} ${picks.length === 1 ? 'cidade' : 'cidades'}`
-              : 'cidades a decidir'}{' '}
-            · {nights} noites ·{' '}
+            {label} · {picks.length} {picks.length === 1 ? 'destino' : 'destinos'} · {nights} noites ·{' '}
             {people === 6 ? 'uma galera' : `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`}.{' '}
             {picks.length > 1 ? 'As noites se dividem igualmente; depois é só arrastar na trilha.' : ''}
           </p>
@@ -371,11 +322,7 @@ export function Create() {
             disabled={!canNext}
             onClick={() => setStep(step + 1)}
           >
-            {step === 0 && !scope
-              ? 'Diga pra onde'
-              : step === 1 && !canNext
-                ? 'Escolha um lugar ou "decido no mapa"'
-                : 'Continuar'}
+            {canNext ? 'Continuar' : 'Diga pra onde'}
           </button>
         ) : (
           <button type="button" className="btn big main" disabled={busy} onClick={() => void finish()}>
