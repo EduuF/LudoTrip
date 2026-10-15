@@ -3,6 +3,7 @@ import { geoContains } from 'd3-geo'
 import { lodgingGaps, placeStates, tripPhase } from '../engine'
 import type { ID } from '../engine'
 import { todayISO, useApp } from '../app/store'
+import { fillOpenChoice } from '../app/choices'
 import { tripArea } from '../app/area'
 import type { MapAdapter } from '../map/adapter'
 import { easeInOut, reducedMotion } from '../map/adapter'
@@ -15,6 +16,7 @@ import { travelersSize } from './stage/cast'
 import { countries, decoKinds, f1, placeLabels, relax, rng } from './mapBits'
 import type { DecoKind, Rect } from './mapBits'
 import { Cloud, Deco } from './MapDeco'
+import { useCanEdit } from './useCanEdit'
 
 // A camada da viagem sobre o mapa (spec §17.2), no traço da v1: trilha pontilhada sobre areia com a
 // parte já percorrida em vermelho, fases numeradas (estrela quando o destino está pronto), pílulas sem
@@ -363,7 +365,7 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.frac, target?.xy?.[0], target?.xy?.[1]])
 
-  if (!model) return null
+  if (!model) return <OpenPhases adapter={adapter} />
 
   // Fases prontas: hospedagem em todas as noites e imperdíveis com dia.
   const gaps = new Set(lodgingGaps(it, doc.bookings).map((g) => g.stopId))
@@ -554,6 +556,7 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
           </g>
         )
       })}
+      <OpenPhases adapter={adapter} />
       {target ? (
         <g ref={spriteRef} className="travelers" aria-hidden="true">
           <g className="bob">
@@ -582,5 +585,78 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
         </g>
       ) : null}
     </g>
+  )
+}
+
+/**
+ * Noites em aberto num país ("Japão, cidades em aberto"): uma fase tracejada no meio do país, fora da
+ * trilha. Tocar escolhe a cidade (quem só vê não tem o toque).
+ */
+function OpenPhases({ adapter }: { adapter: MapAdapter }) {
+  const it = useApp((s) => s.doc!.itinerary)
+  const edit = useCanEdit()
+  const list = it.stops.flatMap((s, i) => {
+    const box = !s.destinationId ? s.openIn?.bbox : undefined
+    const xy = box && adapter.project([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2])
+    return xy && s.openIn ? [{ stopId: s.id, n: i + 1, name: s.openIn.name, x: xy[0], y: xy[1] }] : []
+  })
+  return (
+    <>
+      {list.map((o) => {
+        const label = `${o.name} · cidades em aberto`
+        const w = label.length * 7 + 20
+        const choose = () => edit && fillOpenChoice(o.stopId)
+        return (
+          <g
+            key={o.stopId}
+            className="node open"
+            {...(edit
+              ? {
+                  onClick: choose,
+                  role: 'button',
+                  tabIndex: 0,
+                  onKeyDown: (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && choose(),
+                  'aria-label': `${o.name}: escolher cidade`,
+                }
+              : { 'aria-label': label })}
+          >
+            <g transform={`translate(${f1(o.x)},${f1(o.y - 30)})`}>
+              <rect
+                x={-w / 2}
+                y="-11"
+                width={w}
+                height="22"
+                rx="11"
+                fill="var(--paper)"
+                stroke="var(--ink)"
+                strokeWidth="1.6"
+                strokeDasharray="4 3"
+              />
+              <text textAnchor="middle" y="4" fill="var(--ink)" className="pillbox">
+                {label}
+              </text>
+            </g>
+            <circle
+              cx={o.x}
+              cy={o.y}
+              r="14"
+              fill="var(--paper)"
+              stroke="var(--ink)"
+              strokeWidth="2.2"
+              strokeDasharray="4 3"
+            />
+            <text
+              x={o.x}
+              y={o.y + 4.5}
+              textAnchor="middle"
+              fill="var(--ink)"
+              style={{ font: '12.5px var(--f-pixel)' }}
+            >
+              {o.n}
+            </text>
+          </g>
+        )
+      })}
+    </>
   )
 }
