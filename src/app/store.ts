@@ -467,6 +467,11 @@ export const useApp = create<AppState>((set, get) => {
     if (!intent || intent.kind === 'none') return
     if (intent.kind === 'openTrip') return get().openTrip(intent.id)
     if (intent.kind === 'tripSheet' && get().screen === 'trip') get().openSheet({ kind: 'trip' })
+    if (intent.kind === 'saveTrip') {
+      // Feito o login, sobe esta viagem; o aviso "guardada ✓" e o selo ☁️ mostram o resultado.
+      set({ sheet: null, sheetBack: [] })
+      await get().uploadTrips([intent.id])
+    }
   }
 
   /** O endereço pediu uma viagem: abre, ou diz por que não dá (spec publicação §3.5). */
@@ -686,7 +691,7 @@ export const useApp = create<AppState>((set, get) => {
 
     async saveToCloud(id) {
       if (!cloudDeps) return
-      if (!get().account) return get().openSignIn('para guardar na nuvem', { kind: 'none' })
+      if (!get().account) return get().openSignIn('para guardar na nuvem', { kind: 'saveTrip', id })
       await get().uploadTrips([id])
     },
 
@@ -701,7 +706,11 @@ export const useApp = create<AppState>((set, get) => {
       for (const id of ids) {
         const raw = await repo.load(id)
         if (!raw || raw.meta.cloud) continue
-        const doc = migrate(raw)
+        // Um exemplo guardado vira uma viagem da pessoa (deixa de ser exemplo).
+        const migrated = migrate(raw)
+        const { example: _example, ...meta } = migrated.meta
+        void _example
+        const doc: TripDoc = { ...migrated, meta }
         const r = await deps.api.upload(doc)
         if (r.ok) {
           await repo.save(withCloud(doc, { owner: account.uid, role: 'owner', version: r.version }))
@@ -1039,6 +1048,14 @@ export const useApp = create<AppState>((set, get) => {
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })
       sfx.level()
+      // Sem conta: logo ao criar, o caminho para não perder a viagem (spec publicação §3.2).
+      if (cloudDeps && !up?.ok) {
+        toast('Viagem criada neste aparelho. Guarde na nuvem para não perder.', false, false, () => {
+          set({ toast: null })
+          void get().saveToCloud(doc.meta.id)
+        })
+        set((s) => (s.toast ? { toast: { ...s.toast, actionLabel: '☁️ Salvar' } } : {}))
+      }
     },
 
     async removeTrip(id) {

@@ -5,7 +5,7 @@ import { wireBackButton } from './app/backButton'
 import { wireRoutes } from './app/routes'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
-import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
+import { currentTheme, THEME_ACTION, THEME_LABEL, toggledTheme } from './app/theme'
 import { resetTrilhaHint } from './app/tutorial'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
@@ -60,19 +60,6 @@ function Hud() {
           >
             {doc.meta.name}
           </button>
-          <CloudBadge />
-          <button
-            type="button"
-            className="hud-btn"
-            aria-label={THEME_ACTION[mode]}
-            title={THEME_ACTION[mode]}
-            onClick={() => setTheme(toggledTheme())}
-          >
-            {THEME_GLYPH[mode]}
-          </button>
-          <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
-            ↶ Desfazer
-          </button>
           <div className="hud-menu">
             <button
               type="button"
@@ -110,6 +97,22 @@ function Hud() {
               </PopMenu>
             ) : null}
           </div>
+        </div>
+        {/* Segunda linha (retorno do staging): ações com nome, nada espremido nem escondido. */}
+        <div className="hud-actions">
+          <CloudBadge />
+          <button
+            type="button"
+            className="hud-btn"
+            aria-label={THEME_ACTION[mode]}
+            title={THEME_ACTION[mode]}
+            onClick={() => setTheme(toggledTheme())}
+          >
+            {THEME_LABEL[mode]}
+          </button>
+          <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
+            ↶ Desfazer
+          </button>
         </div>
       </div>
     </header>

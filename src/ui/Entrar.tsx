@@ -328,7 +328,7 @@ export function TripCloudRow() {
   const openSignIn = useApp((s) => s.openSignIn)
   const say = useApp((s) => s.say)
   const [how, setHow] = useState(false)
-  if (!cloudEnabled || !doc || doc.meta.example) return null
+  if (!cloudEnabled || !doc) return null
   const cloud = !!doc.meta.cloud
   const link = `${location.origin}${import.meta.env.BASE_URL}v/${encodeURIComponent(doc.meta.id)}`
   const other = () => {
@@ -390,7 +390,7 @@ export function CloudQuest() {
       return false
     }
   })
-  if (!cloudEnabled || !doc || doc.meta.cloud || doc.meta.example || skipped) return null
+  if (!cloudEnabled || !doc || doc.meta.cloud || skipped) return null
   return (
     <div className="quest info cloud-quest">
       <span className="qhead">PARA FAZER · o app viu</span>
@@ -416,5 +416,41 @@ export function CloudQuest() {
         </button>
       </div>
     </div>
+  )
+}
+
+/** O "☁️ Salvar" do topo: o que acontece, e um botão. Sem conta, segue para ENTRAR e volta guardando. */
+export function CloudSaveSheet() {
+  const doc = useApp((s) => s.doc)
+  const account = useApp((s) => s.account)
+  const saveToCloud = useApp((s) => s.saveToCloud)
+  const closeSheet = useApp((s) => s.closeSheet)
+  if (!doc) return null
+  if (doc.meta.cloud)
+    return (
+      <>
+        <h2>Salva na sua conta ☁️</h2>
+        <p className="sub">Abra em qualquer aparelho entrando com a mesma conta.</p>
+      </>
+    )
+  return (
+    <>
+      <h2>Guardar na nuvem</h2>
+      <p className="sub">
+        Hoje esta viagem está só neste aparelho. Na sua conta, ela abre em qualquer celular ou computador e
+        não se perde.
+      </p>
+      {doc.meta.example ? <p className="sub">O exemplo vira uma viagem sua.</p> : null}
+      <button
+        type="button"
+        className="btn big main"
+        onClick={() => {
+          if (account) closeSheet()
+          void saveToCloud(doc.meta.id)
+        }}
+      >
+        Guardar na nuvem
+      </button>
+    </>
   )
 }

@@ -3198,3 +3198,21 @@ button.tl-stop:active {
   display: grid;
   gap: 12px;
 }
+.cloud-save {
+  flex: none;
+  font-weight: 700;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+/* Segunda linha do topo: ações com nome (☁️ Salvar · ☾ Noite · ↶ Desfazer). */
+.hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (min-width: 720px) {
+  .hud-in {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}

@@ -171,7 +171,7 @@ export function Home() {
                     </PopMenu>
                   ) : null}
                 </div>
-                {cloudEnabled && !t.cloud && !t.example ? (
+                {cloudEnabled && !t.cloud ? (
                   <button
                     type="button"
                     className="btn small save-cloud"

@@ -154,6 +154,50 @@ describe('as viagens do aparelho sobem ao entrar', () => {
   })
 })
 
+describe('"☁️ Salvar" no topo da viagem (à vista, sem voltar à tela inicial)', () => {
+  it('num exemplo: Salvar → Guardar na nuvem → entrar; vira viagem da pessoa e o topo mostra ☁️✓', async () => {
+    await waitFor(() => expect(S().ready).toBe(true))
+    await act(() => S().addExample('rio'))
+    const id = S().doc!.meta.id
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Salvar na nuvem: esta viagem está só neste aparelho' }),
+    )
+    expect(screen.getByText('O exemplo vira uma viagem sua.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar na nuvem' }))
+    expect(await screen.findByText('Entrar para guardar na nuvem')).toBeTruthy()
+    await entrarComGoogle()
+    await waitFor(() => expect(cloud.trips.has(id)).toBe(true))
+    expect(cloud.trips.get(id)!.server.state.doc.meta.example).toBeUndefined()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Tudo salvo na sua conta.' })).toBeTruthy())
+    expect(S().screen).toBe('trip')
+    expect(S().sheet).toBeNull()
+  })
+
+  it('com conta, Salvar sobe na hora', async () => {
+    const doc = await viagemDoAparelho()
+    // Aparelho de outra conta: nada sobe sozinho; a pessoa decide pelo "☁️ Salvar".
+    localStorage.setItem('ludotrip.lastUid', 'outra')
+    act(() => auth.signInAs({ uid: 'ana', name: 'Ana', email: 'ana@teste.invalid', picture: null }))
+    await waitFor(() => expect(S().sheet?.kind).toBe('adopt'))
+    act(() => S().closeSheet())
+    await act(() => S().openTrip(doc.meta.id))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Salvar na nuvem: esta viagem está só neste aparelho' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar na nuvem' }))
+    await waitFor(() => expect(cloud.trips.has(doc.meta.id)).toBe(true))
+  })
+
+  it('logo depois de criar sem conta, o aviso oferece "☁️ Salvar"', async () => {
+    await waitFor(() => expect(S().ready).toBe(true))
+    const doc = exampleDoc('japao')
+    doc.meta.example = undefined
+    await act(() => S().addTrip(doc))
+    expect(S().toast?.text).toBe('Viagem criada neste aparelho. Guarde na nuvem para não perder.')
+    expect(screen.getByRole('button', { name: '☁️ Salvar' })).toBeTruthy()
+  })
+})
+
 describe('casos estranhos', () => {
   it('aparelho que já teve outra conta: pergunta, nada marcado, e leva só o escolhido', async () => {
     const a = await viagemDoAparelho('Viagem da outra pessoa')

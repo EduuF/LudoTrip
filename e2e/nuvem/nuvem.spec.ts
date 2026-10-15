@@ -56,7 +56,8 @@ test('sem conta → criar → "Guardar na nuvem" → entrar: a viagem sobe e con
   const page = await abrir(browser, null)
   await criarViagem(page, 'Romênia sem conta')
   await expect(salvo(page)).toHaveCount(0)
-  await page.locator('.hud-name').click()
+  // O "☁️ Salvar" fica no topo da viagem, à vista.
+  await page.getByRole('button', { name: 'Salvar na nuvem: esta viagem está só neste aparelho' }).click()
   await page.getByRole('button', { name: 'Guardar na nuvem' }).click()
   await expect(page.getByText('Entrar para guardar na nuvem')).toBeVisible()
   await page.getByRole('button', { name: 'Continuar com Google' }).click()

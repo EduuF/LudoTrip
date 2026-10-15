@@ -41,7 +41,7 @@ import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import { NO_DOC_SHEETS } from './sheetTypes'
 import type { SheetSpec } from './sheetTypes'
-import { AccountSheet, AdoptSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
+import { AccountSheet, AdoptSheet, CloudSaveSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
@@ -86,6 +86,8 @@ export function Sheets() {
         <AdoptSheet trips={sheet.trips} />
       ) : sheet.kind === 'install' ? (
         <InstallSheet />
+      ) : sheet.kind === 'cloudSave' ? (
+        <CloudSaveSheet />
       ) : (
         <Body sheet={sheet} />
       )}

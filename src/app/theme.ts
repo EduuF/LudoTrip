@@ -41,7 +41,8 @@ export function currentTheme(): Theme {
  *  primeiro toque (três estados fariam um dos modos repetir e o botão parecer quebrado). */
 export const toggledTheme = (): ThemeChoice => (currentTheme() === 'dark' ? 'light' : 'dark')
 
-export const THEME_GLYPH: Record<Theme, string> = { light: '☀', dark: '☾' }
+/** O botão diz para onde vai: no claro, "☾ Noite"; no escuro, "☀ Dia". */
+export const THEME_LABEL: Record<Theme, string> = { light: '☾ Noite', dark: '☀ Dia' }
 export const THEME_ACTION: Record<Theme, string> = {
   light: 'Mudar para o modo escuro',
   dark: 'Mudar para o modo claro',
