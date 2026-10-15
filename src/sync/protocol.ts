@@ -7,6 +7,8 @@ import type { DocAction, TripDoc } from '../app/doc'
 
 export const PROTOCOL = 1
 export const MIN_PROTOCOL = 1
+/** Quantos ids de ações pendentes o `hello` leva, no máximo. */
+export const MAX_HELLO_PENDING = 500
 
 /** Uma ação esperando o servidor confirmar. */
 export interface PendingOp {
@@ -17,18 +19,43 @@ export interface PendingOp {
   at: number
 }
 
+export type RejectReason = EngineError | { code: 'ROLE' | 'TOO_BIG' }
+
+/** O que o servidor já decidiu sobre uma ação que o aparelho ainda acha pendente. */
+export type Ack =
+  { opId: string; result: 'applied' | 'noop' } | { opId: string; result: 'rejected'; reason: RejectReason }
+
 export type ClientMsg =
-  /** `sinceVersion`: a versão que o aparelho tem; -1 se ainda não tem nada desta viagem. */
-  | { t: 'hello'; sinceVersion: number; protocol: number; schemaVersion: number; app: string }
+  | {
+      t: 'hello'
+      /** A versão que o aparelho tem; -1 se ainda não tem nada desta viagem. */
+      sinceVersion: number
+      protocol: number
+      schemaVersion: number
+      app: string
+      /** Ações ainda sem resposta: o servidor diz quais já processou (nunca aplicar duas vezes). */
+      pending?: string[]
+    }
   | { t: 'op'; opId: string; action: DocAction }
 
 export type ServerMsg =
-  /** O estado inteiro (primeira vez, ou quando faltam ações demais). */
-  | { t: 'snapshot'; version: number; doc: TripDoc }
-  /** Uma ação aplicada (por qualquer pessoa), na ordem do servidor. */
-  | { t: 'applied'; opId: string; version: number; action: DocAction; by: string; at: number }
+  /** O estado inteiro, com o que o servidor já decidiu sobre as pendentes do `hello`. */
+  | { t: 'snapshot'; version: number; doc: TripDoc; acks?: Ack[] }
+  /**
+   * Uma ação aplicada (por qualquer pessoa), na ordem do servidor. `noop`: nada mudou, só confirma
+   * para quem mandou (a versão não muda).
+   */
+  | {
+      t: 'applied'
+      opId: string
+      version: number
+      action: DocAction
+      by: string
+      at: number
+      noop?: true
+    }
   /** O motor recusou uma ação deste aparelho. */
-  | { t: 'rejected'; opId: string; reason: EngineError | { code: 'ROLE' | 'TOO_BIG' } }
+  | { t: 'rejected'; opId: string; reason: RejectReason }
   /** Este aparelho está numa versão antiga demais: atualizar o app. */
   | { t: 'upgrade' }
   /** A viagem não está mais disponível para esta pessoa. */

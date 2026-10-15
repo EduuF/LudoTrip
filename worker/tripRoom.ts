@@ -1,23 +1,22 @@
 import { DurableObject } from 'cloudflare:workers'
 import { tripRange } from '../src/engine'
-import { migrate, runDoc } from '../src/app/doc'
+import { migrate } from '../src/app/doc'
 import type { DocAction, TripDoc } from '../src/app/doc'
-import { MIN_PROTOCOL } from '../src/sync/protocol'
-import type { ClientMsg, ServerMsg } from '../src/sync/protocol'
+import type { ClientMsg, RejectReason, ServerMsg } from '../src/sync/protocol'
+import { answerHello, decide, MAX_DOC_BYTES, recordToMsg } from '../src/sync/serverCore'
+import type { OpLog, OpRecord, Role } from '../src/sync/serverCore'
 import { WS_PROTOCOL } from './auth'
 import { updateTripMeta } from './db'
-import type { Role, TripMetaRow } from './db'
+import type { TripMetaRow } from './db'
 import type { AppEnv } from './env'
 import { log, logError, uidHash } from './log'
 
 // Uma viagem da nuvem (spec publicação §5): guarda o documento e o registro de ações num SQLite só
 // dela, aplica uma ação de cada vez com o mesmo runDoc do aparelho e repassa a quem está com a viagem
-// aberta (WebSocket com hibernação: não custa nada parado).
+// aberta (WebSocket com hibernação: não custa nada parado). As decisões (aplicar, recusar, o que
+// responder ao `hello`) são as de src/sync/serverCore.ts; aqui só se grava e transmite.
 
-/** Tamanho máximo de uma viagem (spec §4.7). */
-export const MAX_DOC_BYTES = 1_000_000
-/** Acima de quantas ações faltando é mais barato mandar o estado inteiro. */
-const MAX_REPLAY = 200
+export { MAX_DOC_BYTES }
 
 interface Conn {
   uid: string
@@ -43,6 +42,18 @@ interface OpRow {
   [key: string]: SqlStorageValue
 }
 
+const OP_COLS = 'op_id, uid, action, result, reason, version, at'
+
+const toRecord = (o: OpRow): OpRecord => ({
+  opId: o.op_id,
+  uid: o.uid,
+  action: JSON.parse(o.action) as DocAction,
+  result: o.result as OpRecord['result'],
+  reason: o.reason === null ? null : (JSON.parse(o.reason) as RejectReason),
+  version: o.version,
+  at: o.at,
+})
+
 export type InitResult =
   { ok: true; created: boolean; version: number } | { ok: false; reason: 'owned' | 'too-big' }
 
@@ -57,25 +68,25 @@ export class TripRoom extends DurableObject<AppEnv> {
 
   private schema() {
     this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS doc (
-          k INTEGER PRIMARY KEY CHECK (k = 1),
-          trip_id TEXT NOT NULL,
-          owner TEXT NOT NULL,
-          json TEXT NOT NULL,
-          version INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS ops (
-          seq INTEGER PRIMARY KEY AUTOINCREMENT,
-          op_id TEXT NOT NULL UNIQUE,
-          uid TEXT NOT NULL,
-          action TEXT NOT NULL,
-          result TEXT NOT NULL,
-          reason TEXT,
-          version INTEGER NOT NULL,
-          at INTEGER NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS ops_by_version ON ops(version);
-      `)
+      CREATE TABLE IF NOT EXISTS doc (
+        k INTEGER PRIMARY KEY CHECK (k = 1),
+        trip_id TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        json TEXT NOT NULL,
+        version INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS ops (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        op_id TEXT NOT NULL UNIQUE,
+        uid TEXT NOT NULL,
+        action TEXT NOT NULL,
+        result TEXT NOT NULL,
+        reason TEXT,
+        version INTEGER NOT NULL,
+        at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS ops_by_version ON ops(version);
+    `)
   }
 
   private row(): DocRow | null {
@@ -92,6 +103,27 @@ export class TripRoom extends DurableObject<AppEnv> {
     if (!r) return null
     this.cache = { doc: JSON.parse(r.json) as TripDoc, version: r.version }
     return this.cache
+  }
+
+  private readonly opLog: OpLog = {
+    appliedSince: (since) =>
+      this.ctx.storage.sql
+        .exec<OpRow>(
+          `SELECT ${OP_COLS} FROM ops WHERE result = 'applied' AND version > ? ORDER BY version`,
+          since,
+        )
+        .toArray()
+        .map(toRecord),
+    find: (opIds) =>
+      opIds.length
+        ? this.ctx.storage.sql
+            .exec<OpRow>(
+              `SELECT ${OP_COLS} FROM ops WHERE op_id IN (SELECT value FROM json_each(?))`,
+              JSON.stringify(opIds),
+            )
+            .toArray()
+            .map(toRecord)
+        : [],
   }
 
   /** Cria a viagem com o documento que veio do aparelho. Repetir com o mesmo dono não faz nada. */
@@ -163,9 +195,13 @@ export class TripRoom extends DurableObject<AppEnv> {
       return ws.close(1007, 'mensagem inválida')
     }
     try {
-      if (msg.t === 'hello') this.hello(ws, msg)
-      else if (msg.t === 'op' && typeof msg.opId === 'string' && msg.opId.length <= 64 && msg.action)
+      if (msg.t === 'hello') {
+        const cur = this.current()
+        const out: ServerMsg[] = cur ? answerHello(cur, this.opLog, msg) : [{ t: 'gone', reason: 'deleted' }]
+        for (const m of out) this.send(ws, m)
+      } else if (msg.t === 'op' && typeof msg.opId === 'string' && msg.opId.length <= 64 && msg.action) {
         await this.op(ws, conn, msg.opId, msg.action)
+      }
     } catch (e) {
       logError({
         msg: 'erro no TripRoom',
@@ -181,111 +217,51 @@ export class TripRoom extends DurableObject<AppEnv> {
 
   async webSocketClose(): Promise<void> {}
 
-  /** Põe o aparelho em dia: as ações que faltam, ou o estado inteiro. */
-  private hello(ws: WebSocket, msg: Extract<ClientMsg, { t: 'hello' }>) {
-    if (typeof msg.protocol !== 'number' || msg.protocol < MIN_PROTOCOL)
-      return this.send(ws, { t: 'upgrade' })
-    const cur = this.current()
-    if (!cur) return this.send(ws, { t: 'gone', reason: 'deleted' })
-    const since = Number.isInteger(msg.sinceVersion) ? msg.sinceVersion : -1
-    if (since === cur.version) return
-    if (since >= 0 && since < cur.version && cur.version - since <= MAX_REPLAY) {
-      const ops = this.ctx.storage.sql
-        .exec<OpRow>(
-          `SELECT op_id, uid, action, result, reason, version, at FROM ops
-           WHERE result = 'applied' AND version > ? ORDER BY version`,
-          since,
-        )
-        .toArray()
-      // Só repete se o registro está completo (depois de uma volta no tempo, pode não estar).
-      if (ops.length === cur.version - since && ops.every((o, i) => o.version === since + i + 1)) {
-        for (const o of ops) this.send(ws, this.appliedMsg(o))
-        return
-      }
-    }
-    this.send(ws, { t: 'snapshot', version: cur.version, doc: cur.doc })
-  }
-
-  private appliedMsg(o: OpRow): ServerMsg {
-    return {
-      t: 'applied',
-      opId: o.op_id,
-      version: o.version,
-      action: JSON.parse(o.action) as DocAction,
-      by: o.uid,
-      at: o.at,
-    }
-  }
-
   private async op(ws: WebSocket, conn: Conn, opId: string, action: DocAction) {
     const started = Date.now()
     // Reenvio (a conexão caiu antes da resposta): devolve o resultado já gravado, sem aplicar de novo.
-    const seen = this.ctx.storage.sql
-      .exec<OpRow>('SELECT op_id, uid, action, result, reason, version, at FROM ops WHERE op_id = ?', opId)
-      .toArray()[0]
-    if (seen) {
-      if (seen.result === 'rejected')
-        return this.send(ws, { t: 'rejected', opId, reason: JSON.parse(seen.reason ?? '{"code":"INVALID"}') })
-      return this.send(ws, this.appliedMsg(seen))
-    }
+    const seen = this.opLog.find([opId])[0]
+    if (seen) return this.send(ws, recordToMsg(seen))
     const cur = this.current()
     if (!cur) return this.send(ws, { t: 'gone', reason: 'deleted' })
     const at = Date.now()
-    const record = (result: string, reason: unknown, version: number) =>
-      this.ctx.storage.sql.exec(
-        'INSERT INTO ops (op_id, uid, action, result, reason, version, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        opId,
-        conn.uid,
-        JSON.stringify(action),
-        result,
-        reason === null ? null : JSON.stringify(reason),
-        version,
-        at,
-      )
-    const done = async (result: string, code: string | null) =>
-      log({
-        msg: 'op',
-        trip: this.row()?.trip_id ?? null,
-        opId,
-        type: action.type === 'engine' ? `engine.${action.command.type}` : action.type,
-        result,
-        code,
-        version: this.cache?.version ?? null,
-        ms: Date.now() - started,
-        uid: await uidHash(conn.uid),
-      })
+    const out = decide(cur, conn.role, opId, action)
+    const result = out.kind
+    const reason = out.kind === 'rejected' ? out.reason : null
+    const version = out.kind === 'applied' ? out.version : cur.version
+    const record: OpRecord = { opId, uid: conn.uid, action, result, reason, version, at }
 
-    if (conn.role === 'viewer') {
-      record('rejected', { code: 'ROLE' }, cur.version)
-      this.send(ws, { t: 'rejected', opId, reason: { code: 'ROLE' } })
-      return done('rejected', 'ROLE')
+    // Documento e registro na mesma transação implícita (nenhum await entre as escritas).
+    if (out.kind === 'applied')
+      this.ctx.storage.sql.exec('UPDATE doc SET json = ?, version = ? WHERE k = 1', out.json, out.version)
+    this.ctx.storage.sql.exec(
+      `INSERT INTO ops (${OP_COLS}) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      opId,
+      conn.uid,
+      JSON.stringify(action),
+      result,
+      reason === null ? null : JSON.stringify(reason),
+      version,
+      at,
+    )
+    if (out.kind === 'applied') {
+      this.cache = { doc: out.doc, version: out.version }
+      this.broadcast(recordToMsg(record))
+      this.ctx.waitUntil(this.syncMeta(out.doc, out.version, out.json.length, at))
+    } else {
+      this.send(ws, recordToMsg(record))
     }
-    const r = runDoc(cur.doc, action, { opId })
-    if (!r.ok) {
-      // "Nada mudou" não é recusa: confirma para quem mandou, sem nova versão.
-      if (r.error.code === 'NO_CHANGE') {
-        record('noop', null, cur.version)
-        this.send(ws, { t: 'applied', opId, version: cur.version, action, by: conn.uid, at })
-        return done('noop', null)
-      }
-      record('rejected', r.error, cur.version)
-      this.send(ws, { t: 'rejected', opId, reason: r.error })
-      return done('rejected', r.error.code)
-    }
-    const json = JSON.stringify(r.doc)
-    if (json.length > MAX_DOC_BYTES) {
-      record('rejected', { code: 'TOO_BIG' }, cur.version)
-      this.send(ws, { t: 'rejected', opId, reason: { code: 'TOO_BIG' } })
-      return done('rejected', 'TOO_BIG')
-    }
-    const version = cur.version + 1
-    // Documento e registro na mesma transação implícita (nenhum await entre as duas escritas).
-    this.ctx.storage.sql.exec('UPDATE doc SET json = ?, version = ? WHERE k = 1', json, version)
-    record('applied', null, version)
-    this.cache = { doc: r.doc, version }
-    this.broadcast({ t: 'applied', opId, version, action, by: conn.uid, at })
-    this.ctx.waitUntil(this.syncMeta(r.doc, version, json.length, at))
-    return done('applied', null)
+    log({
+      msg: 'op',
+      trip: this.row()?.trip_id ?? null,
+      opId,
+      type: action.type === 'engine' ? `engine.${action.command.type}` : action.type,
+      result,
+      code: reason?.code ?? null,
+      version,
+      ms: Date.now() - started,
+      uid: await uidHash(conn.uid),
+    })
   }
 
   /** O que "Suas viagens" mostra (D1) acompanha a viagem. */

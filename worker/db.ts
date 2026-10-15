@@ -1,8 +1,9 @@
+import type { Role } from '../src/sync/serverCore'
 import type { Identity } from './auth'
 
 // Consultas ao D1 (spec publicação §5.1). Contas, viagens e quem pode o quê.
 
-export type Role = 'owner' | 'editor' | 'viewer'
+export type { Role }
 
 export interface TripRow {
   id: string
