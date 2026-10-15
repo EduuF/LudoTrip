@@ -2967,3 +2967,20 @@ button.tl-stop:active {
     min-height: 44px;
   }
 }
+
+/* Nuvem (spec publicação §5.4): o ícone no topo da viagem. */
+.cloud-badge {
+  flex: none;
+  gap: 1px;
+  font-size: 15px;
+}
+.cloud-badge span {
+  font-size: 12px;
+  font-weight: 700;
+}
+.cloud-badge.saved span {
+  color: var(--hill);
+}
+.cloud-badge.offline span {
+  color: var(--gold);
+}

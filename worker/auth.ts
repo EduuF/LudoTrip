@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, generateKeyPair, jwtVerify, SignJWT } from 'jose'
 import type { JWTVerifyGetKey } from 'jose'
+import { WS_PROTOCOL } from '../src/sync/protocol'
 import type { AppEnv } from './env'
 
 // Quem é a pessoa (spec publicação §2.3): o token de login do Firebase, verificado com as chaves
@@ -72,8 +73,7 @@ export function testAuth(projectId: string) {
   return testPair
 }
 
-/** Subprotocolo do WebSocket: o navegador manda `[WS_PROTOCOL, token]` (o token nunca vai na URL). */
-export const WS_PROTOCOL = 'ludotrip.v1'
+export { WS_PROTOCOL }
 
 /** O token de `Authorization: Bearer …` ou, no WebSocket, do `Sec-WebSocket-Protocol`. */
 export function tokenOf(request: Request): string | null {

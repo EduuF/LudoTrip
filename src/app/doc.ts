@@ -28,6 +28,17 @@ export interface TripMeta {
   example?: string
   createdAt: number
   updatedAt: number
+  /**
+   * Viagem da nuvem (spec publicação §3.1): só na cópia guardada neste aparelho, nunca no servidor.
+   * `version` é a versão do servidor desta cópia (-1: ainda não baixada, só aparece na lista).
+   */
+  cloud?: CloudMeta
+}
+
+export interface CloudMeta {
+  owner: string
+  role: 'owner' | 'editor' | 'viewer'
+  version: number
 }
 
 export type { Scope }

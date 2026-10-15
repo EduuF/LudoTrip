@@ -3,7 +3,7 @@ import { days as allDays, describeError, describeUndoRefusal, placeStates } from
 import type { ID } from '../engine'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { migrate, runDoc } from './doc'
-import type { DocAction, TripDoc, TripMeta, UndoStep } from './doc'
+import type { CloudMeta, DocAction, TripDoc, TripMeta, UndoStep } from './doc'
 import { narrate } from './narration'
 import { localRepo } from './repo'
 import type { TripRepo } from './repo'
@@ -13,6 +13,13 @@ import { markTutorialSeen, tutorialSeen } from './tutorial'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 import { docProgress } from './tasks'
+import type { Account, AuthClient } from '../auth/authClient'
+import type { CloudApi } from '../sync/cloudApi'
+import type { Outbox } from '../sync/outbox'
+import { TripSync } from '../sync/tripSync'
+import type { Refusal, SyncStatus } from '../sync/tripSync'
+import { SCHEMA_VERSION } from './doc'
+import { describeRefusal, mergeTrips, stripCloud, withCloud } from './cloudTrips'
 
 export type Tab = 'mapa' | 'atividades' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create'
@@ -27,6 +34,8 @@ export interface ToastState {
   undo: boolean
   /** Desfazer especial (ex.: trazer de volta uma viagem apagada). */
   action?: () => void
+  /** Texto do botão do `action` (padrão: "Desfazer"). */
+  actionLabel?: string
 }
 
 export type CelebrationBody =
@@ -80,7 +89,17 @@ export interface AppState {
   theme: ThemeChoice
   focus: string | null
   sound: boolean
+  /** Quem está usando (null: sem conta; tudo fica no aparelho). */
+  account: Account | null
+  /** A viagem aberta é da nuvem: como está o envio (spec publicação §5.4). */
+  cloud: { status: SyncStatus; pending: number } | null
+  /** Este app ficou antigo para o servidor: precisa recarregar. */
+  needsUpgrade: boolean
+  /** A nuvem existe neste build (no GitHub Pages, não: tudo fica no aparelho, como antes). */
+  cloudEnabled: boolean
   init(): Promise<void>
+  /** Junta as viagens do aparelho com as da conta. */
+  refreshTrips(): Promise<void>
   openTrip(id: string): Promise<void>
   goHome(): void
   goCreate(): void
@@ -127,6 +146,28 @@ let repo: TripRepo = localRepo()
 export const useRepo = (r: TripRepo) => {
   repo = r
 }
+
+/** A nuvem (spec publicação §2): login, API e fila de saída. Sem ela, o app é só do aparelho. */
+export interface CloudDeps {
+  auth: AuthClient
+  api: CloudApi
+  outbox: Outbox
+  /** Versão do app (vai no `hello` e nos logs). */
+  app: string
+}
+let cloudDeps: CloudDeps | null = null
+let unsubAuth: (() => void) | null = null
+export const configureCloud = (deps: CloudDeps | null) => {
+  cloudDeps = deps
+}
+/** A viagem da nuvem aberta agora. */
+let sync: TripSync | null = null
+let syncTripId: string | null = null
+/** Avisos de edições de outros aparelhos chegando em rajada viram um só. */
+let remoteBurst = { at: 0, count: 0 }
+let wired = false
+const channel: BroadcastChannel | null =
+  typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('ludotrip')
 
 let seq = 0
 const nextId = () => ++seq
@@ -185,7 +226,7 @@ export interface SheetGuard {
 export const useApp = create<AppState>((set, get) => {
   const save = (doc: TripDoc) => {
     const stamped = { ...doc, meta: { ...doc.meta, updatedAt: Date.now() } }
-    void persist(stamped).then(() => repo.list().then((trips) => set({ trips })))
+    void persist(stamped).then(() => get().refreshTrips())
     return stamped
   }
   /** Salva no aparelho; se falhar, avisa uma vez (não a cada toque) e segue com a viagem na memória. */
@@ -193,6 +234,8 @@ export const useApp = create<AppState>((set, get) => {
     repo.save(doc).then(
       () => {
         saveWarned = false
+        // Outra aba com a mesma viagem do aparelho aberta recarrega (spec publicação §3.5).
+        channel?.postMessage({ t: 'saved', id: doc.meta.id })
       },
       () => {
         if (saveWarned) return
@@ -212,6 +255,195 @@ export const useApp = create<AppState>((set, get) => {
   }
   const celebrate = (c: CelebrationBody) =>
     set((s) => ({ celebrations: [...s.celebrations, { ...c, id: nextId() }] }))
+
+  /** Abre a tela da viagem do zero (aba Mapa, nada selecionado). */
+  const showTrip = (doc: TripDoc) =>
+    set({
+      doc,
+      screen: 'trip',
+      tab: 'mapa',
+      undoStack: [],
+      sheet: null,
+      cursorDay: null,
+      openStop: null,
+      stopCollapsed: false,
+      mapView: { kind: 'trip' },
+      placing: null,
+      playing: false,
+      tutorial: !tutorialSeen(),
+      toast: null,
+    })
+
+  /**
+   * Grava o resultado de uma ação: no aparelho (viagem 📱) ou na fila da nuvem (☁️, a tela já mostra o
+   * resultado e o servidor confirma depois).
+   */
+  const commit = (doc: TripDoc, action: DocAction, opId: string): TripDoc => {
+    if (sync && syncTripId === doc.meta.id) {
+      void sync.submit({ opId, tripId: doc.meta.id, action, at: Date.now() })
+      return doc
+    }
+    return save(doc)
+  }
+
+  /** Apagar uma viagem da nuvem (só quem criou), com Desfazer que a sobe de novo. */
+  const removeCloudTrip = async (meta: TripMeta, deps: CloudDeps) => {
+    if (meta.cloud?.role !== 'owner') return toast('Só quem criou a viagem pode apagá-la.', true)
+    const copy = await repo.load(meta.id)
+    if (!(await deps.api.remove(meta.id)))
+      return toast('Sem internet: não deu para apagar agora. Tente quando a conexão voltar.', true)
+    await repo.remove(meta.id)
+    await deps.outbox.clear(meta.id)
+    await get().refreshTrips()
+    if (!copy) return toast(`${meta.name} apagada.`)
+    toast(`${meta.name} apagada.`, false, true, () => {
+      void (async () => {
+        const doc = stripCloud(copy)
+        const up = await deps.api.upload(doc)
+        if (!up.ok) return toast('Sem internet: não deu para trazer de volta.', true)
+        await repo.save(withCloud(doc, { ...meta.cloud!, version: up.version }))
+        await get().refreshTrips()
+        set({ toast: null })
+      })()
+    })
+  }
+
+  /** Renomear da lista uma viagem da nuvem fechada: a ação vai pela fila, como qualquer outra. */
+  const renameCloudTrip = async (copy: TripDoc, name: string, deps: CloudDeps) => {
+    const meta = copy.meta.cloud!
+    const detached: TripSync = new TripSync({
+      tripId: copy.meta.id,
+      outbox: deps.outbox,
+      connect: deps.api.connector(copy.meta.id),
+      base: meta.version >= 0 ? { doc: stripCloud(copy), version: meta.version } : null,
+      schemaVersion: SCHEMA_VERSION,
+      app: deps.app,
+      onView: (v) => {
+        if (v.status === 'saved') {
+          detached.stop()
+          void get().refreshTrips()
+        }
+      },
+      onBase: (b) => void repo.save(withCloud(b.doc, { ...meta, version: b.version })).catch(() => undefined),
+      // Sem internet: não insiste; a ação fica na fila e vai quando a viagem abrir.
+      schedule: (): void => detached.stop(),
+    })
+    await detached.start()
+    await detached.submit({
+      opId: newOpId(),
+      tripId: copy.meta.id,
+      action: { type: 'rename', name },
+      at: Date.now(),
+    })
+    set((s) => ({ trips: s.trips.map((t) => (t.id === copy.meta.id ? { ...t, name } : t)) }))
+  }
+
+  const stopSync = () => {
+    sync?.stop()
+    sync = null
+    syncTripId = null
+  }
+
+  /** Uma ação de outro aparelho chegou: um aviso leve com o efeito (rajadas viram um aviso só). */
+  const remoteToast = (msg: { action: DocAction; opId: string; by: string }, before: TripDoc) => {
+    const r = runDoc(before, msg.action, { opId: msg.opId })
+    if (!r.ok) return
+    const who = msg.by === get().account?.uid ? 'Noutro aparelho' : 'Alguém'
+    const now = Date.now()
+    remoteBurst =
+      now - remoteBurst.at < 3000 ? { at: now, count: remoteBurst.count + 1 } : { at: now, count: 1 }
+    const text =
+      remoteBurst.count > 1
+        ? `${who}: ${remoteBurst.count} mudanças`
+        : `${who}: ${narrate(msg.action, before, r.doc, r.effects)}`
+    toast(text)
+  }
+
+  /** O servidor não aplicou uma ação deste aparelho: um painel com o motivo (spec publicação §5.3). */
+  const refusalSheet = (list: Refusal[]) => {
+    const doc = get().doc
+    if (!doc || !list.length) return
+    const first = list[0]!
+    const mins = Math.round((Date.now() - first.op.at) / 60000)
+    const when = mins >= 1 ? ` (há ${mins} min)` : ''
+    set({
+      sheet: {
+        kind: 'choice',
+        title:
+          list.length > 1
+            ? `${list.length} mudanças suas não foram aplicadas`
+            : 'Sua mudança não foi aplicada',
+        sub: `${describeRefusal(first.reason, doc)}${when}`,
+        options: [{ label: 'Ver a viagem', main: true, run: () => get().closeSheet() }],
+      },
+      sheetBack: [],
+      undoStack: [],
+    })
+  }
+
+  /** Abre uma viagem da nuvem: a cópia do aparelho na hora, e o servidor põe em dia (spec §5.2). */
+  const openCloudTrip = async (id: string, loaded: TripDoc | null, meta: CloudMeta) => {
+    const deps = cloudDeps
+    if (!deps || !get().account) return toast('Esta viagem está numa conta. Entre para abrir.', true)
+    stopSync()
+    const base =
+      loaded && meta.version >= 0 ? { doc: stripCloud(migrate(loaded)), version: meta.version } : null
+    let shown = false
+    const s = new TripSync({
+      tripId: id,
+      outbox: deps.outbox,
+      connect: deps.api.connector(id),
+      base,
+      schemaVersion: SCHEMA_VERSION,
+      app: deps.app,
+      onView: (v) => {
+        if (sync !== s) return
+        const doc = v.doc ? withCloud(v.doc, { ...meta, version: s.version }) : null
+        if (doc && !shown) {
+          shown = true
+          showTrip(doc)
+        } else if (doc) set({ doc })
+        set({ cloud: { status: v.status, pending: v.pending } })
+        if (!doc && v.status === 'offline' && !shown)
+          toast(
+            'Esta viagem ainda não foi baixada neste aparelho. Conecte-se uma vez para levá-la junto.',
+            true,
+          )
+      },
+      onBase: (b) => void repo.save(withCloud(b.doc, { ...meta, version: b.version })).catch(() => undefined),
+      onRemote: (m, before) => {
+        if (sync === s) remoteToast(m, before)
+      },
+      onRefused: (list) => {
+        if (sync === s) refusalSheet(list)
+      },
+      onGone: (reason) => {
+        if (sync !== s) return
+        stopSync()
+        void repo.remove(id)
+        void deps.outbox.clear(id)
+        get().goHome()
+        const name = get().doc?.meta.name ?? loaded?.meta.name ?? 'A viagem'
+        toast(reason === 'deleted' ? `${name} foi apagada.` : `Você não faz mais parte de ${name}.`, true)
+      },
+      onUpgrade: () => {
+        set({ needsUpgrade: true })
+        set({
+          toast: {
+            id: nextId(),
+            text: 'Nova versão do LudoTrip ✨ Atualize para continuar editando.',
+            warn: false,
+            undo: false,
+            action: () => location.reload(),
+            actionLabel: 'Atualizar',
+          },
+        })
+      },
+    })
+    sync = s
+    syncTripId = id
+    await s.start()
+  }
 
   return {
     ready: false,
@@ -236,43 +468,78 @@ export const useApp = create<AppState>((set, get) => {
     theme: 'auto',
     focus: null,
     sound: false,
+    account: null,
+    cloud: null,
+    needsUpgrade: false,
+    cloudEnabled: false,
 
     async init() {
       const theme = readThemeChoice()
       applyTheme(theme)
       const trips = await repo.list()
-      set({ trips, ready: true, theme })
+      set({ trips: trips.filter((t) => !t.cloud), ready: true, theme, cloudEnabled: !!cloudDeps })
+      if (channel)
+        channel.onmessage = (e: MessageEvent<{ t: string; id: string }>) => {
+          if (e.data?.t !== 'saved') return
+          void get().refreshTrips()
+          const open = get().doc
+          if (open && open.meta.id === e.data.id && !open.meta.cloud && syncTripId !== open.meta.id)
+            void repo.load(e.data.id).then((fresh) => {
+              if (fresh && get().doc?.meta.id === fresh.meta.id) set({ doc: migrate(fresh), undoStack: [] })
+            })
+        }
+      // A rede voltou ou a pessoa voltou ao app: a viagem da nuvem tenta conectar na hora.
+      if (!wired && typeof window !== 'undefined') {
+        wired = true
+        addEventListener('online', () => sync?.poke())
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') sync?.poke()
+        })
+      }
+      unsubAuth?.()
+      unsubAuth =
+        cloudDeps?.auth.onChange((account) => {
+          set({ account })
+          void get().refreshTrips()
+        }) ?? null
+    },
+
+    async refreshTrips() {
+      const local = await repo.list()
+      const account = get().account
+      const remote = cloudDeps && account ? await cloudDeps.api.listTrips() : null
+      const { trips, drop } = mergeTrips(local, remote, !!account)
+      for (const m of drop) {
+        await repo.remove(m.id)
+        await cloudDeps?.outbox.clear(m.id)
+        if (syncTripId === m.id) {
+          sync?.stop()
+          get().goHome()
+          toast(`Você não faz mais parte de ${m.name}.`, true)
+        }
+      }
+      set({ trips })
     },
 
     async openTrip(id) {
       const loaded = await repo.load(id)
+      const listed = get().trips.find((t) => t.id === id)
+      const cloudMeta = loaded?.meta.cloud ?? listed?.cloud
+      if (cloudMeta) return openCloudTrip(id, loaded, cloudMeta)
       if (!loaded) return toast('Essa viagem não está mais aqui.', true)
       const doc = refreshExample(migrate(loaded))
       if (doc !== loaded) void persist(doc)
-      set({
-        doc,
-        screen: 'trip',
-        tab: 'mapa',
-        undoStack: [],
-        sheet: null,
-        cursorDay: null,
-        openStop: null,
-        stopCollapsed: false,
-        mapView: { kind: 'trip' },
-        placing: null,
-        playing: false,
-        tutorial: !tutorialSeen(),
-        toast: null,
-      })
+      showTrip(doc)
     },
 
     goHome() {
+      stopSync()
       // Primeiro sai da tela da viagem; só depois solta o documento (nenhuma tela desenha sem viagem).
-      set({ screen: 'home', sheet: null, toast: null, undoStack: [], playing: false })
+      set({ screen: 'home', sheet: null, toast: null, undoStack: [], playing: false, cloud: null })
       setTimeout(() => {
         if (get().screen !== 'trip') set({ doc: null })
       }, 0)
-      void repo.list().then((trips) => set({ trips }))
+      void get().refreshTrips()
     },
 
     goCreate() {
@@ -294,7 +561,7 @@ export const useApp = create<AppState>((set, get) => {
         if (text) toast(text, true)
         return false
       }
-      const after = save(r.doc)
+      const after = commit(r.doc, action, opId)
       const text = narrate(action, before, after, r.effects)
       set((s) => ({
         doc: after,
@@ -335,9 +602,11 @@ export const useApp = create<AppState>((set, get) => {
       const last = undoStack[undoStack.length - 1]
       if (!doc || !last) return toast(describeUndoRefusal('NOTHING_TO_UNDO'), true)
       // O Desfazer é uma ação como as outras (spec publicação §5.2): na nuvem, vai pela mesma fila.
-      const r = runDoc(doc, { type: 'revert', steps: last.steps }, { opId: newOpId() })
+      const opId = newOpId()
+      const revert: DocAction = { type: 'revert', steps: last.steps }
+      const r = runDoc(doc, revert, { opId })
       if (!r.ok) return toast(describeUndoRefusal('CHANGED_SINCE'), true)
-      set({ doc: save(r.doc), undoStack: undoStack.slice(0, -1), sheet: null })
+      set({ doc: commit(r.doc, revert, opId), undoStack: undoStack.slice(0, -1), sheet: null })
       toast(`Desfeito: ${last.text}`)
     },
 
@@ -478,35 +747,43 @@ export const useApp = create<AppState>((set, get) => {
       if (existing) return get().openTrip(existing.id)
       const doc = exampleDoc(key)
       await persist(doc)
-      set({ trips: await repo.list() })
+      await get().refreshTrips()
       await get().openTrip(doc.meta.id)
     },
 
     async addTrip(doc) {
-      await persist(doc)
-      set({ trips: await repo.list() })
+      // Com conta, a viagem já nasce na nuvem; sem internet, fica no aparelho e sobe depois.
+      const account = get().account
+      const up = cloudDeps && account ? await cloudDeps.api.upload(migrate(doc)) : null
+      if (up?.ok)
+        await repo.save(withCloud(migrate(doc), { owner: account!.uid, role: 'owner', version: up.version }))
+      else await persist(doc)
+      await get().refreshTrips()
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })
       sfx.level()
     },
 
     async removeTrip(id) {
+      const listed = get().trips.find((t) => t.id === id)
+      if (listed?.cloud && cloudDeps) return removeCloudTrip(listed, cloudDeps)
       const removed = await repo.load(id)
       await repo.remove(id)
-      set({ trips: await repo.list() })
+      await get().refreshTrips()
       if (!removed) return
       toast(`${removed.meta.name} apagada.`, false, true, () => {
-        void persist(removed).then(async () => set({ trips: await repo.list(), toast: null }))
+        void persist(removed).then(async () => (await get().refreshTrips(), set({ toast: null })))
       })
     },
 
     async renameTrip(id, name) {
       const d = await repo.load(id)
       if (!d) return
+      if (d.meta.cloud && cloudDeps) return renameCloudTrip(d, name, cloudDeps)
       const r = runDoc(d, { type: 'rename', name }, { opId: newOpId() })
       if (!r.ok) return
       await persist({ ...r.doc, meta: { ...r.doc.meta, updatedAt: Date.now() } })
-      set({ trips: await repo.list() })
+      await get().refreshTrips()
     },
 
     dismiss(id) {

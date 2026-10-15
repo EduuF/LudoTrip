@@ -6,6 +6,8 @@ import type { DocAction, TripDoc } from '../app/doc'
 // houver aparelhos com ele (o servidor manda `upgrade` só para quem estiver abaixo de MIN_PROTOCOL).
 
 export const PROTOCOL = 1
+/** Subprotocolo do WebSocket: o navegador manda `[WS_PROTOCOL, token]` (o token nunca vai na URL). */
+export const WS_PROTOCOL = 'ludotrip.v1'
 export const MIN_PROTOCOL = 1
 /** Quantos ids de ações pendentes o `hello` leva, no máximo. */
 export const MAX_HELLO_PENDING = 500

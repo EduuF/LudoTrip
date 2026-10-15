@@ -1,3 +1,4 @@
+import { CloudBadge } from './ui/CloudBadge'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
 import { useApp } from './app/store'
@@ -57,6 +58,7 @@ function Hud() {
           >
             {doc.meta.name}
           </button>
+          <CloudBadge />
           <button
             type="button"
             className="hud-btn"

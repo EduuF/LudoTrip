@@ -17,6 +17,7 @@ const EXAMPLES: Record<ExampleKey, { title: string; text: string }> = {
 
 export function Home() {
   const trips = useApp((s) => s.trips)
+  const cloudEnabled = useApp((s) => s.cloudEnabled)
   const openTrip = useApp((s) => s.openTrip)
   const addExample = useApp((s) => s.addExample)
   const goCreate = useApp((s) => s.goCreate)
@@ -90,7 +91,13 @@ export function Home() {
                     <span className="c-title">
                       <h3>{t.name}</h3>
                       <span className="dates">
-                        {t.example ? 'exemplo para mexer à vontade' : 'sua viagem'}
+                        {t.example
+                          ? 'exemplo para mexer à vontade'
+                          : t.cloud
+                            ? '☁️ salva na sua conta'
+                            : cloudEnabled
+                              ? '📱 só neste aparelho'
+                              : 'sua viagem'}
                       </span>
                     </span>
                   </button>

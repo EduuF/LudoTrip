@@ -519,7 +519,7 @@ export function Toast() {
       <p>{toast.text}</p>
       {toast.action || (toast.undo && canUndo) ? (
         <button type="button" onClick={toast.action ?? undo}>
-          Desfazer
+          {toast.actionLabel ?? 'Desfazer'}
         </button>
       ) : null}
     </div>
