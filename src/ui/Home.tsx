@@ -1,4 +1,5 @@
 import { RiskBanner } from './RiskBanner'
+import { ThemeToggle } from './ThemeToggle'
 import { useCallback, useEffect, useState } from 'react'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
@@ -49,30 +50,33 @@ export function Home() {
   return (
     <div className="wrap">
       <header className="home-head">
-        {cloudEnabled ? (
-          account ? (
-            <button
-              type="button"
-              className="home-account"
-              aria-label={`Sua conta: ${account.name ?? account.email ?? ''}`}
-              onClick={() => openSheet({ kind: 'account' })}
-            >
-              {account.picture ? (
-                <img src={account.picture} alt="" referrerPolicy="no-referrer" />
-              ) : (
-                <span>{(account.name ?? account.email ?? '?').slice(0, 1)}</span>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn small home-account-in"
-              onClick={() => openSignIn('para guardar suas viagens')}
-            >
-              Entrar
-            </button>
-          )
-        ) : null}
+        <div className="home-actions">
+          <ThemeToggle className="btn small" />
+          {cloudEnabled ? (
+            account ? (
+              <button
+                type="button"
+                className="home-account"
+                aria-label={`Sua conta: ${account.name ?? account.email ?? ''}`}
+                onClick={() => openSheet({ kind: 'account' })}
+              >
+                {account.picture ? (
+                  <img src={account.picture} alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  <span>{(account.name ?? account.email ?? '?').slice(0, 1)}</span>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn small home-account-in"
+                onClick={() => openSignIn('para guardar suas viagens')}
+              >
+                Entrar
+              </button>
+            )
+          ) : null}
+        </div>
         <span className="wm" aria-hidden="true">
           旅
         </span>

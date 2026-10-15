@@ -2989,11 +2989,14 @@ button.tl-stop:active {
 .home-head {
   position: relative;
 }
-.home-account,
-.home-account-in {
+.home-actions {
   position: absolute;
   top: 4px;
   right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .home-account {
   width: 44px;
@@ -3237,4 +3240,56 @@ button.tl-stop:active {
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* Dia/Noite (retorno do staging): lanterna ou lâmpada pendurada no botão, só durante a troca. */
+.theme-toggle.busy {
+  pointer-events: none;
+  cursor: default;
+}
+.theme-swap {
+  position: fixed;
+  z-index: 45;
+  width: 80px;
+  height: 170px;
+  pointer-events: none;
+}
+.swap-rope {
+  position: absolute;
+  left: 39px;
+  top: 0;
+  width: 2px;
+  height: 0;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper) 60%, transparent);
+}
+.swap-prop {
+  position: absolute;
+  left: 17px;
+  top: 0;
+  overflow: visible;
+  transform-origin: 23px 0;
+}
+.swap-prop .screw {
+  transform-origin: 23px 5px;
+  transform-box: view-box;
+}
+.swap-guy {
+  position: absolute;
+  left: 50px;
+  top: 0;
+}
+.swap-puff {
+  position: absolute;
+  left: 58px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.theme-swap-wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  opacity: 0;
 }

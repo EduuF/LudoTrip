@@ -1,10 +1,10 @@
 import { CloudBadge } from './ui/CloudBadge'
+import { ThemeToggle } from './ui/ThemeToggle'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
 import { wireRoutes } from './app/routes'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
-import { currentTheme, THEME_ACTION, THEME_LABEL, toggledTheme } from './app/theme'
 import { resetTrilhaHint } from './app/tutorial'
 import { Atividades } from './ui/Atividades'
 import { Create } from './ui/Create'
@@ -29,9 +29,6 @@ function Hud() {
   const canUndo = useApp((s) => s.undoStack.length > 0)
   const sound = useApp((s) => s.sound)
   const toggleSound = useApp((s) => s.toggleSound)
-  useApp((s) => s.theme) // redesenha ao trocar o tema
-  const setTheme = useApp((s) => s.setTheme)
-  const mode = currentTheme()
   const setTutorial = useApp((s) => s.setTutorial)
   const setTab = useApp((s) => s.setTab)
   const openSheet = useApp((s) => s.openSheet)
@@ -110,15 +107,7 @@ function Hud() {
         {/* Segunda linha (retorno do staging): ações com nome, nada espremido nem escondido. */}
         <div className="hud-actions">
           <CloudBadge />
-          <button
-            type="button"
-            className="hud-btn"
-            aria-label={THEME_ACTION[mode]}
-            title={THEME_ACTION[mode]}
-            onClick={() => setTheme(toggledTheme())}
-          >
-            {THEME_LABEL[mode]}
-          </button>
+          <ThemeToggle />
           <button type="button" className="hud-btn" onClick={undo} disabled={!canUndo}>
             ↶ Desfazer
           </button>
