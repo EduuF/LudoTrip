@@ -21,6 +21,9 @@ export interface PendingOp {
   at: number
 }
 
+/** Papel numa viagem (spec §4.1): Dono, Planeja junto, Só vê. */
+export type Role = 'owner' | 'editor' | 'viewer'
+
 export type RejectReason = EngineError | { code: 'ROLE' | 'TOO_BIG' }
 
 /** O que o servidor já decidiu sobre uma ação que o aparelho ainda acha pendente. */
@@ -60,8 +63,17 @@ export type ServerMsg =
   | { t: 'rejected'; opId: string; reason: RejectReason }
   /** Este aparelho está numa versão antiga demais: atualizar o app. */
   | { t: 'upgrade' }
-  /** A viagem não está mais disponível para esta pessoa. */
-  | { t: 'gone'; reason: 'deleted' | 'removed' }
+  /** A viagem não está mais disponível para esta pessoa (`by`: primeiro nome de quem apagou). */
+  | { t: 'gone'; reason: 'deleted' | 'removed'; by?: string }
+  // Colaboração (M5). Só acréscimos: aparelhos antigos ignoram um `t` que não conhecem.
+  /** Quem está com a viagem aberta agora (uids). */
+  | { t: 'presence'; online: string[] }
+  /** Membros ou convites mudaram: reler a lista de pessoas. */
+  | { t: 'people' }
+  /** O papel desta pessoa mudou (vale já nesta conexão). */
+  | { t: 'role'; role: Role }
+  /** Alguém aceitou um convite. */
+  | { t: 'joined'; uid: string; name: string }
 
 export const isServerMsg = (x: unknown): x is ServerMsg =>
   !!x && typeof x === 'object' && typeof (x as { t?: unknown }).t === 'string'

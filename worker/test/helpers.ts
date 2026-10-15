@@ -15,9 +15,12 @@ export async function tokenFor(uid: string, name?: string): Promise<string> {
   return ((await r.json()) as { token: string }).token
 }
 
-export async function api(path: string, opts: { uid?: string; method?: string; body?: unknown } = {}) {
+export async function api(
+  path: string,
+  opts: { uid?: string; name?: string; method?: string; body?: unknown } = {},
+) {
   const headers: Record<string, string> = {}
-  if (opts.uid) headers.Authorization = `Bearer ${await tokenFor(opts.uid)}`
+  if (opts.uid) headers.Authorization = `Bearer ${await tokenFor(opts.uid, opts.name)}`
   if (opts.body !== undefined) headers['content-type'] = 'application/json'
   return exports.default.fetch(`${BASE}${path}`, {
     method: opts.method ?? 'GET',
@@ -44,6 +47,8 @@ export const upload = (uid: string, doc: TripDoc) => api('/api/trips', { uid, me
 export interface Client {
   status: number
   inbox: ServerMsg[]
+  /** As mensagens de presença ficam à parte (chegam a cada conexão que abre ou fecha). */
+  presence: string[][]
   send(msg: ClientMsg): void
   hello(sinceVersion?: number): void
   /** Espera chegar uma mensagem que satisfaça `pred` (até 2 s). */
@@ -57,13 +62,19 @@ export async function connect(tripId: string, uid: string): Promise<Client> {
     headers: { Upgrade: 'websocket', 'Sec-WebSocket-Protocol': `${WS_PROTOCOL}, ${token}` },
   })
   const inbox: ServerMsg[] = []
+  const presence: string[][] = []
   const ws = r.webSocket
   ws?.accept()
-  ws?.addEventListener('message', (e) => inbox.push(JSON.parse(e.data as string) as ServerMsg))
+  ws?.addEventListener('message', (e) => {
+    const m = JSON.parse(e.data as string) as ServerMsg
+    if (m.t === 'presence') presence.push(m.online)
+    else inbox.push(m)
+  })
   const send = (msg: ClientMsg) => ws?.send(JSON.stringify(msg))
   return {
     status: r.status,
     inbox,
+    presence,
     send,
     hello: (sinceVersion = -1) =>
       send({ t: 'hello', sinceVersion, protocol: PROTOCOL, schemaVersion: 1, app: 'teste' }),

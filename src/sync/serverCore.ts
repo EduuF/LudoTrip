@@ -1,12 +1,13 @@
 import { runDoc } from '../app/doc'
 import type { DocAction, TripDoc } from '../app/doc'
 import { MIN_PROTOCOL } from './protocol'
-import type { Ack, ClientMsg, RejectReason, ServerMsg } from './protocol'
+import type { Effects } from '../engine'
+import type { Ack, ClientMsg, RejectReason, Role, ServerMsg } from './protocol'
 
 // O que o servidor decide (spec publicação §5.2). Funções puras: o TripRoom grava e transmite; os
 // testes de convergência usam exatamente as mesmas decisões, sem duplicar a regra.
 
-export type Role = 'owner' | 'editor' | 'viewer'
+export type { Role }
 
 /** Tamanho máximo de uma viagem (spec §4.7). */
 export const MAX_DOC_BYTES = 1_000_000
@@ -14,7 +15,7 @@ export const MAX_DOC_BYTES = 1_000_000
 export const MAX_REPLAY = 200
 
 export type Outcome =
-  | { kind: 'applied'; doc: TripDoc; version: number; json: string }
+  | { kind: 'applied'; doc: TripDoc; version: number; json: string; effects: Effects }
   /** Nada mudou: confirma para quem mandou, sem nova versão. */
   | { kind: 'noop' }
   | { kind: 'rejected'; reason: RejectReason }
@@ -30,7 +31,7 @@ export function decide(
   if (!r.ok) return r.error.code === 'NO_CHANGE' ? { kind: 'noop' } : { kind: 'rejected', reason: r.error }
   const json = JSON.stringify(r.doc)
   if (json.length > MAX_DOC_BYTES) return { kind: 'rejected', reason: { code: 'TOO_BIG' } }
-  return { kind: 'applied', doc: r.doc, version: state.version + 1, json }
+  return { kind: 'applied', doc: r.doc, version: state.version + 1, json, effects: r.effects }
 }
 
 /** Uma linha do registro de ações. */

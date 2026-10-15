@@ -7,6 +7,7 @@ import type { Ctx } from './http'
 import { log, logError, uidHash } from './log'
 import { tripRoutes } from './trips'
 import { adminRoutes } from './admin'
+import { inviteRoutes } from './invites'
 
 export { TripRoom } from './tripRoom'
 
@@ -57,6 +58,7 @@ async function route(c: Ctx): Promise<Response> {
 
   if (path === '/api/trips' || path.startsWith('/api/trips/')) return tripRoutes(c)
   if (path.startsWith('/api/admin/')) return adminRoutes(c)
+  if (path.startsWith('/api/invites/')) return inviteRoutes(c)
 
   return fail(404, 'not-found')
 }

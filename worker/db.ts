@@ -59,6 +59,15 @@ export async function myTrips(db: D1Database, uid: string): Promise<TripRow[]> {
   return results
 }
 
+/** Quantas pessoas a viagem tem (contando o Dono). */
+export async function memberCount(db: D1Database, tripId: string): Promise<number> {
+  const row = await db
+    .prepare('SELECT COUNT(*) AS n FROM members WHERE trip_id = ?1')
+    .bind(tripId)
+    .first<{ n: number }>()
+  return row?.n ?? 0
+}
+
 export async function countOwned(db: D1Database, uid: string): Promise<number> {
   const row = await db
     .prepare('SELECT COUNT(*) AS n FROM trips WHERE owner_uid = ?1 AND deleted_at IS NULL')
@@ -113,8 +122,10 @@ export async function updateTripMeta(db: D1Database, meta: TripMetaRow): Promise
     .run()
 }
 
-export async function deleteTrip(db: D1Database, tripId: string): Promise<void> {
+/** Apaga de vez (o fim dos 30 dias em "Apagadas"). */
+export async function purgeTrip(db: D1Database, tripId: string): Promise<void> {
   await db.batch([
+    db.prepare('DELETE FROM invites WHERE trip_id = ?1').bind(tripId),
     db.prepare('DELETE FROM members WHERE trip_id = ?1').bind(tripId),
     db.prepare('DELETE FROM trips WHERE id = ?1').bind(tripId),
   ])

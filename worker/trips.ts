@@ -1,14 +1,24 @@
 import { tripRange } from '../src/engine'
 import type { TripDoc } from '../src/app/doc'
-import { countOwned, createTrip, deleteTrip, myTrips, roleOf, tripOwner, upsertUser } from './db'
+import { countOwned, createTrip, myTrips, roleOf, tripOwner, upsertUser } from './db'
+import { createInvite, revokeInvite } from './invites'
+import {
+  deletedTrips,
+  history,
+  people,
+  removeMember,
+  restore,
+  setMemberRole,
+  softDelete,
+  transfer,
+} from './members'
 import { fail, json } from './http'
 import type { Ctx } from './http'
 import { MAX_DOC_BYTES } from './tripRoom'
+import { MAX_TRIPS } from './limits'
 
 // Rotas das viagens da nuvem (spec publicação §3.4, §5).
 
-/** Viagens por conta (spec §4.7). */
-export const MAX_TRIPS = 100
 const ID = /^[A-Za-z0-9._-]{1,64}$/
 
 /** O mínimo para ser uma viagem: o resto o motor confere a cada ação. */
@@ -29,9 +39,14 @@ function looksLikeTrip(x: unknown): x is TripDoc {
 export async function tripRoutes(c: Ctx): Promise<Response> {
   const { env, request, url, who } = c
   if (!who) return fail(401, 'auth')
-  const parts = url.pathname.split('/').filter(Boolean) // ['api', 'trips', id?, 'ws'?]
+  const parts = url.pathname.split('/').filter(Boolean) // ['api', 'trips', id?, sub?, item?]
   const id = parts[2]
   const sub = parts[3]
+  const item = parts[4]
+
+  // As apagadas para todos (só o Dono vê, com "Recuperar").
+  if (!id && request.method === 'GET' && url.searchParams.get('deleted') === '1')
+    return json({ trips: await deletedTrips(env.DB, who.uid) })
 
   // Minhas viagens.
   if (!id && request.method === 'GET') {
@@ -104,13 +119,17 @@ export async function tripRoutes(c: Ctx): Promise<Response> {
     return env.TRIPS.getByName(id).fetch(new Request(request.url, { headers }))
   }
 
-  // Apagar (no M4, só o Dono, de vez; "Apagadas" chega no M5).
-  if (!sub && request.method === 'DELETE') {
-    if (role !== 'owner') return fail(role ? 403 : 404, role ? 'forbidden' : 'not-found')
-    await env.TRIPS.getByName(id).destroy()
-    await deleteTrip(env.DB, id)
-    return json({ ok: true })
-  }
+  // Colaboração (M5): pessoas, convites, papéis, passar, apagar para todos, recuperar e Histórico.
+  const m = request.method
+  if (!sub && m === 'DELETE') return softDelete(c, id, role)
+  if (sub === 'restore' && m === 'POST') return restore(c, id)
+  if (sub === 'people' && m === 'GET') return people(c, id, role)
+  if (sub === 'history' && m === 'GET') return history(c, id, role)
+  if (sub === 'invites' && !item && m === 'POST') return createInvite(c, id, role)
+  if (sub === 'invites' && item && m === 'DELETE') return revokeInvite(c, id, item, role)
+  if (sub === 'members' && item && m === 'PATCH') return setMemberRole(c, id, decodeURIComponent(item), role)
+  if (sub === 'members' && item && m === 'DELETE') return removeMember(c, id, decodeURIComponent(item), role)
+  if (sub === 'transfer' && m === 'POST') return transfer(c, id, role)
 
   return fail(404, 'not-found')
 }

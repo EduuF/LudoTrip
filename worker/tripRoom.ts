@@ -1,14 +1,16 @@
 import { DurableObject } from 'cloudflare:workers'
 import { tripRange } from '../src/engine'
 import { migrate } from '../src/app/doc'
+import { narrate } from '../src/app/narration'
 import type { DocAction, TripDoc } from '../src/app/doc'
 import type { ClientMsg, RejectReason, ServerMsg } from '../src/sync/protocol'
 import { answerHello, decide, MAX_DOC_BYTES, recordToMsg } from '../src/sync/serverCore'
 import type { OpLog, OpRecord, Role } from '../src/sync/serverCore'
 import { WS_PROTOCOL } from './auth'
-import { updateTripMeta } from './db'
+import { purgeTrip, updateTripMeta } from './db'
 import type { TripMetaRow } from './db'
 import type { AppEnv } from './env'
+import { DELETED_MS } from './limits'
 import { log, logError, uidHash } from './log'
 
 // Uma viagem da nuvem (spec publicação §5): guarda o documento e o registro de ações num SQLite só
@@ -54,6 +56,14 @@ const toRecord = (o: OpRow): OpRecord => ({
   at: o.at,
 })
 
+export interface HistoryRow {
+  seq: number
+  uid: string
+  at: number
+  text: string | null
+  [key: string]: SqlStorageValue
+}
+
 export type InitResult =
   { ok: true; created: boolean; version: number } | { ok: false; reason: 'owned' | 'too-big' }
 
@@ -87,6 +97,12 @@ export class TripRoom extends DurableObject<AppEnv> {
       );
       CREATE INDEX IF NOT EXISTS ops_by_version ON ops(version);
     `)
+    // M5: o texto narrado de cada ação (Histórico). Objetos criados antes ganham a coluna aqui.
+    const cols = this.ctx.storage.sql
+      .exec<{ name: string }>(`SELECT name FROM pragma_table_info('ops')`)
+      .toArray()
+    if (!cols.some((c) => c.name === 'text'))
+      this.ctx.storage.sql.exec('ALTER TABLE ops ADD COLUMN text TEXT')
   }
 
   private row(): DocRow | null {
@@ -190,6 +206,7 @@ export class TripRoom extends DurableObject<AppEnv> {
     const [client, server] = Object.values(new WebSocketPair()) as [WebSocket, WebSocket]
     this.ctx.acceptWebSocket(server, [uid])
     server.serializeAttachment({ uid, role } satisfies Conn)
+    this.presence()
     return new Response(null, {
       status: 101,
       webSocket: client,
@@ -228,27 +245,154 @@ export class TripRoom extends DurableObject<AppEnv> {
     }
   }
 
-  async webSocketClose(): Promise<void> {}
+  async webSocketClose(ws: WebSocket): Promise<void> {
+    this.presence(ws)
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    this.presence(ws)
+  }
+
+  // --- Colaboração (M5): o Worker confere no D1 quem pode o quê e avisa a viagem por aqui. ---
+
+  /** Quem está com a viagem aberta (sem repetir; sem a conexão que está fechando). */
+  async online(): Promise<string[]> {
+    return this.onlineNow()
+  }
+
+  private onlineNow(closing?: WebSocket): string[] {
+    const uids = new Set<string>()
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws === closing) continue
+      const c = ws.deserializeAttachment() as Conn | null
+      if (c) uids.add(c.uid)
+    }
+    return [...uids]
+  }
+
+  private presence(closing?: WebSocket) {
+    const online = this.onlineNow(closing)
+    for (const ws of this.ctx.getWebSockets()) if (ws !== closing) this.send(ws, { t: 'presence', online })
+  }
+
+  /** Membros ou convites mudaram: quem está com a viagem aberta relê a lista. */
+  async peopleChanged(): Promise<void> {
+    this.broadcast({ t: 'people' })
+  }
+
+  /** O papel de alguém mudou: as conexões abertas dessa pessoa passam a valer o papel novo já. */
+  async setRole(uid: string, role: Role): Promise<void> {
+    for (const ws of this.ctx.getWebSockets(uid)) {
+      ws.serializeAttachment({ uid, role } satisfies Conn)
+      this.send(ws, { t: 'role', role })
+    }
+  }
+
+  /**
+   * Alguém aceitou um convite. Com um viajante reservado ("Convidado"), ele ganha o nome e a conta da
+   * pessoa, por uma ação comum (fica no Histórico e chega a todos). Repetir não aplica de novo.
+   */
+  async join(uid: string, name: string, travelerId: string | null, inviteId: string): Promise<void> {
+    const cur = this.current()
+    if (!cur) return
+    if (travelerId && cur.doc.itinerary.travelers.some((t) => t.id === travelerId))
+      await this.system(
+        uid,
+        `join-${inviteId}`,
+        { type: 'engine', command: { type: 'setTraveler', id: travelerId, name, userId: uid } },
+        `${name} entrou na viagem`,
+      )
+    this.broadcast({ t: 'joined', uid, name })
+    this.broadcast({ t: 'people' })
+  }
+
+  /** Tirar alguém (ou a pessoa saiu): fecha as conexões dela e, se pedido, a tira de "Quem vai". */
+  async removeMember(uid: string, alsoTraveler: boolean, by: string, opId: string): Promise<void> {
+    await this.kick(uid)
+    const cur = this.current()
+    const t = cur?.doc.itinerary.travelers.find((x) => x.userId === uid)
+    if (cur && t) {
+      const leave = alsoTraveler && cur.doc.itinerary.travelers.length > 1
+      await this.system(
+        by,
+        opId,
+        leave
+          ? { type: 'engine', command: { type: 'removeTraveler', id: t.id } }
+          : { type: 'engine', command: { type: 'setTraveler', id: t.id, userId: null } },
+      )
+    }
+    this.broadcast({ t: 'people' })
+  }
+
+  /** Apagada para todos: avisa e fecha as conexões; em 30 dias, o alarme apaga de vez. */
+  async markDeleted(by: string, at: number): Promise<void> {
+    this.broadcast({ t: 'gone', reason: 'deleted', by })
+    for (const ws of this.ctx.getWebSockets()) ws.close(4000, 'deleted')
+    await this.ctx.storage.setAlarm(at + DELETED_MS)
+  }
+
+  /** Recuperada de "Apagadas". */
+  async restored(): Promise<void> {
+    await this.ctx.storage.deleteAlarm()
+  }
+
+  /** O fim dos 30 dias: confere no D1 (a viagem pode ter sido recuperada) antes de apagar de vez. */
+  async alarm(): Promise<void> {
+    const id = this.row()?.trip_id
+    if (!id) return
+    const t = await this.env.DB.prepare('SELECT deleted_at FROM trips WHERE id = ?1')
+      .bind(id)
+      .first<{ deleted_at: number | null }>()
+    if (!t?.deleted_at) return
+    const due = t.deleted_at + DELETED_MS
+    if (Date.now() < due) return void (await this.ctx.storage.setAlarm(due))
+    await purgeTrip(this.env.DB, id)
+    await this.destroy()
+    log({ msg: 'viagem apagada de vez', trip: id })
+  }
+
+  /** As ações aplicadas mais velhas que `before` (Histórico), da mais nova para a mais velha. */
+  async history(before: number | null, limit = 50): Promise<HistoryRow[]> {
+    return this.ctx.storage.sql
+      .exec<HistoryRow>(
+        `SELECT seq, uid, at, text FROM ops WHERE result = 'applied' AND seq < ? ORDER BY seq DESC LIMIT ?`,
+        before ?? Number.MAX_SAFE_INTEGER,
+        limit,
+      )
+      .toArray()
+  }
+
+  /** Uma ação do sistema (convite aceito, alguém saiu), pelo mesmo caminho das outras. */
+  private async system(uid: string, opId: string, action: DocAction, text?: string) {
+    if (this.opLog.find([opId])[0]) return
+    await this.apply(null, { uid, role: 'owner' }, opId, action, text)
+  }
 
   private async op(ws: WebSocket, conn: Conn, opId: string, action: DocAction) {
-    const started = Date.now()
     // Reenvio (a conexão caiu antes da resposta): devolve o resultado já gravado, sem aplicar de novo.
     const seen = this.opLog.find([opId])[0]
     if (seen) return this.send(ws, recordToMsg(seen))
+    await this.apply(ws, conn, opId, action)
+  }
+
+  /** Aplica uma ação. `ws` null: ação do sistema (a recusa fica só no registro). */
+  private async apply(ws: WebSocket | null, conn: Conn, opId: string, action: DocAction, text?: string) {
+    const started = Date.now()
     const cur = this.current()
-    if (!cur) return this.send(ws, { t: 'gone', reason: 'deleted' })
+    if (!cur) return ws ? this.send(ws, { t: 'gone', reason: 'deleted' }) : undefined
     const at = Date.now()
     const out = decide(cur, conn.role, opId, action)
     const result = out.kind
     const reason = out.kind === 'rejected' ? out.reason : null
     const version = out.kind === 'applied' ? out.version : cur.version
     const record: OpRecord = { opId, uid: conn.uid, action, result, reason, version, at }
+    const said = out.kind === 'applied' ? (text ?? narrate(action, cur.doc, out.doc, out.effects)) : null
 
     // Documento e registro na mesma transação implícita (nenhum await entre as escritas).
     if (out.kind === 'applied')
       this.ctx.storage.sql.exec('UPDATE doc SET json = ?, version = ? WHERE k = 1', out.json, out.version)
     this.ctx.storage.sql.exec(
-      `INSERT INTO ops (${OP_COLS}) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ops (${OP_COLS}, text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       opId,
       conn.uid,
       JSON.stringify(action),
@@ -256,12 +400,13 @@ export class TripRoom extends DurableObject<AppEnv> {
       reason === null ? null : JSON.stringify(reason),
       version,
       at,
+      said,
     )
     if (out.kind === 'applied') {
       this.cache = { doc: out.doc, version: out.version }
       this.broadcast(recordToMsg(record))
       this.ctx.waitUntil(this.syncMeta(out.doc, out.version, out.json.length, at))
-    } else {
+    } else if (ws) {
       this.send(ws, recordToMsg(record))
     }
     log({

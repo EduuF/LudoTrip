@@ -131,9 +131,10 @@ describe('apagar', () => {
     expect((await api('/api/trips/v-apagar', { uid: 'bia', method: 'DELETE' })).status).toBe(404)
     const a = await connect('v-apagar', 'caio')
     expect((await api('/api/trips/v-apagar', { uid: 'caio', method: 'DELETE' })).status).toBe(200)
-    expect(await a.waitFor((m) => m.t === 'gone')).toEqual({ t: 'gone', reason: 'deleted' })
+    expect(await a.waitFor((m) => m.t === 'gone')).toMatchObject({ t: 'gone', reason: 'deleted' })
     const list = (await (await api('/api/trips', { uid: 'caio' })).json()) as { trips: unknown[] }
     expect(list.trips).toEqual([])
-    expect(await env.TRIPS.getByName('v-apagar').exportDoc()).toBeNull()
+    // Vai para "Apagadas" (M5): o documento continua guardado por 30 dias.
+    expect(await env.TRIPS.getByName('v-apagar').exportDoc()).not.toBeNull()
   })
 })
