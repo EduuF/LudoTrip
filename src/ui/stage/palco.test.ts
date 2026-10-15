@@ -140,6 +140,9 @@ const CONTEXTS = [
   { travelers: 4, mode: 'car', must: true, outdoors: true },
   { travelers: 2, mode: 'train' },
   { travelers: 2, mode: 'boat' },
+  // Chegou alguém: vai viajar (mala) ou só ajuda (mapa).
+  { travelers: 2, index: 1, travels: true, line: 'Bia!' },
+  { travelers: 2, index: 1, travels: false, line: 'Bia!' },
 ] as const
 
 describe('cenas da primeira leva', () => {

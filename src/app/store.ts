@@ -24,6 +24,7 @@ import type { Refusal, SyncStatus } from '../sync/tripSync'
 import { SCHEMA_VERSION } from './doc'
 import { describeRefusal, mergeTrips, stripCloud, withCloud } from './cloudTrips'
 import { canEdit, nameOf } from './people'
+import { cueArrival } from '../ui/stage/cues'
 import type {
   DeletedTrip,
   HistoryItem,
@@ -628,6 +629,9 @@ export const useApp = create<AppState>((set, get) => {
         toast(`${name} entrou na viagem 🎉`)
         sfx.level()
         track('pessoa_chegou', {})
+        // Quem chegou entra correndo no topo e pula para os rostos do grupo (docs/animacoes.md).
+        const d = get().doc
+        if (d) cueArrival(d, d.itinerary.travelers.find((t) => t.userId === uid)?.id ?? null, `${name}!`)
       },
       onRole: (role) => {
         if (sync !== s) return
@@ -1257,6 +1261,9 @@ export const useApp = create<AppState>((set, get) => {
       }
       track('convite_criado', { role, travels })
       void get().loadPeople()
+      // O "Convidado" chega no topo e guarda o lugar dele no grupo.
+      const d = get().doc
+      if (d && travelerId) cueArrival(d, travelerId, 'Eu vou!')
       return r.url
     },
 

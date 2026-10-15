@@ -17,6 +17,7 @@ const VARIANTS = {
   nuvem: ['arremesso', 'aviao', 'chute', 'espirro'],
   criada: ['kombi', 'aviao', 'trem', 'barco', 'esquecidos'],
   'grande-dia': ['malas', 'portao', 'porta-malas', 'esqueceu'],
+  chegou: ['mala', 'mapa', 'correndo', 'deslize', 'tropeco'],
 }
 const FRAMES = 12
 const MARGIN = 28

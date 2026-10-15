@@ -4,6 +4,7 @@
 
 import type { ID } from '../../engine'
 import type { TripDoc } from '../../app/doc'
+import { arrivalMoment } from './moments/arrival'
 import { bigDayMoment } from './moments/bigday'
 import { cloudMoment } from './moments/cloud'
 import { createdMoment } from './moments/created'
@@ -52,6 +53,7 @@ export const MOMENTS = {
   nuvem: cloudMoment,
   criada: createdMoment,
   'grande-dia': bigDayMoment,
+  chegou: arrivalMoment,
 } as const satisfies Record<string, MomentDef<never>>
 
 export function cueTicket(doc: TripDoc) {
@@ -150,4 +152,62 @@ export function cueBigDay(doc: TripDoc, countdown: Element | null, map: Element 
     { travelers: travelers(doc), mode: firstMode(doc), avoid },
     new DOMRect(m.left, c.top, m.width, c.height + 6),
   )
+}
+
+/**
+ * Chegou alguém (colaboração): no topo da viagem, quem chega entra pelo vão livre da faixa de botões e
+ * pula até os rostos do grupo (ou o "+", se ainda não há rostos). `line` é o que o balão diz.
+ */
+export function cueArrival(doc: TripDoc, travelerId: ID | null, line: string) {
+  afterPaint(() => {
+    const hud = document.querySelector('.hud')
+    const target = hud?.querySelector('.hud-btn.faces') ?? hud?.querySelector('.invite-plus')
+    const top = hud?.querySelector('.hud-top')
+    const row = hud?.querySelector('.hud-actions')
+    if (!target || !top || !row) return
+    const a = target.getBoundingClientRect()
+    const t = top.getBoundingClientRect()
+    const r = row.getBoundingClientRect()
+    const last = [...row.children].at(-1)?.getBoundingClientRect()
+    const right = Math.max(r.right, innerWidth - 4)
+    const band = new DOMRect(a.left, t.top, right - a.left, r.bottom - t.top)
+    const index = Math.max(
+      0,
+      doc.itinerary.travelers.findIndex((x) => x.id === travelerId),
+    )
+    play(
+      arrivalMoment,
+      {
+        index,
+        travels: !!travelerId && index >= 0,
+        line,
+        targetX: a.width / 2,
+        targetY: a.top + a.height / 2 - t.top,
+        targetW: a.width,
+        targetH: a.height,
+        rowTop: r.top - t.top,
+        // A borda de baixo dos botões da linha de cima, sobre o vão livre (o pulinho não passa dela).
+        ceiling:
+          Math.max(
+            ...[...top.querySelectorAll('button')]
+              .map((b) => b.getBoundingClientRect())
+              .filter((b) => b.right > (last ? last.right : r.left))
+              .map((b) => b.bottom),
+            t.top,
+          ) - t.top,
+        freeX: (last ? last.right : r.left) - a.left + 6,
+        onHit: () => {
+          try {
+            target.animate(
+              [{ transform: 'scale(1)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }],
+              { duration: 260, easing: 'ease-out' },
+            )
+          } catch {
+            // efeito visual
+          }
+        },
+      },
+      band,
+    )
+  })
 }

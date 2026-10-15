@@ -812,3 +812,103 @@ export const gate = (lit = false) =>
       box(g, 25, 6, 26, 37, lit ? '#9fe3a8' : C.silver)
     }),
   )
+
+// ---------------------------------------------------------------------------
+// Mapa de papel (quem chega para ajudar a planejar)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mapa dobrado em sanfona (8 × 10): três painéis de papel com as bordas em zigue-zague, manchas de
+ * terra e mar e a rota vermelha.
+ */
+export const mapFolded = () =>
+  cached('mapa-dobrado', () =>
+    make(6, 8, (g) => {
+      box(g, 0, 1, 1, 7, C.paper)
+      box(g, 2, 0, 3, 6, C.cream)
+      box(g, 4, 1, 5, 7, C.paper)
+      put(g, 0, 3, C.greenLight)
+      put(g, 1, 4, C.greenLight)
+      put(g, 2, 2, C.sky)
+      put(g, 3, 3, C.sky)
+      put(g, 4, 4, C.greenLight)
+      put(g, 5, 5, C.red)
+      put(g, 4, 6, C.red)
+      box(g, 2, 7, 3, 7, C.silverLight)
+      box(g, 0, 0, 1, 0, C.silverLight)
+      box(g, 4, 0, 5, 0, C.silverLight)
+    }),
+  )
+
+/** Mapa aberto (15 × 10): três painéis (mar, terra), a rota tracejada e o pino de destino. */
+export const mapOpen = () =>
+  cached('mapa-aberto', () =>
+    make(13, 8, (g) => {
+      box(g, 0, 0, 12, 7, C.sky)
+      box(g, 3, 1, 9, 6, C.greenLight)
+      box(g, 6, 2, 11, 5, C.greenLight)
+      box(g, 4, 0, 4, 7, C.silverLight)
+      box(g, 8, 0, 8, 7, C.silverLight)
+      for (const [x, y] of [
+        [1, 6],
+        [3, 5],
+        [5, 4],
+        [7, 3],
+      ] as const)
+        put(g, x, y, C.red)
+      box(g, 9, 1, 10, 2, C.red)
+      put(g, 9, 3, C.red)
+    }),
+  )
+
+/** Mala de rodinhas em pé (12 × 17): puxador telescópico, corpo alto, tiras e duas rodinhas. */
+export const rollingBag = (color: string = C.orange) =>
+  cached(`mala-rodinhas:${color}`, () =>
+    make(10, 15, (g) => {
+      box(g, 4, 0, 5, 0, C.dark)
+      box(g, 4, 1, 4, 3, C.silver)
+      box(g, 5, 1, 5, 3, C.silver)
+      box(g, 0, 4, 9, 12, color)
+      box(g, 0, 12, 9, 12, shade(color))
+      box(g, 2, 4, 2, 12, C.tan)
+      box(g, 7, 4, 7, 12, C.tan)
+      box(g, 4, 7, 5, 8, C.cream)
+      box(g, 1, 13, 2, 14, C.dark)
+      box(g, 7, 13, 8, 14, C.dark)
+    }),
+  )
+
+/** Pedrinha no caminho (5 × 4). */
+export const pebble = () =>
+  cached('pedrinha', () =>
+    make(3, 2, (g) => {
+      box(g, 0, 0, 2, 1, C.silver)
+      put(g, 0, 0, C.silverLight)
+    }),
+  )
+
+/** Baforada clara com contorno (7 × 7), para sumir em cena sobre fundo escuro. */
+export const poofCloud = () =>
+  cached('baforada', () =>
+    make(5, 5, (g) => {
+      box(g, 1, 0, 3, 4, C.cream)
+      box(g, 0, 1, 4, 3, C.cream)
+      put(g, 1, 1, C.white)
+      put(g, 3, 3, C.silverLight)
+    }),
+  )
+
+/** Uma nuvem de baforada só (17 × 13): lóbulos que se sobrepõem, miolo creme e contorno escuro. */
+export const poofBig = () =>
+  cached('baforada-grande', () =>
+    make(15, 11, (g) => {
+      disc(g, 4, 6, 3.6, C.cream)
+      disc(g, 8, 4, 4.2, C.cream)
+      disc(g, 11, 6.5, 3.4, C.cream)
+      box(g, 3, 7, 12, 9, C.cream)
+      put(g, 6, 2, C.white)
+      put(g, 7, 2, C.white)
+      put(g, 3, 5, C.white)
+      box(g, 5, 9, 10, 9, C.silverLight)
+    }),
+  )

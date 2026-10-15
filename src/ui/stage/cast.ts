@@ -536,6 +536,10 @@ export const POSES = {
   blow: { arms: ['down', 'down'], legs: 'stand', face: { eyes: 'closed', mouth: 'blow', cheeks: true } },
   blink: { arms: ['down', 'down'], legs: 'stand', face: { eyes: 'closed', mouth: 'smile' } },
   cheer: { arms: ['up', 'up'], legs: 'jump', face: { eyes: 'happy', mouth: 'open' } },
+  // Comemorar com os braços abertos para os lados (cabe embaixo de botões: nada acima da cabeça).
+  yay: { arms: ['out', 'out'], legs: 'jump', face: { eyes: 'happy', mouth: 'open' } },
+  // O outro tempo da comemoração: de pé, braços abertos, ainda rindo.
+  yay2: { arms: ['out', 'out'], legs: 'stand', face: { eyes: 'happy', mouth: 'smile' } },
   wave: { arms: ['down', 'wave'], legs: 'stand', face: { eyes: 'happy', mouth: 'smile' } },
   sit: { arms: ['down', 'down'], legs: 'sit', face: { eyes: 'open', mouth: 'smile' } },
   photo: {

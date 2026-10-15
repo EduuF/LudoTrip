@@ -5,6 +5,17 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-15 — M5: colaboração
+
+- **"Quem vai" como lista inteira não aguenta duas pessoas.** `setTravelers` trocava a lista toda: duas pessoas editando ao mesmo tempo apagavam o que a outra fez. Agora há `addTraveler`, `setTraveler` e `removeTraveler`, um viajante por vez.
+- **O papel vale na conexão aberta.** O D1 decide quem pode o quê, mas o `TripRoom` guarda o papel no anexo do WebSocket; ao mudar o papel, o Worker avisa o `TripRoom` (RPC `setRole`), que regrava o anexo e manda `role` ao aparelho.
+- **Mensagens novas do protocolo só como acréscimo:** o `switch` do `TripSync` ignora um `t` desconhecido, então aparelhos antigos não quebram e `PROTOCOL` continua 1.
+- **"Só vê" em dois lugares:** o servidor recusa (`ROLE`) e a tela não mostra os controles. Um teste de varredura entra como quem só vê, toca em todos os botões e anota quem tenta editar (o app responde "Você está vendo"): achou 105 tentativas na primeira rodada.
+- **`<fieldset disabled>` desativa também os botões que só navegam.** O modo de leitura dos painéis trava só campos e botões de editar (`MutationObserver`); quem navega leva a classe `nav`.
+- **Aviso mostrado antes de a viagem da nuvem abrir some** (abrir a viagem limpa os avisos): guardar e mostrar depois do primeiro desenho.
+- **Testes de tela em paralelo:** com 48 arquivos, a máquina de 16 núcleos derrubava testes por tempo. Metade dos núcleos e 20 s por teste resolveram, sem esconder travamento.
+- **e2e com várias pessoas:** um contexto do Playwright por pessoa; o login de teste lê quem "entra com Google" de `ludotrip.testAuthNext`.
+
 ## 2026-10-14 — M4: contas e nuvem
 
 - **Vitest 5.0.4 quebra o `@cloudflare/vitest-plugin` no Windows** ("File path must be a file: URL" antes de qualquer teste rodar). O 5.0.3, versão com que o plugin 1.4.2 é testado, funciona.

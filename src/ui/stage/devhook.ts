@@ -4,7 +4,7 @@
 // de quadros do avaliador (scripts/filmstrip.mjs).
 
 import { useApp } from '../../app/store'
-import { cueBigDay, cueCloud, cueLodging, cueTicket, MOMENTS } from './cues'
+import { cueArrival, cueBigDay, cueCloud, cueLodging, cueTicket, MOMENTS } from './cues'
 import { force, freeze, activeRuns, stopAll } from './palco'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -107,6 +107,40 @@ async function demo(id: keyof typeof MOMENTS, variant: string | null) {
       }))
       await wait(60)
       break
+    case 'chegou': {
+      // O topo de uma viagem da nuvem: com rostos (alguém entrou) ou só o "+" (o Convidado reservado).
+      scrollTo(0, 0)
+      const withFaces = variant !== 'deslize'
+      const m = (uid: string, name: string, role: 'owner' | 'editor', joinedAt: number) => ({
+        uid,
+        name,
+        fullName: null,
+        photo: null,
+        role,
+        joinedAt,
+      })
+      useApp.setState({
+        cloudEnabled: true,
+        people: withFaces
+          ? {
+              me: 'owner',
+              members: [m('a', 'Ana', 'owner', 1), m('b', 'Bia', 'editor', 2)],
+              invites: [],
+              online: ['a'],
+            }
+          : null,
+      })
+      await wait(120)
+      const travels = variant !== 'mapa'
+      const last = it.travelers.at(-1)
+      cueArrival(
+        doc!,
+        travels ? (last?.id ?? null) : null,
+        withFaces ? 'Bia!' : travels ? 'Eu vou!' : 'Vim ajudar!',
+      )
+      await wait(40)
+      break
+    }
     case 'grande-dia':
       scrollTo(0, 0)
       await wait(300)
@@ -134,7 +168,7 @@ function box() {
   reset() {
     stopAll()
     for (; changed > 0; changed--) useApp.getState().undo()
-    useApp.setState({ celebrations: [], sheet: null, tutorial: false })
+    useApp.setState({ celebrations: [], sheet: null, tutorial: false, cloudEnabled: false, people: null })
     scrollTo(0, 0)
   },
   freeze,

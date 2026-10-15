@@ -144,6 +144,13 @@ Base: os 12 princípios da animação (skill do projeto `web-motion-design`) apl
 - **No topo da tela, tudo o que sobe precisa caber entre os elementos.** Se não couber, troque o objeto por um menor ou por outra ideia; não deixe encostar em texto ou botão.
 - **Voo sobre a faixa de botões:** o objeto fica fino (metade do tamanho, girando), corre rente à borda de cima dos botões (acima das letras) e só desce ao alvo nos últimos 20% do trajeto. Toda medida de encaixe vem do retângulo real do elemento, medido no gatilho.
 - **Objeto deixado no chão fica inteiro sobre o apoio;** contato (chute, pegada, batida) tem um quadro em que as duas partes se tocam, mantido por pelo menos 100 ms.
+- **Trajeto mais curto que o intervalo da tira (~130 ms) não existe para quem vê:** todo deslocamento ou pose-causa importante dura pelo menos 200 ms e aparece em quadro; o estado cheio de um efeito cobre pelo menos um instante da tira.
+- **Entrar num botão de interface:** pousar na borda dele e sumir recortado por ela; nunca encolher por cima da letra. O brilho de chegada não imita o glifo do alvo (um "+" ao lado de um "+" parece defeito).
+- **A altura de um pulo vem da folga medida acima da cabeça** (o retângulo real dos botões de cima, menos 4 px), contando o sprite já deformado. Sem folga, estica só para os lados; se a variação vive da altura, muda de ideia (deslizar em vez de pular).
+- **Ciclo de pose alegre alterna duas poses alegres;** voltar ao neutro no meio apaga a emoção em metade dos quadros.
+- **Baforada, poeira e fumaça sobre fundo escuro:** forma reconhecível (uma nuvem de lóbulos, não bolinhas soltas), clara com contorno, somem encolhendo e terminam apagadas. Cada objeto que some ganha a sua nuvem; partícula de impacto nasce na borda de quem caiu, nunca sobre o rosto.
+- **Cada quadro desenha do zero:** um ator que um trecho da cena não redesenha mantém o último desenho; apague explicitamente.
+- **A fala combina com o contexto** (quem só ajuda não diz "Eu vou!"), e a rara mantém o objeto e a frase-chave da variação normal: a virada se soma a eles.
 - **Medir antes de corrigir:**
   - mudar a cor de um elemento e gerar a tira de novo diz se o defeito é de cor/luz ou de geometria;
   - congelar o quadro e ler as caixas dos atores diz onde cada coisa está de verdade;
@@ -219,3 +226,6 @@ Toda animação nova ou alterada passa por avaliação antes do commit.
 - **2026-10-15, decisões do mantenedor:**
   - **Nuvem com 1,6–1,8 s: aprovado.** Fica como exceção registrada ao limite de 1,5 s, porque salvar na nuvem é raro e é a primeira vez que a viagem "vai para a conta".
   - **"Atividade feita" continua com 0,8 s e o tamanho do botão.** É um gesto frequente (marcar várias atividades seguidas), então segue curto, como pede o contrato. No celular ela foi vista e funcionou; o problema era só o botão escondido, já resolvido.
+- **2026-10-15, "chegou alguém" (M5), 7 rodadas do avaliador:** com a mala, com o mapa, correndo e deslizando de meia (1,5 s), e a rara do tropeço.
+  - Lições incorporadas em §3: trajeto ≥ 200 ms, entrar num botão pela borda, pulo pela folga, ciclo alegre, baforada clara de uma forma só, desenhar do zero, fala do contexto.
+  - **Pendente do mantenedor:** a rara mede cerca de 2,1 s (tombo, "Ops!" e o "Bia!" não cabem em 1,5 s).
