@@ -216,3 +216,6 @@ Toda animação nova ou alterada passa por avaliação antes do commit.
   - **Nuvem:** "muito rápida e pequena".
     - O boneco agora tem cerca de 1,1 × o botão e a ação é 60% mais lenta: a nuvem fica com 1,6–1,8 s, acima do limite de 1,5 s de um momento, por pedido do mantenedor.
     - Balão e pipa deram lugar a avião de papel e chute, que cabem no vão acima dos botões.
+- **2026-10-15, decisões do mantenedor:**
+  - **Nuvem com 1,6–1,8 s: aprovado.** Fica como exceção registrada ao limite de 1,5 s, porque salvar na nuvem é raro e é a primeira vez que a viagem "vai para a conta".
+  - **"Atividade feita" continua com 0,8 s e o tamanho do botão.** É um gesto frequente (marcar várias atividades seguidas), então segue curto, como pede o contrato. No celular ela foi vista e funcionou; o problema era só o botão escondido, já resolvido.
