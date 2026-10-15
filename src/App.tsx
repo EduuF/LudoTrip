@@ -1,6 +1,7 @@
 import { CloudBadge } from './ui/CloudBadge'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
+import { wireRoutes } from './app/routes'
 import { useApp } from './app/store'
 import type { Tab } from './app/store'
 import { currentTheme, THEME_ACTION, THEME_GLYPH, toggledTheme } from './app/theme'
@@ -208,6 +209,9 @@ export default function App() {
     void init()
   }, [init])
   useEffect(() => wireBackButton(), [])
+  // Endereços /v/<id> só no build com nuvem (o GitHub Pages não os conhece ao recarregar).
+  const cloudEnabled = useApp((s) => s.cloudEnabled)
+  useEffect(() => (ready && cloudEnabled ? wireRoutes() : undefined), [ready, cloudEnabled])
   return (
     <>
       <Petals />

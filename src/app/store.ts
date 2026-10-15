@@ -10,6 +10,7 @@ import type { TripRepo } from './repo'
 import { applyTheme, readThemeChoice } from './theme'
 import type { ThemeChoice } from './theme'
 import { markTutorialSeen, tutorialSeen } from './tutorial'
+import { parseRoute } from './routePaths'
 import type { SheetSpec } from '../ui/sheetTypes'
 import { sfx, setSound } from '../ui/sound'
 import { docProgress } from './tasks'
@@ -165,6 +166,8 @@ let sync: TripSync | null = null
 let syncTripId: string | null = null
 /** Avisos de edições de outros aparelhos chegando em rajada viram um só. */
 let remoteBurst = { at: 0, count: 0 }
+/** Viagem pedida pelo endereço (/v/<id>) que ainda depende de saber quem está logado. */
+let pendingRoute: string | null = null
 let wired = false
 const channel: BroadcastChannel | null =
   typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('ludotrip')
@@ -338,6 +341,17 @@ export const useApp = create<AppState>((set, get) => {
     set((s) => ({ trips: s.trips.map((t) => (t.id === copy.meta.id ? { ...t, name } : t)) }))
   }
 
+  /** O endereço pediu uma viagem: abre, ou diz por que não dá (spec publicação §3.5). */
+  const resolvePendingRoute = async () => {
+    const id = pendingRoute
+    if (!id) return
+    pendingRoute = null
+    const account = get().account
+    if (get().trips.some((t) => t.id === id)) return get().openTrip(id)
+    if (!account) return toast('Esta viagem está numa conta. Entre para abrir.', true)
+    toast('Você ainda não está nesta viagem. Peça um convite a quem a criou.', true)
+  }
+
   const stopSync = () => {
     sync?.stop()
     sync = null
@@ -474,6 +488,8 @@ export const useApp = create<AppState>((set, get) => {
     cloudEnabled: false,
 
     async init() {
+      // O endereço é lido antes de tudo (a tela inicial troca o endereço para "/").
+      const route = cloudDeps ? parseRoute(location.pathname) : null
       const theme = readThemeChoice()
       applyTheme(theme)
       const trips = await repo.list()
@@ -496,11 +512,22 @@ export const useApp = create<AppState>((set, get) => {
           if (document.visibilityState === 'visible') sync?.poke()
         })
       }
+      // Aberto direto no endereço de uma viagem (/v/<id>): a do aparelho abre já; a da conta, depois
+      // de saber quem está logado.
+      if (route) {
+        if (route.kind === 'trip') {
+          const local = await repo.load(route.id)
+          if (local && !local.meta.cloud) await get().openTrip(route.id)
+          else pendingRoute = route.id
+        }
+      }
       unsubAuth?.()
       unsubAuth =
         cloudDeps?.auth.onChange((account) => {
           set({ account })
-          void get().refreshTrips()
+          void get()
+            .refreshTrips()
+            .then(() => resolvePendingRoute())
         }) ?? null
     },
 

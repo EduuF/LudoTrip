@@ -78,6 +78,7 @@ afterEach(() => {
   S().goHome()
   cleanup()
   configureCloud(null)
+  history.replaceState(null, '', '/')
 })
 
 /** Cria uma viagem com a Ana logada: nasce na nuvem e abre. */
@@ -198,6 +199,51 @@ describe('viagem da nuvem na tela', () => {
     other.postMessage({ t: 'saved', id: doc.meta.id })
     await waitFor(() => expect(S().doc!.meta.name).toBe('Mudado na outra aba'))
     other.close()
+  })
+
+  it('o endereço acompanha a tela: /v/<id> na viagem, / em "Suas viagens"', async () => {
+    const id = await criarNaNuvem()
+    await waitFor(() => expect(location.pathname).toBe(`/v/${id}`))
+    act(() => S().goHome())
+    await waitFor(() => expect(location.pathname).toBe('/'))
+  })
+
+  it('abrir direto no endereço: abre a viagem; o primeiro Voltar leva a "Suas viagens" sem sair', async () => {
+    const id = await criarNaNuvem()
+    act(() => S().goHome())
+    cleanup()
+    useApp.setState({ ready: false, screen: 'home', doc: null, trips: [], cloud: null })
+    history.replaceState(null, '', `/v/${id}`)
+    render(<App />)
+    await waitFor(() => expect(S().screen).toBe('trip'))
+    expect(S().doc!.meta.id).toBe(id)
+    fireEvent(window, new PopStateEvent('popstate', { state: null }))
+    await waitFor(() => expect(S().screen).toBe('home'))
+  })
+
+  it('endereço de uma viagem da conta, sem estar logado: pede para entrar', async () => {
+    const id = await criarNaNuvem()
+    act(() => S().goHome())
+    await act(() => auth.signOut())
+    cleanup()
+    useApp.setState({ ready: false, screen: 'home', doc: null, trips: [], cloud: null })
+    history.replaceState(null, '', `/v/${id}`)
+    render(<App />)
+    await waitFor(() => expect(S().toast?.text).toBe('Esta viagem está numa conta. Entre para abrir.'))
+    expect(S().screen).toBe('home')
+  })
+
+  it('endereço de uma viagem de outra conta: diz como conseguir acesso', async () => {
+    const id = await criarNaNuvem()
+    act(() => S().goHome())
+    act(() => auth.signInAs({ ...ANA, uid: 'bia', name: 'Bia' }))
+    cleanup()
+    useApp.setState({ ready: false, screen: 'home', doc: null, trips: [], cloud: null })
+    history.replaceState(null, '', `/v/${id}`)
+    render(<App />)
+    await waitFor(() =>
+      expect(S().toast?.text).toBe('Você ainda não está nesta viagem. Peça um convite a quem a criou.'),
+    )
   })
 
   it('sem conta, as viagens da nuvem não aparecem', async () => {
