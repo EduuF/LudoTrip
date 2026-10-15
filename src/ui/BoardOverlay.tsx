@@ -10,6 +10,7 @@ import type { BBox } from '../map/frame'
 import { travelersAt } from '../map/route'
 import { colorOf, sealOf } from './colors'
 import { Travelers } from './kit'
+import { travelersSize } from './stage/cast'
 import { countries, decoKinds, f1, placeLabels, relax, rng } from './mapBits'
 import type { DecoKind, Rect } from './mapBits'
 import { Cloud, Deco } from './MapDeco'
@@ -556,13 +557,13 @@ export function BoardOverlay({ adapter, tick, settled }: Props) {
         <g ref={spriteRef} className="travelers" aria-hidden="true">
           <g className="bob">
             <svg
-              x={-(Math.min(travelers, 4) * 6 * 2.4) / 2 - (travelers >= 5 ? 8 : 0)}
-              y={-24}
-              width={travelers >= 5 ? 44 : Math.min(travelers, 4) * 6 * 2.4}
-              height={travelers >= 5 ? 20 : 22}
+              x={-travelersSize(travelers, 30).width / 2}
+              y={-2 - travelersSize(travelers, 30).height}
+              width={travelersSize(travelers, 30).width}
+              height={travelersSize(travelers, 30).height}
               overflow="visible"
             >
-              <Travelers count={travelers} px={2.4} />
+              <Travelers count={travelers} height={30} />
             </svg>
             {heart ? (
               <text

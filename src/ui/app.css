@@ -3242,7 +3242,8 @@ button.tl-stop:active {
   cursor: pointer;
 }
 
-/* Dia/Noite (retorno do staging): lanterna ou lâmpada pendurada no botão, só durante a troca. */
+/* Dia/Noite v2 (aprovado no protótipo): a corda desce do botão com a lanterna ou a lâmpada, um dos
+   viajantes desce por ela, e a página escurece (pôr do sol) ou clareia (nascer do sol) em 2,5 s. */
 .theme-toggle.busy {
   pointer-events: none;
   cursor: default;
@@ -3250,46 +3251,192 @@ button.tl-stop:active {
 .theme-swap {
   position: fixed;
   z-index: 45;
-  width: 80px;
-  height: 170px;
+  width: 110px;
+  height: 280px;
   pointer-events: none;
 }
 .swap-rope {
   position: absolute;
-  left: 39px;
+  left: 54px;
   top: 0;
   width: 2px;
   height: 0;
-  background: var(--ink);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper) 60%, transparent);
+  background: #241a28;
+  box-shadow: 0 0 0 1px rgba(255, 251, 250, 0.5);
 }
 .swap-prop {
   position: absolute;
-  left: 17px;
+  left: 25px;
   top: 0;
   overflow: visible;
-  transform-origin: 23px 0;
+  transform-origin: 30px 0;
 }
 .swap-prop .screw {
   transform-origin: 23px 5px;
   transform-box: view-box;
 }
+.swap-prop .flame {
+  transform-origin: 23px 30px;
+  transform-box: view-box;
+}
 .swap-guy {
   position: absolute;
-  left: 50px;
+  left: 31px;
   top: 0;
+  transform-origin: 24px 50px;
 }
 .swap-puff {
   position: absolute;
-  left: 58px;
-  width: 5px;
-  height: 5px;
+  left: 70px;
   border-radius: 50%;
+  background: #e9eef3;
 }
-.theme-swap-wipe {
+.swap-spark {
+  position: absolute;
+  left: 72px;
+  width: 6px;
+  height: 6px;
+  background: #ffe066;
+  box-shadow: 0 0 6px 2px #ffd23f;
+}
+
+/* O pôr e o nascer do sol (daylight.ts): as cores são registradas para poderem deslizar; só têm
+   transição enquanto o <html> tem `theme-fading`. Sem @property, trocam na hora. */
+@property --washi {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f6edeb;
+}
+@property --paper {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fffbfa;
+}
+@property --ink {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #241a28;
+}
+@property --ink-soft {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6e5b69;
+}
+@property --sakura {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e2809f;
+}
+@property --beni {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #c4313a;
+}
+@property --matcha {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #557a3e;
+}
+@property --ai {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2b3f6b;
+}
+@property --gold {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e2a92f;
+}
+@property --silver {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9a95a3;
+}
+@property --hud {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #241a28;
+}
+@property --hud-fg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f6edeb;
+}
+@property --sea {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #dce8ee;
+}
+@property --sea-line {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #c3d6e0;
+}
+@property --land {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fbf5ec;
+}
+@property --land-edge {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a2c3a;
+}
+@property --hill {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #a9c48f;
+}
+@property --hill-dark {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6f9a5b;
+}
+@property --snow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffffff;
+}
+html.theme-fading {
+  --fade: 2500ms;
+  transition:
+    --washi var(--fade) ease-in-out,
+    --paper var(--fade) ease-in-out,
+    --ink var(--fade) ease-in-out,
+    --ink-soft var(--fade) ease-in-out,
+    --sakura var(--fade) ease-in-out,
+    --beni var(--fade) ease-in-out,
+    --matcha var(--fade) ease-in-out,
+    --ai var(--fade) ease-in-out,
+    --gold var(--fade) ease-in-out,
+    --silver var(--fade) ease-in-out,
+    --hud var(--fade) ease-in-out,
+    --hud-fg var(--fade) ease-in-out,
+    --sea var(--fade) ease-in-out,
+    --sea-line var(--fade) ease-in-out,
+    --land var(--fade) ease-in-out,
+    --land-edge var(--fade) ease-in-out,
+    --hill var(--fade) ease-in-out,
+    --hill-dark var(--fade) ease-in-out,
+    --snow var(--fade) ease-in-out;
+}
+.daylight-veil {
   position: fixed;
   inset: 0;
   z-index: 44;
   pointer-events: none;
   opacity: 0;
+}
+.daylight-veil.sunset {
+  background: linear-gradient(180deg, #ff9a5a 0%, #ff7a59 45%, #b56aa8 100%);
+  mix-blend-mode: multiply;
+}
+.daylight-veil.sunrise {
+  background: linear-gradient(0deg, #ffd27a 0%, #ffe9b8 55%, #fff6e0 100%);
+  mix-blend-mode: soft-light;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-fading {
+    transition: none;
+  }
 }

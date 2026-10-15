@@ -7,6 +7,7 @@ import type { BBox } from '../map/frame'
 import { paperAdapter } from '../map/paper'
 import { tilesAdapter } from '../map/tiles'
 import { currentTheme } from '../app/theme'
+import { FADE, isFading } from './daylight'
 import { BoardOverlay } from './BoardOverlay'
 import { CityOverlay } from './CityOverlay'
 
@@ -69,14 +70,18 @@ export function MapCanvas() {
   }, [adapter])
 
   // Modo dia/noite: o mapa de tiles troca o estilo junto com o app (e com o aparelho, antes do primeiro toque).
+  // No meio de um pôr/nascer do sol, troca na metade da luz, quando a página já está a meio caminho.
   const theme = useApp((s) => s.theme)
   useEffect(() => {
     if (!adapter) return
     const apply = () => adapter.setTheme?.(currentTheme())
-    apply()
+    const timer = isFading() ? window.setTimeout(apply, FADE / 2) : (apply(), undefined)
     const mq = matchMedia('(prefers-color-scheme: dark)')
     mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
+    return () => {
+      clearTimeout(timer)
+      mq.removeEventListener('change', apply)
+    }
   }, [adapter, theme])
 
   // Enquadramento: a viagem inteira ou a cidade aberta; anima quando muda com o mesmo adaptador.

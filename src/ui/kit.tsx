@@ -6,6 +6,7 @@ import type { Opt } from './sheetTypes'
 import { currentTheme } from '../app/theme'
 import { palette, petalBurst, takeBursts } from './petals'
 import type { Petal } from './petals'
+import { H as CAST_H, STRIDE, W as CAST_W, castFor, sprite, travelersSize } from './stage/cast'
 
 // Peças visuais da casa (guia de vibe): pixel art, selos, pétalas, painel, aviso e comemorações.
 
@@ -79,16 +80,9 @@ export function PixelTrash({ px = 3 }: { px?: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Viajantes em pixel art (1 a 4 lado a lado; 5 ou mais: a Kombi)
+// Viajantes: o elenco 24 × 30 (stage/cast), 1 a 4 lado a lado; 5 ou mais: a Kombi
 // ---------------------------------------------------------------------------
 
-const PERSON = ['.hhh.', 'hhhhh', 'hsess', '.sss.', '.bbb.', 'bbbbb', 's.b.s', '.l.l.', '.l.l.']
-const PALETTES = [
-  { h: '#3a2a2a', s: '#f3c9a8', b: '#2b3f6b', l: '#241a28', e: '#241a28' },
-  { h: '#6a3a2c', s: '#e9b48f', b: '#e2809f', l: '#241a28', e: '#241a28' },
-  { h: '#c99a4a', s: '#f6d5bd', b: '#557a3e', l: '#3a2c3a', e: '#241a28' },
-  { h: '#1d1a20', s: '#b07a57', b: '#c4313a', l: '#241a28', e: '#241a28' },
-]
 const KOMBI = [
   '..##############..',
   '.#..............#.',
@@ -100,13 +94,14 @@ const KOMBI = [
   '.##............##.',
 ]
 
-export function Travelers({ count, px = 4 }: { count: number; px?: number }) {
+export function Travelers({ count, height = 30 }: { count: number; height?: number }) {
+  const size = travelersSize(count, height)
   if (count >= 5) {
     const col: Record<string, string> = { '#': '#241a28', h: '#3a2a2a', s: '#f3c9a8', k: '#e2809f', '.': '' }
     return (
       <svg
-        width={18 * px}
-        height={8 * px}
+        width={size.width}
+        height={size.height}
         viewBox="0 0 18 8"
         shapeRendering="crispEdges"
         role="img"
@@ -124,24 +119,20 @@ export function Travelers({ count, px = 4 }: { count: number; px?: number }) {
   const n = Math.max(1, count)
   return (
     <svg
-      width={n * 6 * px}
-      height={9 * px}
-      viewBox={`0 0 ${n * 6} 9`}
+      width={size.width}
+      height={size.height}
+      viewBox={`0 0 ${(n - 1) * STRIDE + CAST_W} ${CAST_H}`}
       shapeRendering="crispEdges"
       role="img"
       aria-label={`${n} ${n === 1 ? 'viajante' : 'viajantes'}`}
     >
-      {Array.from({ length: n }, (_, i) =>
-        PERSON.flatMap((r, y) =>
-          [...r].map((c, x) => {
-            const pal = PALETTES[i % PALETTES.length]!
-            const fill = (pal as Record<string, string>)[c]
-            return fill ? (
-              <rect key={`${i}-${x}-${y}`} x={i * 6 + x} y={y} width={1.02} height={1.02} fill={fill} />
-            ) : null
-          }),
-        ),
-      )}
+      {Array.from({ length: n }, (_, i) => (
+        <g key={i} transform={`translate(${i * STRIDE} 0)`}>
+          {sprite(castFor(i), 'idle').map((r, k) => (
+            <rect key={k} x={r.x} y={r.y} width={r.w + 0.02} height={1.02} fill={r.c} />
+          ))}
+        </g>
+      ))}
     </svg>
   )
 }

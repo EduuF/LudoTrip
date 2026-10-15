@@ -308,7 +308,7 @@ export function Create() {
             ))}
           </div>
           <div style={{ marginTop: 16 }}>
-            <Travelers count={people} px={6} />
+            <Travelers count={people} height={90} />
           </div>
         </>
       ) : null}

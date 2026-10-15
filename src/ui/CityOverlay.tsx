@@ -5,6 +5,7 @@ import type { MapAdapter } from '../map/adapter'
 import { citySpots, DAY_COLORS } from '../map/spots'
 import { colorOf } from './colors'
 import { Travelers } from './kit'
+import { travelersSize } from './stage/cast'
 import { f1, placeLabels, relax, smoothPath } from './mapBits'
 import type { Rect } from './mapBits'
 import { PLACE_KINDS } from './placeKinds'
@@ -180,13 +181,13 @@ export function CityOverlay({ adapter, tick, settled, destId }: Props) {
         <g transform={`translate(${f1(model.sprite[0])},${f1(model.sprite[1] - 16)})`} className="travelers">
           <g className="bob">
             <svg
-              x={-(Math.min(travelers, 4) * 6 * 2.2) / 2 - (travelers >= 5 ? 8 : 0)}
-              y={-22}
-              width={travelers >= 5 ? 40 : Math.min(travelers, 4) * 6 * 2.2}
-              height={20}
+              x={-travelersSize(travelers, 28).width / 2}
+              y={-2 - travelersSize(travelers, 28).height}
+              width={travelersSize(travelers, 28).width}
+              height={travelersSize(travelers, 28).height}
               overflow="visible"
             >
-              <Travelers count={travelers} px={2.2} />
+              <Travelers count={travelers} height={28} />
             </svg>
           </g>
         </g>
