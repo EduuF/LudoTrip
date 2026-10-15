@@ -57,6 +57,18 @@ export type SheetSpec =
   | { kind: 'privacy' }
   /** Guardar na nuvem a viagem aberta (o "☁️ Salvar" do topo). */
   | { kind: 'cloudSave' }
+  /** PESSOAS (spec publicação §4.2): quem planeja, quem vai, convites aguardando. */
+  | { kind: 'people' }
+  /** CONVIDAR em 3 toques (§4.3). */
+  | { kind: 'invite' }
+  /** Um membro: papel, tirar, passar a viagem (ou sair, se for você). */
+  | { kind: 'member'; uid: string }
+  /** Um convite aguardando: cancelar, reenviar. */
+  | { kind: 'pendingInvite'; inviteId: string }
+  /** Histórico: quem fez o quê e quando (§4.6). */
+  | { kind: 'history' }
+  /** "Você está vendo": o que dá para fazer com "Só vê". */
+  | { kind: 'viewing' }
 
 /** O que fazer depois de entrar. Só dados (vai para o sessionStorage se o login redirecionar). */
 export type SignInIntent =
@@ -64,6 +76,10 @@ export type SignInIntent =
   | { kind: 'tripSheet' }
   /** Guardar na nuvem esta viagem (também um exemplo, que vira viagem da pessoa). */
   | { kind: 'saveTrip'; id: string }
+  /** Aceitar o convite do link (§4.4) e cair direto na viagem. */
+  | { kind: 'acceptInvite'; token: string }
+  /** Chamar alguém para esta viagem do aparelho: ela vai para a conta e CONVIDAR abre. */
+  | { kind: 'invite'; id: string }
   | { kind: 'none' }
 
 /** Painéis que não dependem de uma viagem aberta (aparecem também em "Suas viagens"). */

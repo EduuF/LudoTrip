@@ -72,6 +72,18 @@ function docLabel(spec: SheetSpec, doc: TripDoc): SheetLabel {
       return { kind: 'HOSPEDAGEM', name: cityName(spec.stopId, doc) }
     case 'trip':
       return { kind: 'SUA VIAGEM', name: doc.meta.name }
+    case 'people':
+      return { kind: 'PESSOAS', name: 'Pessoas' }
+    case 'invite':
+      return { kind: 'CONVIDAR', name: 'Convidar' }
+    case 'member':
+      return { kind: 'PESSOA', name: 'Pessoa' }
+    case 'pendingInvite':
+      return { kind: 'CONVITE', name: 'Convite' }
+    case 'history':
+      return { kind: 'HISTÓRICO', name: doc.meta.name }
+    case 'viewing':
+      return { kind: 'SÓ VÊ', name: 'Você está vendo' }
     case 'task': {
       const t = spec.taskId ? doc.tasks?.find((x) => x.id === spec.taskId) : undefined
       if (!spec.taskId)

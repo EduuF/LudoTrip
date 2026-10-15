@@ -53,7 +53,13 @@ beforeEach(() => {
   useRepo(memoryRepo())
   auth = memoryAuth()
   cloud = memoryCloud(() => auth.current()?.uid ?? null)
-  configureCloud({ auth, api: cloud.api, outbox: createOutbox(memoryIO()), app: 'teste' })
+  configureCloud({
+    auth,
+    api: cloud.api,
+    people: cloud.people,
+    outbox: createOutbox(memoryIO()),
+    app: 'teste',
+  })
   localStorage.setItem('ludotrip.tutorial', '1')
   useApp.setState({
     ready: false,

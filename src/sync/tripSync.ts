@@ -2,7 +2,7 @@ import { runDoc } from '../app/doc'
 import type { TripDoc } from '../app/doc'
 import type { Outbox } from './outbox'
 import { MAX_HELLO_PENDING, PROTOCOL } from './protocol'
-import type { ClientMsg, PendingOp, RejectReason, ServerMsg } from './protocol'
+import type { ClientMsg, PendingOp, RejectReason, Role, ServerMsg } from './protocol'
 import { rebase } from './rebase'
 
 // Uma viagem da nuvem neste aparelho (spec publicação §5.2–5.4). Guarda a última cópia confirmada
@@ -51,8 +51,13 @@ export interface TripSyncOptions {
   onRemote?(msg: Extract<ServerMsg, { t: 'applied' }>, before: TripDoc): void
   /** Ações deste aparelho que não cabem mais (viram painel de escolha). */
   onRefused?(list: Refusal[]): void
-  onGone?(reason: 'deleted' | 'removed'): void
+  onGone?(reason: 'deleted' | 'removed', by?: string): void
   onUpgrade?(): void
+  /** Colaboração (M5): quem está com a viagem aberta, aviso para reler as pessoas, papel novo, alguém entrou. */
+  onPresence?(online: string[]): void
+  onPeople?(): void
+  onRole?(role: Role): void
+  onJoined?(uid: string, name: string): void
   /** Espera antes de reconectar (injetável nos testes). */
   schedule?(fn: () => void, ms: number): unknown
 }
@@ -234,8 +239,16 @@ export class TripSync {
         return this.emit()
       case 'gone':
         this.stop()
-        this.o.onGone?.(m.reason)
+        this.o.onGone?.(m.reason, m.by)
         return this.emit()
+      case 'presence':
+        return this.o.onPresence?.(m.online)
+      case 'people':
+        return this.o.onPeople?.()
+      case 'role':
+        return this.o.onRole?.(m.role)
+      case 'joined':
+        return this.o.onJoined?.(m.uid, m.name)
     }
   }
 }

@@ -23,9 +23,19 @@ import { TripSync } from '../sync/tripSync'
 import type { Refusal, SyncStatus } from '../sync/tripSync'
 import { SCHEMA_VERSION } from './doc'
 import { describeRefusal, mergeTrips, stripCloud, withCloud } from './cloudTrips'
+import { canEdit, nameOf } from './people'
+import type {
+  DeletedTrip,
+  HistoryItem,
+  PeopleApi,
+  People,
+  PendingInvite,
+  PreviewResult,
+} from '../sync/peopleApi'
+import type { Role } from '../sync/protocol'
 
 export type Tab = 'mapa' | 'atividades' | 'tarefas'
-export type Screen = 'home' | 'trip' | 'create'
+export type Screen = 'home' | 'trip' | 'create' | 'invite'
 export type ExampleKey = keyof typeof ALL_TRIPS
 /** O mapa mostra a viagem inteira ou uma cidade (com as atividades de cada dia). */
 export type MapView = { kind: 'trip' } | { kind: 'city'; destId: ID }
@@ -100,6 +110,29 @@ export interface AppState {
   needsUpgrade: boolean
   /** A nuvem existe neste build (no GitHub Pages, não: tudo fica no aparelho, como antes). */
   cloudEnabled: boolean
+  /** Quem participa da viagem da nuvem aberta (spec publicação §4.2). */
+  people: People | null
+  /** Viagens apagadas para todos, ainda recuperáveis (só do Dono). */
+  deleted: DeletedTrip[]
+  /** O convite aberto pelo link (/convite/<token>). */
+  invite: { token: string; result: PreviewResult | null; busy: boolean } | null
+  /** Relê as pessoas da viagem aberta. */
+  loadPeople(): Promise<void>
+  /** CONVIDAR: cria o convite (e o "Convidado" no mapa, se a pessoa vai viajar). Devolve o link. */
+  createInvite(role: Exclude<Role, 'owner'>, travels: boolean): Promise<string | null>
+  cancelInvite(invite: PendingInvite): Promise<void>
+  setMemberRole(uid: string, role: Exclude<Role, 'owner'>): Promise<void>
+  removeMember(uid: string, alsoTraveler: boolean): Promise<void>
+  leaveTrip(): Promise<void>
+  transferTrip(uid: string): Promise<void>
+  restoreTrip(id: string): Promise<void>
+  loadHistory(before?: number): Promise<{ items: HistoryItem[]; more: boolean } | null>
+  /** Chamar alguém: viagem do aparelho vai antes para a conta (com ENTRAR, se preciso). */
+  startInvite(): void
+  /** Abre a prévia de um convite. */
+  openInvite(token: string): Promise<void>
+  /** "Entrar e participar": sem conta, ENTRAR primeiro; com conta, entra e abre a viagem. */
+  acceptInvite(): Promise<void>
   init(): Promise<void>
   /** Junta as viagens do aparelho com as da conta. */
   refreshTrips(): Promise<void>
@@ -168,6 +201,8 @@ export const useRepo = (r: TripRepo) => {
 export interface CloudDeps {
   auth: AuthClient
   api: CloudApi
+  /** Pessoas e convites (M5). */
+  people?: PeopleApi
   outbox: Outbox
   /** Versão do app (vai no `hello` e nos logs). */
   app: string
@@ -347,25 +382,19 @@ export const useApp = create<AppState>((set, get) => {
     return save(doc)
   }
 
-  /** Apagar uma viagem da nuvem (só quem criou), com Desfazer que a sobe de novo. */
+  /** Apagar uma viagem da nuvem (só o Dono): vai para "Apagadas" por 30 dias; o Desfazer recupera. */
   const removeCloudTrip = async (meta: TripMeta, deps: CloudDeps) => {
-    if (meta.cloud?.role !== 'owner') return toast('Só quem criou a viagem pode apagá-la.', true)
-    const copy = await repo.load(meta.id)
+    if (meta.cloud?.role !== 'owner') return toast('Só o Dono da viagem pode apagá-la.', true)
     if (!(await deps.api.remove(meta.id)))
       return toast('Sem internet: não deu para apagar agora. Tente quando a conexão voltar.', true)
     await repo.remove(meta.id)
     await deps.outbox.clear(meta.id)
+    if (syncTripId === meta.id) get().goHome()
     await get().refreshTrips()
-    if (!copy) return toast(`${meta.name} apagada.`)
-    toast(`${meta.name} apagada.`, false, true, () => {
-      void (async () => {
-        const doc = stripCloud(copy)
-        const up = await deps.api.upload(doc)
-        if (!up.ok) return toast('Sem internet: não deu para trazer de volta.', true)
-        await repo.save(withCloud(doc, { ...meta.cloud!, version: up.version }))
-        await get().refreshTrips()
-        set({ toast: null })
-      })()
+    track('viagem_apagada', { cloud: true })
+    toast(`${meta.name} apagada. Fica em Apagadas por 30 dias.`, false, true, () => {
+      set({ toast: null })
+      void get().restoreTrip(meta.id)
     })
   }
 
@@ -467,6 +496,17 @@ export const useApp = create<AppState>((set, get) => {
     if (!intent || intent.kind === 'none') return
     if (intent.kind === 'openTrip') return get().openTrip(intent.id)
     if (intent.kind === 'tripSheet' && get().screen === 'trip') get().openSheet({ kind: 'trip' })
+    if (intent.kind === 'acceptInvite') {
+      if (get().invite?.token !== intent.token)
+        set({ invite: { token: intent.token, result: null, busy: false } })
+      return get().acceptInvite()
+    }
+    if (intent.kind === 'invite') {
+      set({ sheet: null, sheetBack: [] })
+      await get().uploadTrips([intent.id])
+      if (get().doc?.meta.cloud && get().doc?.meta.id === intent.id) get().openSheet({ kind: 'invite' })
+      return
+    }
     if (intent.kind === 'saveTrip') {
       // Feito o login, sobe esta viagem; o aviso "guardada ✓" e o selo ☁️ mostram o resultado.
       set({ sheet: null, sheetBack: [] })
@@ -495,7 +535,7 @@ export const useApp = create<AppState>((set, get) => {
   const remoteToast = (msg: { action: DocAction; opId: string; by: string }, before: TripDoc) => {
     const r = runDoc(before, msg.action, { opId: msg.opId })
     if (!r.ok) return
-    const who = msg.by === get().account?.uid ? 'Noutro aparelho' : 'Alguém'
+    const who = msg.by === get().account?.uid ? 'Noutro aparelho' : (nameOf(msg.by, get().people) ?? 'Alguém')
     const now = Date.now()
     remoteBurst =
       now - remoteBurst.at < 3000 ? { at: now, count: remoteBurst.count + 1 } : { at: now, count: 1 }
@@ -540,8 +580,10 @@ export const useApp = create<AppState>((set, get) => {
     if (!deps) return toast('Esta viagem está numa conta. Entre para abrir.', true)
     if (!get().account) return get().openSignIn('para abrir esta viagem', { kind: 'openTrip', id })
     stopSync()
-    const base =
-      loaded && meta.version >= 0 ? { doc: stripCloud(migrate(loaded)), version: meta.version } : null
+    set({ people: null })
+    // O papel pode mudar com a viagem aberta (o Dono trocou): a cópia guardada acompanha.
+    let cm: CloudMeta = { ...meta }
+    const base = loaded && cm.version >= 0 ? { doc: stripCloud(migrate(loaded)), version: cm.version } : null
     // `keepView`: a viagem já está na tela (acabou de subir): troca só a origem, mantendo aba e dia.
     let shown = !!opts.keepView
     const s = new TripSync({
@@ -553,10 +595,11 @@ export const useApp = create<AppState>((set, get) => {
       app: deps.app,
       onView: (v) => {
         if (sync !== s) return
-        const doc = v.doc ? withCloud(v.doc, { ...meta, version: s.version }) : null
+        const doc = v.doc ? withCloud(v.doc, { ...cm, version: s.version }) : null
         if (doc && !shown) {
           shown = true
           showTrip(doc)
+          void get().loadPeople()
         } else if (doc) set({ doc })
         set({ cloud: { status: v.status, pending: v.pending } })
         if (!doc && v.status === 'offline' && !shown)
@@ -565,21 +608,58 @@ export const useApp = create<AppState>((set, get) => {
             true,
           )
       },
-      onBase: (b) => void repo.save(withCloud(b.doc, { ...meta, version: b.version })).catch(() => undefined),
+      onBase: (b) => void repo.save(withCloud(b.doc, { ...cm, version: b.version })).catch(() => undefined),
+      onPresence: (online) => {
+        const p = get().people
+        if (sync === s && p) set({ people: { ...p, online } })
+      },
+      onPeople: () => {
+        if (sync === s) void get().loadPeople()
+      },
+      onJoined: (uid, name) => {
+        if (sync !== s || uid === get().account?.uid) return
+        toast(`${name} entrou na viagem 🎉`)
+        sfx.level()
+        track('pessoa_chegou', {})
+      },
+      onRole: (role) => {
+        if (sync !== s) return
+        const was = cm.role
+        cm = { ...cm, role }
+        const d = get().doc
+        if (d) set({ doc: withCloud(stripCloud(d), { ...cm, version: s.version }), undoStack: [] })
+        void get().refreshTrips()
+        void get().loadPeople()
+        if (role === was) return
+        toast(
+          role === 'owner'
+            ? 'Agora a viagem é sua: você é o Dono.'
+            : role === 'viewer'
+              ? 'Agora você só pode ver esta viagem.'
+              : 'Agora você planeja junto ✓',
+        )
+      },
       onRemote: (m, before) => {
         if (sync === s) remoteToast(m, before)
       },
       onRefused: (list) => {
         if (sync === s) refusalSheet(list)
       },
-      onGone: (reason) => {
+      onGone: (reason, by) => {
         if (sync !== s) return
         stopSync()
         void repo.remove(id)
         void deps.outbox.clear(id)
         get().goHome()
         const name = get().doc?.meta.name ?? loaded?.meta.name ?? 'A viagem'
-        toast(reason === 'deleted' ? `${name} foi apagada.` : `Você não faz mais parte de ${name}.`, true)
+        toast(
+          reason === 'deleted'
+            ? by && cm.role !== 'owner'
+              ? `${by} apagou ${name}.`
+              : `${name} foi apagada.`
+            : `Você não faz mais parte de ${name}.`,
+          true,
+        )
       },
       onUpgrade: () => {
         set({ needsUpgrade: true })
@@ -628,6 +708,9 @@ export const useApp = create<AppState>((set, get) => {
     needsUpgrade: false,
     cloudEnabled: false,
     justUploaded: [],
+    people: null,
+    deleted: [],
+    invite: null,
 
     async init() {
       // O endereço é lido antes de tudo (a tela inicial troca o endereço para "/").
@@ -673,6 +756,7 @@ export const useApp = create<AppState>((set, get) => {
         }
       }
       if (route?.kind === 'emailLink') set({ sheet: { kind: 'signin', reason: 'pelo link do e-mail' } })
+      if (route?.kind === 'invite') void get().openInvite(route.token)
       unsubAuth?.()
       unsubAuth =
         cloudDeps?.auth.onChange((account) => {
@@ -789,6 +873,8 @@ export const useApp = create<AppState>((set, get) => {
       const account = get().account
       const remote = cloudDeps && account ? await cloudDeps.api.listTrips() : null
       const { trips, drop } = mergeTrips(local, remote, !!account)
+      const deleted = cloudDeps?.people && account && remote ? await cloudDeps.people.deleted() : null
+      set({ deleted: account ? (deleted ?? get().deleted) : [] })
       for (const m of drop) {
         await repo.remove(m.id)
         await cloudDeps?.outbox.clear(m.id)
@@ -815,7 +901,16 @@ export const useApp = create<AppState>((set, get) => {
     goHome() {
       stopSync()
       // Primeiro sai da tela da viagem; só depois solta o documento (nenhuma tela desenha sem viagem).
-      set({ screen: 'home', sheet: null, toast: null, undoStack: [], playing: false, cloud: null })
+      set({
+        screen: 'home',
+        sheet: null,
+        toast: null,
+        undoStack: [],
+        playing: false,
+        cloud: null,
+        people: null,
+        invite: null,
+      })
       setTimeout(() => {
         if (get().screen !== 'trip') set({ doc: null })
       }, 0)
@@ -834,6 +929,10 @@ export const useApp = create<AppState>((set, get) => {
     act(action, opts = {}) {
       const before = get().doc
       if (!before) return false
+      if (!canEdit(before)) {
+        toast('Você está vendo esta viagem. Para mudar algo, peça ao Dono para planejar junto.', true)
+        return false
+      }
       const opId = newOpId()
       const r = runDoc(before, action, { opId })
       if (!r.ok) {
@@ -885,6 +984,7 @@ export const useApp = create<AppState>((set, get) => {
       const { doc, undoStack } = get()
       const last = undoStack[undoStack.length - 1]
       if (!doc || !last) return toast(describeUndoRefusal('NOTHING_TO_UNDO'), true)
+      if (!canEdit(doc)) return toast('Você está vendo esta viagem.', true)
       // O Desfazer é uma ação como as outras (spec publicação §5.2): na nuvem, vai pela mesma fila.
       const opId = newOpId()
       const revert: DocAction = { type: 'revert', steps: last.steps }
@@ -1082,6 +1182,208 @@ export const useApp = create<AppState>((set, get) => {
 
     dismiss(id) {
       set((s) => ({ celebrations: s.celebrations.filter((c) => c.id !== id) }))
+    },
+
+    // --- Colaboração (spec publicação §4) ---
+
+    async loadPeople() {
+      const id = get().doc?.meta.id
+      const api = cloudDeps?.people
+      if (!id || !api || !get().doc?.meta.cloud) return
+      const p = await api.people(id)
+      if (p && get().doc?.meta.id === id) set({ people: p })
+    },
+
+    startInvite() {
+      const doc = get().doc
+      if (!doc) return
+      if (doc.meta.cloud) return get().openSheet({ kind: 'invite' })
+      if (!cloudDeps) return toast('Chamar pessoas precisa da versão com conta do LudoTrip.', true)
+      // Viagem do aparelho: vai para a conta antes (as outras pessoas precisam de onde abrir).
+      if (!get().account)
+        return get().openSignIn('para chamar alguém para a viagem', { kind: 'invite', id: doc.meta.id })
+      void (async () => {
+        await get().uploadTrips([doc.meta.id])
+        if (get().doc?.meta.cloud) get().openSheet({ kind: 'invite' })
+      })()
+    },
+
+    async createInvite(role, travels) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc?.meta.cloud || !api) return null
+      // "Sim, vai": o bonequinho "Convidado" aparece na hora, no mapa e em Quem vai.
+      let travelerId: string | undefined
+      if (travels) {
+        travelerId = uid('t')
+        const ok = get().act(
+          {
+            type: 'engine',
+            command: { type: 'addTraveler', traveler: { id: travelerId, name: 'Convidado' } },
+          },
+          { keep: true },
+        )
+        if (!ok) return null
+      }
+      const r = await api.createInvite(doc.meta.id, role, travelerId)
+      if (!r.ok) {
+        // O convite não saiu: o "Convidado" não fica sobrando.
+        if (travelerId)
+          get().act({ type: 'engine', command: { type: 'removeTraveler', id: travelerId } }, { keep: true })
+        toast(
+          r.reason === 'full'
+            ? 'Esta viagem já tem 20 pessoas.'
+            : r.reason === 'invites-limit'
+              ? 'Já há 10 convites aguardando. Cancele algum em Pessoas para chamar mais alguém.'
+              : r.reason === 'role'
+                ? 'Seu papel não deixa chamar alguém com esse papel.'
+                : 'Sem internet: não deu para criar o convite agora.',
+          true,
+        )
+        return null
+      }
+      track('convite_criado', { role, travels })
+      void get().loadPeople()
+      return r.url
+    },
+
+    async cancelInvite(inv) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc || !api) return
+      const r = await api.revokeInvite(doc.meta.id, inv.id)
+      if (!r.ok) return toast('Sem internet: não deu para cancelar o convite agora.', true)
+      track('convite_cancelado', {})
+      await get().loadPeople()
+      const t = inv.travelerId
+        ? get().doc?.itinerary.travelers.find((x) => x.id === inv.travelerId)
+        : undefined
+      // O "Convidado" sai junto (com Desfazer, que o deixa como viajante sem convite).
+      if (t && !t.userId && (get().doc?.itinerary.travelers.length ?? 0) > 1)
+        get().act({ type: 'engine', command: { type: 'removeTraveler', id: t.id } }, { keep: true })
+      else toast('Convite cancelado: o link não vale mais.')
+    },
+
+    async setMemberRole(uid, role) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc || !api) return
+      const r = await api.setRole(doc.meta.id, uid, role)
+      if (!r.ok) return toast('Sem internet: não deu para mudar o papel agora.', true)
+      await get().loadPeople()
+      const name = nameOf(uid, get().people) ?? 'A pessoa'
+      toast(role === 'viewer' ? `${name} agora só vê a viagem.` : `${name} agora planeja junto.`)
+    },
+
+    async removeMember(uid, alsoTraveler) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc || !api) return
+      const name = nameOf(uid, get().people) ?? 'A pessoa'
+      const r = await api.removeMember(doc.meta.id, uid, alsoTraveler)
+      if (!r.ok) return toast('Sem internet: não deu para tirar agora.', true)
+      track('membro_removido', { traveler: alsoTraveler })
+      set({ sheet: { kind: 'people' }, sheetBack: [] })
+      await get().loadPeople()
+      toast(`${name} saiu da viagem.`)
+    },
+
+    async leaveTrip() {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      const me = get().account?.uid
+      if (!doc || !api || !me) return
+      const r = await api.removeMember(doc.meta.id, me, false)
+      if (!r.ok)
+        return toast(
+          r.reason === 'owner-must-transfer'
+            ? 'Passe a viagem para alguém antes de sair.'
+            : 'Sem internet: não deu para sair agora.',
+          true,
+        )
+      track('saiu_da_viagem', {})
+      stopSync()
+      await repo.remove(doc.meta.id)
+      await cloudDeps?.outbox.clear(doc.meta.id)
+      get().goHome()
+      toast(`Você saiu de ${doc.meta.name}.`)
+    },
+
+    async transferTrip(uid) {
+      const doc = get().doc
+      const api = cloudDeps?.people
+      if (!doc || !api) return
+      const name = nameOf(uid, get().people) ?? 'A pessoa'
+      const r = await api.transfer(doc.meta.id, uid)
+      if (!r.ok) return toast('Sem internet: não deu para passar a viagem agora.', true)
+      track('viagem_passada', {})
+      set({ sheet: { kind: 'people' }, sheetBack: [] })
+      await get().loadPeople()
+      toast(`${name} agora é o Dono. Você continua planejando junto.`)
+    },
+
+    async restoreTrip(id) {
+      const api = cloudDeps?.people
+      if (!api) return
+      const r = await api.restore(id)
+      if (!r.ok) return toast('Sem internet: não deu para recuperar agora.', true)
+      track('viagem_recuperada', {})
+      await get().refreshTrips()
+      const name = get().trips.find((t) => t.id === id)?.name ?? 'A viagem'
+      toast(`${name} voltou ✓`)
+    },
+
+    async loadHistory(before) {
+      const id = get().doc?.meta.id
+      const api = cloudDeps?.people
+      if (!id || !api) return null
+      if (!before) track('historico_aberto', {})
+      return api.history(id, before)
+    },
+
+    async openInvite(token) {
+      const api = cloudDeps?.people
+      if (!api) return
+      stopSync()
+      set({ screen: 'invite', invite: { token, result: null, busy: false }, sheet: null, sheetBack: [] })
+      const result = await api.preview(token)
+      if (get().invite?.token !== token) return
+      set({ invite: { token, result, busy: false } })
+      track('convite_aberto', { ok: result.ok })
+    },
+
+    async acceptInvite() {
+      const inv = get().invite
+      const api = cloudDeps?.people
+      if (!inv || !api) return
+      if (!get().account)
+        return get().openSignIn('para participar da viagem', { kind: 'acceptInvite', token: inv.token })
+      set({ invite: { ...inv, busy: true } })
+      const r = await api.accept(inv.token)
+      if (!r.ok) {
+        if (r.reason === 'offline' || r.reason === 'error') {
+          set({ invite: { ...inv, busy: false } })
+          return toast('Sem internet: não deu para entrar agora. Tente de novo.', true)
+        }
+        if (r.reason === 'auth') {
+          set({ invite: { ...inv, busy: false } })
+          return get().openSignIn('para participar da viagem', { kind: 'acceptInvite', token: inv.token })
+        }
+        set({
+          invite: {
+            ...inv,
+            busy: false,
+            result: { ok: false, reason: r.reason, ...(r.inviter ? { inviter: r.inviter } : {}) },
+          },
+        })
+        return
+      }
+      track('convite_aceito', { role: r.role, already: r.already })
+      set({ invite: null })
+      await get().refreshTrips()
+      await get().openTrip(r.tripId)
+      const name = get().doc?.meta.name
+      if (!r.already && name) toast(`Você entrou em ${name} 🎉`)
     },
 
     toggleSound() {

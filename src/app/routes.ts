@@ -13,7 +13,9 @@ const routeOf = (s: AppState): Route | null =>
     ? { kind: 'trip', id: s.doc.meta.id }
     : s.screen === 'home'
       ? { kind: 'home' }
-      : null
+      : s.screen === 'invite' && s.invite
+        ? { kind: 'invite', token: s.invite.token }
+        : null
 
 /** Mantém o endereço igual à tela. Devolve a função que desliga. */
 export function wireRoutes(): () => void {

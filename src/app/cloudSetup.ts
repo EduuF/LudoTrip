@@ -1,5 +1,6 @@
 import type { AuthClient } from '../auth/authClient'
 import { httpCloudApi } from '../sync/cloudApi'
+import { httpPeopleApi } from '../sync/peopleApi'
 import { createOutbox } from '../sync/outbox'
 import { configureCloud } from './store'
 
@@ -15,5 +16,11 @@ export async function setupCloud(): Promise<void> {
   // Sem login disponível (ex.: sem rede na primeira vez), o app segue só no aparelho.
   if (!auth) return
   const app = import.meta.env.VITE_APP_VERSION ?? 'dev'
-  configureCloud({ auth, api: httpCloudApi(auth, location.origin, app), outbox: createOutbox(), app })
+  configureCloud({
+    auth,
+    api: httpCloudApi(auth, location.origin, app),
+    people: httpPeopleApi(auth, location.origin, app),
+    outbox: createOutbox(),
+    app,
+  })
 }

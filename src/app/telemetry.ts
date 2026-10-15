@@ -17,6 +17,18 @@ export type EventName =
   | 'offline_fila'
   | 'painel_aberto'
   | 'animacao'
+  // Colaboração (M5)
+  | 'convite_criado'
+  | 'convite_cancelado'
+  | 'convite_aberto'
+  | 'convite_aceito'
+  | 'pessoa_chegou'
+  | 'membro_removido'
+  | 'saiu_da_viagem'
+  | 'viagem_passada'
+  | 'viagem_apagada'
+  | 'viagem_recuperada'
+  | 'historico_aberto'
 
 type Props = Record<string, string | number | boolean>
 
@@ -34,6 +46,11 @@ const ALLOWED = new Set([
   'momento',
   'variacao',
   'minima',
+  'role',
+  'travels',
+  'traveler',
+  'ok',
+  'already',
 ])
 const MAX_VALUE = 40
 
