@@ -73,7 +73,7 @@ Vamos criar **dois projetos**:
 - `ludotrip-dev`, para os testes;
 - `ludotrip`, para o público.
 
-Repita os passos 2.1 a 2.4 para cada um. O 2.5 é só para o `ludotrip`.
+Faça os passos 2.1 a 2.4 primeiro com o `ludotrip-dev`; depois **crie o segundo projeto**, `ludotrip`, e faça os mesmos passos 2.1 a 2.4 nele. O 2.5 é só para o `ludotrip`.
 
 ### 2.1 Criar o projeto
 
@@ -110,8 +110,8 @@ Repita os passos 2.1 a 2.4 para cada um. O 2.5 é só para o `ludotrip`.
 
 1. Ainda em **Authentication** → aba **Configurações** (Settings) → **Domínios autorizados** → **Adicionar domínio**.
 2. Adicione o domínio do ambiente, **sem** `https://`:
-   - **em `ludotrip-dev`:** `ludotrip-staging.SEU-SUBDOMINIO.workers.dev`, com o subdomínio do passo 1.2;
-   - **em `ludotrip`:** `ludotrip.SEU-SUBDOMINIO.workers.dev`. O domínio próprio entra no M6.
+   - **em `ludotrip-dev`:** `ludotrip-staging.ludotrip.workers.dev`, com o subdomínio do passo 1.2;
+   - **em `ludotrip`:** `ludotrip.ludotrip.workers.dev`. O domínio próprio entra no M6.
 3. Clique em **Adicionar**.
 
 **Endereço de volta do login do Google** (necessário para o login funcionar no iPhone):
@@ -120,11 +120,11 @@ Repita os passos 2.1 a 2.4 para cada um. O 2.5 é só para o `ludotrip`.
 2. Menu ☰ → **Google Auth Platform** → **Clientes** (Clients). Em contas antigas: **APIs e serviços** → **Credenciais**.
 3. Clique em **Web client (auto created by Google Service)**.
 4. Em **URIs de redirecionamento autorizados**, clique em **+ Adicionar URI** e cole:
-   `https://ludotrip-staging.SEU-SUBDOMINIO.workers.dev/__/auth/handler`.
+   `https://ludotrip-staging.ludotrip.workers.dev/__/auth/handler`.
 5. Em **Origens JavaScript autorizadas**, clique em **+ Adicionar URI** e cole:
-   `https://ludotrip-staging.SEU-SUBDOMINIO.workers.dev`.
+   `https://ludotrip-staging.ludotrip.workers.dev`.
 6. Clique em **Salvar**. Pode levar de 5 minutos a algumas horas para valer.
-7. Repita no projeto `ludotrip`, com `ludotrip.SEU-SUBDOMINIO.workers.dev`.
+7. Quando o projeto `ludotrip` existir (ele é criado no seu próprio 2.1), repita estes passos nele, com `ludotrip.ludotrip.workers.dev`.
 8. Não apague nada que já estiver lá.
 9. Ainda em **Google Auth Platform** → **Branding** (Marca), confira:
    - **Nome do app:** `LudoTrip`;
