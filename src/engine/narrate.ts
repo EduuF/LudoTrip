@@ -26,11 +26,11 @@ export const MODE_NAMES: Record<LegMode, string> = {
   moto: 'moto',
 }
 
-/** Nome do destino de uma parada ("Noites em aberto" quando não tem destino). */
+/** Nome do destino de uma parada ("Noites em aberto" ou "Japão (cidades em aberto)" quando não tem destino). */
 export function stopName(it: Itinerary, stopId: unknown, names: Names): string {
   const stop = it.stops.find((s) => s.id === stopId)
   if (!stop) return 'Esse destino'
-  if (!stop.destinationId) return 'Noites em aberto'
+  if (!stop.destinationId) return stop.openIn ? `${stop.openIn.name} (cidades em aberto)` : 'Noites em aberto'
   return names.destinations.find((d) => d.id === stop.destinationId)?.name ?? 'Esse destino'
 }
 

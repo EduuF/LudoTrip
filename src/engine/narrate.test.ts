@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { japao, portugal, rio } from './fixtures/trips'
+import { asiaAberta, japao, portugal, rio } from './fixtures/trips'
 import { refuse, run } from './fixtures/helpers'
-import { describeEffects, describeError, describeIssue, describeUndoRefusal } from './narrate'
+import { describeEffects, describeError, describeIssue, describeUndoRefusal, stopName } from './narrate'
 import { health } from './derive'
 import type { Command } from './commands'
 import type { BuiltTrip } from './fixtures/build'
@@ -202,5 +202,16 @@ describe('quests', () => {
     const q = quests(t, s)
     expect(q).toContain('Vale do Douro → Lagos: ~7 h de carro num dia.')
     expect(q).toContain('Lisboa → Nazaré fica fora do período de Carro alugado.')
+  })
+})
+
+describe('nome da parada', () => {
+  it('noites em aberto num país dizem o país', () => {
+    const t = asiaAberta()
+    const names = { destinations: t.destinations, places: t.places }
+    expect(stopName(t.itinerary, 's1', names)).toBe('Japão (cidades em aberto)')
+    expect(stopName(t.itinerary, 's3', names)).toBe('Seul')
+    const plain = run(rio().itinerary, { type: 'removeStop', stopId: 's1' }).state
+    expect(stopName(plain, plain.stops[0]!.id, names)).toBe('Noites em aberto')
   })
 })
