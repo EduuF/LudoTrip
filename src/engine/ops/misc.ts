@@ -66,6 +66,55 @@ export function setTravelers(it: Itinerary, _b: Itinerary, a: { travelers: Trave
   it.travelers = a.travelers.map((t) => ({ ...t }))
 }
 
+// Um viajante por vez (colaboração, spec publicação §4.2): duas pessoas mexendo em "Quem vai" ao mesmo
+// tempo nunca apagam o que a outra fez, como aconteceria trocando a lista inteira.
+
+export function addTraveler(it: Itinerary, _b: Itinerary, a: { traveler: Traveler }) {
+  if (it.travelers.some((t) => t.id === a.traveler.id)) fail('INVALID', { reason: 'duplicate-id' })
+  const name = a.traveler.name.trim()
+  if (!name) fail('INVALID', { reason: 'empty-name' })
+  it.travelers.push({ ...a.traveler, name })
+}
+
+export function setTraveler(
+  it: Itinerary,
+  _b: Itinerary,
+  a: { id: ID; name?: string; userId?: ID | null; sprite?: Traveler['sprite'] },
+) {
+  const t = it.travelers.find((x) => x.id === a.id)
+  if (!t) fail('NOT_FOUND', { id: a.id })
+  const x = t!
+  if (a.name !== undefined) {
+    const name = a.name.trim()
+    if (!name) fail('INVALID', { reason: 'empty-name' })
+    x.name = name
+  }
+  if (a.userId === null) delete x.userId
+  else if (a.userId !== undefined) x.userId = a.userId
+  if (a.sprite !== undefined) x.sprite = a.sprite
+}
+
+/** Tira um viajante (e o tira de onde estava marcado como participante). Sempre fica pelo menos um. */
+export function removeTraveler(it: Itinerary, _b: Itinerary, a: { id: ID }) {
+  if (!it.travelers.some((t) => t.id === a.id)) fail('NOT_FOUND', { id: a.id })
+  if (it.travelers.length <= 1) fail('INVALID', { reason: 'last-traveler' })
+  it.travelers = it.travelers.filter((t) => t.id !== a.id)
+  const clean = (o: { participants?: ID[] }) => {
+    if (!o.participants) return
+    o.participants = o.participants.filter((p) => p !== a.id)
+    if (!o.participants.length) delete o.participants
+  }
+  for (const s of it.stops) {
+    clean(s)
+    for (const d of s.days) for (const v of d) clean(v)
+  }
+  for (const l of it.legs) {
+    clean(l)
+    for (const d of l.aboard) for (const v of d) clean(v)
+    for (const v of l.waypoints) clean(v)
+  }
+}
+
 /** De onde a viagem sai e para onde volta (nome e lugar); null tira a casa. */
 export function setHome(it: Itinerary, _b: Itinerary, a: { home: NonNullable<Itinerary['home']> | null }) {
   if (a.home === null) {

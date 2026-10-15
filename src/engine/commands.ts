@@ -52,6 +52,9 @@ const HANDLERS = {
   setPace: misc.setPace,
   setDefaultMode: misc.setDefaultMode,
   setTravelers: misc.setTravelers,
+  addTraveler: misc.addTraveler,
+  setTraveler: misc.setTraveler,
+  removeTraveler: misc.removeTraveler,
   setHome: misc.setHome,
 } satisfies Record<string, Handler<never>>
 

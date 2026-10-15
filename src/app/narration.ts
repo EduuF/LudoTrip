@@ -80,6 +80,16 @@ function leadForCommand(cmd: Command, doc: TripDoc): string | null {
           : 'A hospedagem voltou para as tarefas.'
     case 'setTravelers':
       return 'Quem vai: salvo.'
+    case 'addTraveler':
+      return `${cmd.traveler.name.trim()} entrou em Quem vai.`
+    case 'setTraveler': {
+      const was = it.travelers.find((t) => t.id === cmd.id)?.name
+      return cmd.name && cmd.name.trim() !== was
+        ? `${was ?? 'Viajante'} agora é ${cmd.name.trim()}.`
+        : 'Quem vai: salvo.'
+    }
+    case 'removeTraveler':
+      return `${it.travelers.find((t) => t.id === cmd.id)?.name ?? 'Alguém'} saiu de Quem vai.`
     case 'setHome':
       return cmd.home ? `Saída e volta por ${cmd.home.name}.` : 'Sem cidade de saída.'
     default:
