@@ -46,9 +46,16 @@ export type SheetSpec =
   | { kind: 'signin'; reason: string; intent?: SignInIntent; step?: 'confirmEmail' }
   /** Sua conta: quem está logado e "Sair da conta". */
   | { kind: 'account' }
+  /**
+   * Aparelho que já teve outra conta (spec publicação §3.5): escolher quais viagens deste aparelho
+   * levar para a conta que entrou (nada marcado de início).
+   */
+  | { kind: 'adopt'; trips: { id: ID; name: string }[] }
+  /** Instalar o app (tela de início): os passos, no iPhone ou no Android. */
+  | { kind: 'install' }
 
 /** O que fazer depois de entrar. Só dados (vai para o sessionStorage se o login redirecionar). */
 export type SignInIntent = { kind: 'openTrip'; id: string } | { kind: 'tripSheet' } | { kind: 'none' }
 
 /** Painéis que não dependem de uma viagem aberta (aparecem também em "Suas viagens"). */
-export const NO_DOC_SHEETS = new Set<SheetSpec['kind']>(['signin', 'account'])
+export const NO_DOC_SHEETS = new Set<SheetSpec['kind']>(['choice', 'signin', 'account', 'adopt', 'install'])

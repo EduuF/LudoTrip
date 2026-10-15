@@ -41,7 +41,7 @@ import type { PlacePick } from './PlaceSearch'
 import { PLACE_KIND_ORDER, PLACE_KINDS } from './placeKinds'
 import { NO_DOC_SHEETS } from './sheetTypes'
 import type { SheetSpec } from './sheetTypes'
-import { AccountSheet, SignInSheet } from './Entrar'
+import { AccountSheet, AdoptSheet, InstallSheet, SignInSheet, TripCloudRow } from './Entrar'
 import { sheetLabel } from './sheetLabel'
 
 // Painéis com as ações em palavras (o mesmo caminho dos gestos, para quem não arrasta),
@@ -72,7 +72,9 @@ export function Sheets() {
       dir={dir}
       editor={EDITORS.has(sheet.kind) && !(sheet.kind === 'task' && !sheet.taskId)}
     >
-      {sheet.kind === 'signin' ? (
+      {sheet.kind === 'choice' ? (
+        <ChoiceBody sheet={sheet} />
+      ) : sheet.kind === 'signin' ? (
         <SignInSheet
           key={sheet.step ?? 'start'}
           reason={sheet.reason}
@@ -80,10 +82,27 @@ export function Sheets() {
         />
       ) : sheet.kind === 'account' ? (
         <AccountSheet />
+      ) : sheet.kind === 'adopt' ? (
+        <AdoptSheet trips={sheet.trips} />
+      ) : sheet.kind === 'install' ? (
+        <InstallSheet />
       ) : (
         <Body sheet={sheet} />
       )}
     </SheetFrame>
+  )
+}
+
+/** Painel de escolha: só o título e as opções (vale também em "Suas viagens", sem viagem aberta). */
+function ChoiceBody({ sheet }: { sheet: Extract<SheetSpec, { kind: 'choice' }> }) {
+  return (
+    <>
+      <h2>{sheet.title}</h2>
+      {sheet.sub ? <p className="sub">{sheet.sub}</p> : null}
+      {sheet.options.map((o, i) => (
+        <OptButton key={i} o={o} />
+      ))}
+    </>
   )
 }
 
@@ -96,17 +115,6 @@ function Body({ sheet }: { sheet: SheetSpec }) {
   const destName = (id: ID) => doc.destinations.find((d) => d.id === id)?.name ?? 'Destino'
 
   switch (sheet.kind) {
-    case 'choice':
-      return (
-        <>
-          <h2>{sheet.title}</h2>
-          {sheet.sub ? <p className="sub">{sheet.sub}</p> : null}
-          {sheet.options.map((o, i) => (
-            <OptButton key={i} o={o} />
-          ))}
-        </>
-      )
-
     case 'order': {
       const s = it.stops.find((x) => x.id === sheet.stopId)
       if (!s) return <h2>Esse destino saiu do roteiro.</h2>
@@ -1103,6 +1111,7 @@ function TripSheet() {
   return (
     <>
       <h2>Sua viagem</h2>
+      <TripCloudRow />
       <label className="field" htmlFor="nome-viagem">
         <span>Nome</span>
         <input

@@ -1,3 +1,4 @@
+import { RiskBanner } from './RiskBanner'
 import { useCallback, useEffect, useState } from 'react'
 import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
@@ -21,6 +22,8 @@ export function Home() {
   const account = useApp((s) => s.account)
   const openSheet = useApp((s) => s.openSheet)
   const openSignIn = useApp((s) => s.openSignIn)
+  const saveToCloud = useApp((s) => s.saveToCloud)
+  const justUploaded = useApp((s) => s.justUploaded)
   const openTrip = useApp((s) => s.openTrip)
   const addExample = useApp((s) => s.addExample)
   const goCreate = useApp((s) => s.goCreate)
@@ -81,6 +84,7 @@ export function Home() {
           atividades de cada dia e resolva as tarefas.
         </p>
       </header>
+      <RiskBanner />
       <button type="button" className="btn big main" onClick={goCreate} style={{ marginTop: 12 }}>
         Criar viagem
       </button>
@@ -89,7 +93,7 @@ export function Home() {
           <h2 className="sec">Suas viagens</h2>
           <div className="trips">
             {trips.map((t) => (
-              <div key={t.id} className="trip-card">
+              <div key={t.id} className={`trip-card${justUploaded.includes(t.id) ? ' uploaded' : ''}`}>
                 {editing?.id === t.id ? (
                   <form
                     className="row"
@@ -167,6 +171,15 @@ export function Home() {
                     </PopMenu>
                   ) : null}
                 </div>
+                {cloudEnabled && !t.cloud && !t.example ? (
+                  <button
+                    type="button"
+                    className="btn small save-cloud"
+                    onClick={() => void saveToCloud(t.id)}
+                  >
+                    ☁️ Guardar na nuvem
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>

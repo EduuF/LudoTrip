@@ -3050,3 +3050,113 @@ button.tl-stop:active {
   gap: 8px;
   margin-top: 10px;
 }
+.adopt-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 14px;
+}
+.adopt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.adopt-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--beni);
+}
+.install-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+  margin: 10px 0 4px;
+}
+.trip-card {
+  flex-wrap: wrap;
+}
+.trip-card .save-cloud {
+  flex-basis: 100%;
+  margin-top: 6px;
+}
+/* A viagem acabou de subir para a conta: o cartão sobe e o selo ☁️ pousa (spec publicação §3.4). */
+.trip-card.uploaded {
+  animation: up-to-cloud 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.trip-card.uploaded .dates {
+  animation: seal-pop 0.9s 0.5s both;
+}
+@keyframes up-to-cloud {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-14px) scale(1.02);
+    box-shadow: 0 14px 24px var(--shade);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes seal-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-card.uploaded,
+  .trip-card.uploaded .dates {
+    animation: none;
+  }
+}
+.cloud-row {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+}
+.cloud-row .sub {
+  margin: 0;
+}
+.cloud-how {
+  display: grid;
+  gap: 6px;
+}
+.risk-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold) 12%, var(--paper));
+  display: grid;
+  gap: 8px;
+}
+.risk-banner p {
+  margin: 0;
+  font-size: 14px;
+}
+.risk-banner .row {
+  align-items: center;
+}
+.risk-banner .icon-btn {
+  margin-left: auto;
+}
+.cloud-quest {
+  margin-top: 12px;
+  display: grid;
+  gap: 4px;
+}

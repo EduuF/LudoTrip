@@ -110,6 +110,12 @@ export interface AppState {
   signOut(): Promise<void>
   /** Volta do link de e-mail (/entrar/link). Sem o e-mail guardado aqui, pergunta. */
   completeEmailLink(email?: string): Promise<SignInResult>
+  /** Guardar na nuvem (spec publicação §3.2–3.4): sem conta, abre ENTRAR; com conta, sobe já. */
+  saveToCloud(id: string): Promise<void>
+  /** Leva para a conta as viagens do aparelho escolhidas (ou todas). */
+  uploadTrips(ids: string[]): Promise<void>
+  /** Viagens que acabaram de subir (os cartões fazem a animação). */
+  justUploaded: string[]
   openTrip(id: string): Promise<void>
   goHome(): void
   goCreate(): void
@@ -179,6 +185,23 @@ let syncTripId: string | null = null
 let remoteBurst = { at: 0, count: 0 }
 /** Viagem pedida pelo endereço (/v/<id>) que ainda depende de saber quem está logado. */
 let pendingRoute: string | null = null
+
+/** A última conta que entrou neste aparelho (decide se as viagens daqui sobem sozinhas). */
+const LAST_UID = 'ludotrip.lastUid'
+const readLastUid = () => {
+  try {
+    return localStorage.getItem(LAST_UID)
+  } catch {
+    return null
+  }
+}
+const writeLastUid = (uid: string) => {
+  try {
+    localStorage.setItem(LAST_UID, uid)
+  } catch {
+    // sem armazenamento: na próxima vez, pergunta de novo
+  }
+}
 
 /** O que a pessoa queria ao abrir ENTRAR; sobrevive ao redirecionamento do login do Google. */
 const INTENT_KEY = 'ludotrip.intent'
@@ -372,11 +395,63 @@ export const useApp = create<AppState>((set, get) => {
     set((s) => ({ trips: s.trips.map((t) => (t.id === copy.meta.id ? { ...t, name } : t)) }))
   }
 
+  /** Viagens que já estão noutra conta: levar uma cópia (id novo) ou deixar só aqui. */
+  const ownedSheet = (docs: TripDoc[]) => {
+    const first = docs[0]!
+    set({
+      sheet: {
+        kind: 'choice',
+        title:
+          docs.length > 1
+            ? `${docs.length} viagens já estão noutra conta`
+            : `${first.meta.name} já está noutra conta`,
+        sub: 'Ela foi guardada por outra pessoa neste aparelho. Você pode levar uma cópia para a sua conta.',
+        options: [
+          {
+            label: docs.length > 1 ? 'Levar cópias' : 'Levar uma cópia',
+            main: true,
+            run: () => {
+              get().closeSheet()
+              void (async () => {
+                const ids: string[] = []
+                for (const d of docs) {
+                  const copy: TripDoc = { ...d, meta: { ...d.meta, id: uid('t'), cloud: undefined } }
+                  delete copy.meta.cloud
+                  await repo.save(copy)
+                  await repo.remove(d.meta.id)
+                  ids.push(copy.meta.id)
+                }
+                await get().uploadTrips(ids)
+              })()
+            },
+          },
+          { label: 'Deixar só neste aparelho', run: () => get().closeSheet() },
+        ],
+      },
+      sheetBack: [],
+    })
+  }
+
+  /** Viagens do aparelho (📱) que podem ir para a conta (os exemplos ficam no aparelho). */
+  const guestTrips = async () => (await repo.list()).filter((t) => !t.cloud && !t.example)
+
   /**
-   * Acabou de entrar (spec publicação §3.3–3.4): as viagens do aparelho sobem (M4.11) e o que a
-   * pessoa queria fazer continua.
+   * Acabou de entrar (spec publicação §3.3–3.4): as viagens do aparelho sobem e o que a pessoa queria
+   * fazer continua. Aparelho que já teve outra conta pergunta antes (computador compartilhado).
    */
   const afterSignIn = async () => {
+    const account = get().account
+    if (account) {
+      const last = readLastUid()
+      writeLastUid(account.uid)
+      const guests = await guestTrips()
+      if (guests.length && last && last !== account.uid)
+        set({
+          sheet: { kind: 'adopt', trips: guests.map((g) => ({ id: g.id, name: g.name })) },
+          sheetBack: [],
+        })
+      else if (guests.length) await get().uploadTrips(guests.map((g) => g.id))
+    }
     const intent = takeIntent()
     const s = get()
     // Fecha ENTRAR e volta ao painel de onde se veio (se havia um).
@@ -444,14 +519,20 @@ export const useApp = create<AppState>((set, get) => {
   }
 
   /** Abre uma viagem da nuvem: a cópia do aparelho na hora, e o servidor põe em dia (spec §5.2). */
-  const openCloudTrip = async (id: string, loaded: TripDoc | null, meta: CloudMeta) => {
+  const openCloudTrip = async (
+    id: string,
+    loaded: TripDoc | null,
+    meta: CloudMeta,
+    opts: { keepView?: boolean } = {},
+  ) => {
     const deps = cloudDeps
     if (!deps) return toast('Esta viagem está numa conta. Entre para abrir.', true)
     if (!get().account) return get().openSignIn('para abrir esta viagem', { kind: 'openTrip', id })
     stopSync()
     const base =
       loaded && meta.version >= 0 ? { doc: stripCloud(migrate(loaded)), version: meta.version } : null
-    let shown = false
+    // `keepView`: a viagem já está na tela (acabou de subir): troca só a origem, mantendo aba e dia.
+    let shown = !!opts.keepView
     const s = new TripSync({
       tripId: id,
       outbox: deps.outbox,
@@ -535,6 +616,7 @@ export const useApp = create<AppState>((set, get) => {
     cloud: null,
     needsUpgrade: false,
     cloudEnabled: false,
+    justUploaded: [],
 
     async init() {
       // O endereço é lido antes de tudo (a tela inicial troca o endereço para "/").
@@ -556,7 +638,14 @@ export const useApp = create<AppState>((set, get) => {
       // A rede voltou ou a pessoa voltou ao app: a viagem da nuvem tenta conectar na hora.
       if (!wired && typeof window !== 'undefined') {
         wired = true
-        addEventListener('online', () => sync?.poke())
+        addEventListener('online', () => {
+          sync?.poke()
+          // Viagens criadas sem internet com a conta aberta sobem quando a rede volta.
+          if (get().account)
+            void guestTrips().then((g) => {
+              if (g.length) void get().uploadTrips(g.map((x) => x.id))
+            })
+        })
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') sync?.poke()
         })
@@ -584,6 +673,58 @@ export const useApp = create<AppState>((set, get) => {
             })
         }) ?? null
       if (route?.kind === 'emailLink') void get().completeEmailLink()
+    },
+
+    async saveToCloud(id) {
+      if (!cloudDeps) return
+      if (!get().account) return get().openSignIn('para guardar na nuvem', { kind: 'none' })
+      await get().uploadTrips([id])
+    },
+
+    async uploadTrips(ids) {
+      const deps = cloudDeps
+      const account = get().account
+      if (!deps || !account || !ids.length) return
+      const done: string[] = []
+      const owned: TripDoc[] = []
+      let offline = false
+      let limit = false
+      for (const id of ids) {
+        const raw = await repo.load(id)
+        if (!raw || raw.meta.cloud) continue
+        const doc = migrate(raw)
+        const r = await deps.api.upload(doc)
+        if (r.ok) {
+          await repo.save(withCloud(doc, { owner: account.uid, role: 'owner', version: r.version }))
+          done.push(id)
+        } else if (r.reason === 'owned') owned.push(doc)
+        else if (r.reason === 'limit') limit = true
+        else offline = true
+      }
+      await get().refreshTrips()
+      // A viagem aberta que subiu continua aberta, agora na nuvem (sem perder a aba nem o dia).
+      const open = get().doc
+      if (open && done.includes(open.meta.id) && get().screen === 'trip') {
+        const copy = await repo.load(open.meta.id)
+        if (copy?.meta.cloud) await openCloudTrip(open.meta.id, copy, copy.meta.cloud, { keepView: true })
+      }
+      if (done.length) {
+        set({ justUploaded: done })
+        setTimeout(() => set({ justUploaded: [] }), 2400)
+        toast(
+          done.length === 1
+            ? 'Viagem guardada na sua conta ✓'
+            : `${done.length} viagens guardadas na sua conta ✓`,
+        )
+        sfx.level()
+      }
+      if (limit) toast('Sua conta já tem 100 viagens. Apague alguma para guardar outra.', true)
+      else if (offline && !done.length)
+        toast(
+          'Sem internet: suas viagens continuam salvas aqui e vão para a conta quando a conexão voltar.',
+          true,
+        )
+      if (owned.length) ownedSheet(owned)
     },
 
     openSignIn(reason, intent) {

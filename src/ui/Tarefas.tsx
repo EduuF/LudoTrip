@@ -7,6 +7,7 @@ import type { DueGroup, Task } from '../app/tasks'
 import { issueQuick, issueWhere } from './autoTasks'
 import { LevelLine } from './LevelLine'
 import { DueTag, TaskLine } from './TaskViews'
+import { CloudQuest } from './Entrar'
 
 // Tarefas (spec §17.6, §17.11): uma lista só, por prazo, com o que o app vê sozinho (passagem por
 // comprar, hospedagem, imperdível sem dia…) e o que quem viaja escreve (com prazo, link, itens, quem faz).
@@ -165,6 +166,7 @@ export function Tarefas() {
           </div>
         ) : null}
       </div>
+      <CloudQuest />
       {!rows.length ? (
         <div className="empty">
           <b>Tudo pronto. Boa viagem!</b>

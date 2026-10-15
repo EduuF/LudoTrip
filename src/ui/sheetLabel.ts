@@ -13,8 +13,11 @@ export interface SheetLabel {
 }
 
 export function sheetLabel(spec: SheetSpec, doc: TripDoc | null): SheetLabel {
+  if (spec.kind === 'choice') return { kind: 'ESCOLHA', name: spec.title }
   if (spec.kind === 'signin') return { kind: 'ENTRAR', name: spec.reason }
   if (spec.kind === 'account') return { kind: 'SUA CONTA', name: 'Sua conta' }
+  if (spec.kind === 'adopt') return { kind: 'VIAGENS DESTE APARELHO', name: 'Viagens deste aparelho' }
+  if (spec.kind === 'install') return { kind: 'INSTALAR O APP', name: 'Instalar o app' }
   if (!doc) return { kind: '', name: '' }
   return docLabel(spec, doc)
 }
@@ -81,6 +84,8 @@ function docLabel(spec: SheetSpec, doc: TripDoc): SheetLabel {
       return { kind: 'PRESA A', name: doc.tasks?.find((x) => x.id === spec.taskId)?.title ?? 'Tarefa' }
     case 'signin':
     case 'account':
+    case 'adopt':
+    case 'install':
       return sheetLabel(spec, null)
   }
 }
