@@ -15,10 +15,10 @@ sempre que algo novo for aprendido. Ao mudar uma regra, registre em "Histórico"
 2. **Nunca recebe toque.**
    - A camada tem `pointer-events: none`.
    - Não cobre campos de digitação nem o próximo botão que a pessoa vai tocar.
-3. **Curta por padrão:**
-   - micro: até 0,8 s;
-   - momento: até 1,5 s;
-   - longa (até ~4 s): só quando a própria pessoa pediu e é raro (Dia/Noite, viagem criada, o grande dia).
+3. **A duração é a que a ação pede** (decisão do mantenedor, 15/10/2026: "se uma ação divertida precisar ter 5 segundos, tudo bem; se precisar ser rapidinha, 1 segundo, tudo bem também").
+   - Referência, não limite: micro em torno de 0,8 s; momento em torno de 1,5 s; cenas maiores (Dia/Noite, viagem criada, o grande dia, uma rara com tombo) levam o tempo que a história precisar.
+   - O que manda é **sem tempo morto** e **nunca atrapalhar o uso** (a ação já aconteceu; a cena é a reação e não bloqueia nada).
+   - Gesto que se repete muito (marcar várias atividades) fica curto, para não cansar.
 4. **Variações que dão vontade de descobrir:**
    - cada momento tem **3 ou mais variações** ligadas ao contexto: modo da viagem, tipo da atividade, destino, dia ou noite;
    - mais **1 rara** (cerca de 1 em 12);
@@ -177,15 +177,15 @@ Toda animação nova ou alterada passa por avaliação antes do commit.
 
 **Rubrica:**
 
-| Critério    | Pergunta                                                                             |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Leitura     | Em 1 segundo dá para dizer o que aconteceu (comprou, reservou, fez)?                 |
-| Encaixe     | O tamanho combina com o elemento ao lado? Os pés estão no chão? A mão toca o objeto? |
-| Coerência   | Mesma escala e traço entre personagem e objeto? Contorno igual?                      |
-| Movimento   | Tem antecipação, ação e reação? Arcos? Nada pula de posição sem motivo?              |
-| Contexto    | A variação combina com o contexto (veículo do trecho, tipo de atividade, destino)?   |
-| Não invasão | Cobre algo que a pessoa vai tocar? Sai da tela? Dura mais que o combinado?           |
-| Final       | Termina limpo, sem sobrar nada na tela?                                              |
+| Critério    | Pergunta                                                                              |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Leitura     | Em 1 segundo dá para dizer o que aconteceu (comprou, reservou, fez)?                  |
+| Encaixe     | O tamanho combina com o elemento ao lado? Os pés estão no chão? A mão toca o objeto?  |
+| Coerência   | Mesma escala e traço entre personagem e objeto? Contorno igual?                       |
+| Movimento   | Tem antecipação, ação e reação? Arcos? Nada pula de posição sem motivo?               |
+| Contexto    | A variação combina com o contexto (veículo do trecho, tipo de atividade, destino)?    |
+| Não invasão | Cobre algo que a pessoa vai tocar? Sai da tela? Tem tempo morto ou demora sem motivo? |
+| Final       | Termina limpo, sem sobrar nada na tela?                                               |
 
 ## 5. Referências
 
@@ -228,4 +228,5 @@ Toda animação nova ou alterada passa por avaliação antes do commit.
   - **"Atividade feita" continua com 0,8 s e o tamanho do botão.** É um gesto frequente (marcar várias atividades seguidas), então segue curto, como pede o contrato. No celular ela foi vista e funcionou; o problema era só o botão escondido, já resolvido.
 - **2026-10-15, "chegou alguém" (M5), 7 rodadas do avaliador:** com a mala, com o mapa, correndo e deslizando de meia (1,5 s), e a rara do tropeço.
   - Lições incorporadas em §3: trajeto ≥ 200 ms, entrar num botão pela borda, pulo pela folga, ciclo alegre, baforada clara de uma forma só, desenhar do zero, fala do contexto.
-  - **Pendente do mantenedor:** a rara mede cerca de 2,1 s (tombo, "Ops!" e o "Bia!" não cabem em 1,5 s).
+  - A rara mede cerca de 2,1 s (tombo, "Ops!" e o "Bia!"): aprovada pelo mantenedor.
+- **2026-10-15, duração livre:** o mantenedor decidiu que 1,5 s é só uma média. A animação dura o que a ação divertida precisar (1 s ou 5 s); o avaliador cobra tempo morto e invasão, não um teto. As exceções da nuvem e da rara do tropeço deixam de ser exceções.
