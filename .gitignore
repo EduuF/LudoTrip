@@ -28,3 +28,9 @@ dist-preview
 # Playwright
 test-results
 playwright-report
+
+# Cloudflare (wrangler dev, segredos locais)
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env.local

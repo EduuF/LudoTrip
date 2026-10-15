@@ -1,0 +1,41 @@
+// LudoTrip na Cloudflare (spec publicação §2): um Worker serve o app (dist/), a API (/api/*) e o
+// repasse do login do Firebase (/__/auth/*). Cada viagem da nuvem é um Durable Object (TripRoom);
+// contas e membros ficam no D1. Segredos nunca aqui: `wrangler secret put`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ludotrip",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/__/auth/*"],
+  },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "ludotrip",
+    "APP_ENV": "production",
+  },
+  "d1_databases": [{ "binding": "DB", "database_name": "ludotrip", "migrations_dir": "worker/migrations" }],
+  "durable_objects": { "bindings": [{ "name": "TRIPS", "class_name": "TripRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TripRoom"] }],
+  "ratelimits": [{ "name": "API", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 },
+  },
+  "env": {
+    // URL de teste do mantenedor: publicado a cada push na main (spec §2.4).
+    "staging": {
+      "name": "ludotrip-staging",
+      "vars": { "FIREBASE_PROJECT_ID": "ludotrip-dev", "APP_ENV": "staging" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "ludotrip-staging", "migrations_dir": "worker/migrations" },
+      ],
+      "durable_objects": { "bindings": [{ "name": "TRIPS", "class_name": "TripRoom" }] },
+      "ratelimits": [{ "name": "API", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }],
+    },
+  },
+}

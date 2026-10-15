@@ -5,6 +5,14 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-14 — M4: contas e nuvem (em andamento)
+
+- **Vitest 5.0.4 quebra o `@cloudflare/vitest-plugin` no Windows** ("File path must be a file: URL" antes de qualquer teste rodar). O 5.0.3, versão com que o plugin 1.4.2 é testado, funciona.
+  - **Regra:** o Vitest fica fixo em `5.0.3` (sem `^`). Ao atualizar, rodar `npm run test:worker` no Windows antes.
+- **O workerd local só aceita `compatibility_date` até a data do binário instalado** (hoje, 2026-10-13). Usar a data do binário, não a de hoje.
+- **Python no Windows escreve CRLF e lê o stdin como cp1252.** Edições por script usam `newline=''` e `stdin.buffer.read().decode('utf-8')`; conferir `git ls-files --eol` e procurar "Ã" antes de cada commit.
+- **Token nunca na URL:** no WebSocket ele vai no subprotocolo (`Sec-WebSocket-Protocol: ludotrip.v1, <token>`), para não aparecer em logs de acesso.
+
 ## 2026-10-14 — M3.8: sair da cidade
 
 - **O rótulo da saída diz o lugar, não o tipo de tela:** "◀ Mapa" dentro de um mapa não dizia nada; 60% demoraram mais de 5 s. "‹ Viagem toda" diz para onde vai.
