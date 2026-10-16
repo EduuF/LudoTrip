@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev-nuvem",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5174", "--strictPort"],
+      "env": { "VITE_CLOUD": "1", "VITE_AUTH": "test" },
+      "port": 5174
+    }
+  ]
+}
