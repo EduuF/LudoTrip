@@ -86,7 +86,7 @@ export type SignInIntent =
   | { kind: 'saveTrip'; id: string }
   /** Aceitar o convite do link (§4.4) e cair direto na viagem. */
   | { kind: 'acceptInvite'; token: string }
-  /** Chamar alguém para esta viagem do aparelho: ela vai para a conta e CONVIDAR abre. */
+  /** Compartilhar esta viagem do aparelho: ela vai para a conta e CONVIDAR abre. */
   | { kind: 'invite'; id: string }
   | { kind: 'none' }
 

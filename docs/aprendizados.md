@@ -5,6 +5,15 @@ Registro do que aprendemos fazendo, para nenhuma sessão repetir um erro.
 - **Mais novo primeiro.**
 - **Formato:** data, o que aconteceu e a regra que fica.
 
+## 2026-10-15 — Tela inicial: exemplos e planejar junto
+
+- **Exemplos completos demais assustam quem começa.** Quem abria "Japão de trem" via 9 destinos, tarefas e reservas e se perdia antes de entender o básico. Os exemplos saíram da tela inicial (ficam em `?exemplo=<chave>`).
+  - **Regra:** a primeira tela ensina uma coisa e oferece uma ação; viagem de vitrine só se for pequena.
+- **Função sem nome não existe.** Chamar quem vai (a melhor função para quem planeja em grupo) era um "+" solto ao lado do ⋯, confundido com "adicionar destino". Virou "Compartilhar" na faixa de ações com nome, com um passo em "Como jogar". Um primeiro "+ Chamar" também não serviu ("chamar" pode ser mil coisas).
+  - **Regra:** para funções que todo app tem, usar a palavra que todo app usa (Google Docs, Canva, Notion e Figma dizem "Compartilhar"; o Wanderlog, "Invite a tripmate").
+- **Testes e e2e não devem depender de um atalho da tela inicial** para chegar ao estado de teste: abrir pelo store (`addExample`) ou por endereço (`?exemplo=`), e o atalho visual pode mudar sem quebrar 6 arquivos.
+- **Dois botões iguais na tela (aviso + topo) quebram `getByRole`:** escopar a busca (`.hud-actions`, `.toast`).
+
 ## 2026-10-15 — M5: colaboração
 
 - **"Quem vai" como lista inteira não aguenta duas pessoas.** `setTravelers` trocava a lista toda: duas pessoas editando ao mesmo tempo apagavam o que a outra fez. Agora há `addTraveler`, `setTraveler` e `removeTraveler`, um viajante por vez.

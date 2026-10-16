@@ -1,6 +1,6 @@
 import { CloudBadge } from './ui/CloudBadge'
 import { ThemeToggle } from './ui/ThemeToggle'
-import { Faces, ViewingTag } from './ui/People'
+import { Faces, ShareButton, ViewingTag } from './ui/People'
 import { canEdit } from './app/people'
 import { useCallback, useEffect, useState } from 'react'
 import { wireBackButton } from './app/backButton'
@@ -128,6 +128,7 @@ function Hud() {
         {/* Segunda linha (retorno do staging): ações com nome, nada espremido nem escondido. */}
         <div className="hud-actions">
           <ViewingTag />
+          <ShareButton />
           <CloudBadge />
           <ThemeToggle />
           {/* Quem só vê não tem o que desfazer: o botão nem aparece (spec publicação §4.6). */}

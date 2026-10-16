@@ -1,24 +1,14 @@
 import { RiskBanner } from './RiskBanner'
 import { ThemeToggle } from './ThemeToggle'
 import { useCallback, useEffect, useState } from 'react'
-import { ALL_TRIPS } from '../engine/fixtures/trips'
 import { useApp } from '../app/store'
-import { PopMenu } from './kit'
-import type { ExampleKey } from '../app/store'
+import { PopMenu, Travelers } from './kit'
 import { cueCloud } from './stage/cues'
 import { ago, inDays, ROLE_NAMES } from '../app/people'
 import type { TripMeta } from '../app/doc'
 
-// Suas viagens (com renomear e apagar), exemplos para explorar e criar viagem (spec §17.7).
-
-const EXAMPLES: Record<ExampleKey, { title: string; text: string }> = {
-  japao: { title: 'Japão de trem', text: '9 paradas, volta marcada, bate-volta a Nara' },
-  rio: { title: 'Rio, uma cidade', text: '5 noites e um bate-volta a Petrópolis' },
-  portugal: { title: 'Portugal de carro', text: 'road trip com carro alugado' },
-  europa: { title: 'Lisboa, Paris e Roma', text: '3 países com voos no meio' },
-  cruzeiro: { title: 'Cruzeiro', text: 'navio com escalas como bate-volta' },
-  caminho: { title: 'Caminho de Santiago', text: 'uma noite por etapa, a pé' },
-}
+// Suas viagens (com renomear e apagar), criar viagem e como planejar junto (spec §17.7). Os exemplos
+// saíram daqui (muita coisa para quem começa); `?exemplo=<chave>` ainda abre um.
 
 /** "☁️ salva na sua conta", "☁️ com 3 pessoas · Planeja junto". */
 function cloudLine(t: TripMeta): string {
@@ -37,14 +27,12 @@ export function Home() {
   const saveToCloud = useApp((s) => s.saveToCloud)
   const justUploaded = useApp((s) => s.justUploaded)
   const openTrip = useApp((s) => s.openTrip)
-  const addExample = useApp((s) => s.addExample)
   const goCreate = useApp((s) => s.goCreate)
   const removeTrip = useApp((s) => s.removeTrip)
   const renameTrip = useApp((s) => s.renameTrip)
   const leaveTrip = useApp((s) => s.leaveTrip)
   const deleted = useApp((s) => s.deleted)
   const restoreTrip = useApp((s) => s.restoreTrip)
-  const [busy, setBusy] = useState(false)
   const [menu, setMenu] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
   const closeMenu = useCallback(() => {
@@ -103,8 +91,7 @@ export function Home() {
           Ludo<em>Trip</em>
         </h1>
         <p className="note">
-          Planeje a viagem como quem joga: veja o mapa do lugar, arraste os destinos na trilha, marque as
-          atividades de cada dia e resolva as tarefas.
+          Planeje a viagem como quem joga: o mapa, os dias e as tarefas, sozinho ou com quem vai.
         </p>
       </header>
       <RiskBanner />
@@ -270,27 +257,27 @@ export function Home() {
           </div>
         </>
       ) : null}
-      <h2 className="sec">
-        Explorar exemplos <small>mexa à vontade</small>
-      </h2>
-      <div className="examples">
-        {(Object.keys(ALL_TRIPS) as ExampleKey[]).map((k) => (
-          <button
-            key={k}
-            type="button"
-            className="example"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true)
-              await addExample(k)
-              setBusy(false)
-            }}
-          >
-            <b>{EXAMPLES[k].title}</b>
-            <span>{EXAMPLES[k].text}</span>
-          </button>
-        ))}
-      </div>
+      {/* Planejar junto: o cartão quando não há viagens; depois, uma linha. Some quando alguém já entrou. */}
+      {cloudEnabled && !trips.some((t) => (t.cloud?.members ?? 1) > 1) ? (
+        trips.length ? (
+          <p className="note together-hint">
+            Para planejar junto, abra a viagem e toque em <b>Compartilhar</b>.
+          </p>
+        ) : (
+          <section className="together" aria-labelledby="together-title">
+            <span className="together-cast" aria-hidden="true">
+              <Travelers count={3} height={44} />
+            </span>
+            <h2 id="together-title">Planejem juntos, ao vivo</h2>
+            {/* role="list": o Safari tira a semântica de lista com list-style: none. */}
+            <ol role="list">
+              <li>Crie a viagem</li>
+              <li>Compartilhe o link com quem vai</li>
+              <li>Todo mundo mexe no mesmo roteiro</li>
+            </ol>
+          </section>
+        )
+      ) : null}
       {cloudEnabled ? (
         <footer className="home-foot">
           <button type="button" className="link-btn" onClick={() => openSheet({ kind: 'privacy' })}>

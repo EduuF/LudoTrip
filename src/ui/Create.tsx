@@ -33,6 +33,7 @@ async function pointOf(p: PlacePick): Promise<{ lat: number; lon: number } | nul
 export function Create() {
   const goHome = useApp((s) => s.goHome)
   const addTrip = useApp((s) => s.addTrip)
+  const cloudEnabled = useApp((s) => s.cloudEnabled)
   const [step, setStep] = useState(0)
   const [picks, setPicks] = useState<PlacePick[]>([])
   const [home, setHome] = useState<PlacePick | null>(null)
@@ -265,6 +266,9 @@ export function Create() {
           <div style={{ marginTop: 16 }}>
             <Travelers count={people} height={90} />
           </div>
+          {cloudEnabled && people > 1 ? (
+            <p className="note">Depois de criar, compartilhe o link: quem vai planeja junto com você.</p>
+          ) : null}
         </>
       ) : null}
 

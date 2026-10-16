@@ -14,6 +14,7 @@ import {
 } from '../app/people'
 import type { HistoryItem, Member, PendingInvite } from '../sync/peopleApi'
 import type { Role } from '../sync/protocol'
+import { useCanShare } from './useCanShare'
 
 // Colaboração (spec publicação §4): os rostos no topo, PESSOAS, CONVIDAR (3 toques), o membro, o
 // convite aguardando, o Histórico e "Você está vendo".
@@ -44,45 +45,42 @@ function Face({
   )
 }
 
-/** No topo da viagem: até 3 rostos + "+N" (abre PESSOAS) e o "+" (abre CONVIDAR). */
+/** No topo da viagem: até 3 rostos + "+N" (abre PESSOAS). */
 export function Faces() {
   const cloudEnabled = useApp((s) => s.cloudEnabled)
   const people = useApp((s) => s.people)
   const me = useApp((s) => s.account?.uid ?? null)
   const doc = useApp((s) => s.doc)
   const openSheet = useApp((s) => s.openSheet)
-  const startInvite = useApp((s) => s.startInvite)
   if (!cloudEnabled || !doc) return null
   const { shown, more } = faces(people, me)
+  if (!shown.length) return null
   const online = new Set(people?.online ?? [])
-  const role = doc.meta.cloud?.role
-  const canInvite = !role || invitableRoles(role).length > 0
   return (
     <div className="faces-row">
-      {shown.length ? (
-        <button
-          type="button"
-          className="hud-btn faces"
-          aria-label={`Pessoas: ${people!.members.map((m) => m.name).join(', ')}`}
-          onClick={() => openSheet({ kind: 'people' })}
-        >
-          {shown.map((m) => (
-            <Face key={m.uid} m={m} online={online.has(m.uid)} size={24} />
-          ))}
-          {more ? <span className="face more">+{more}</span> : null}
-        </button>
-      ) : null}
-      {canInvite ? (
-        <button
-          type="button"
-          className="hud-btn invite-plus"
-          aria-label="Chamar alguém"
-          onClick={startInvite}
-        >
-          +
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className="hud-btn faces"
+        aria-label={`Pessoas: ${people!.members.map((m) => m.name).join(', ')}`}
+        onClick={() => openSheet({ kind: 'people' })}
+      >
+        {shown.map((m) => (
+          <Face key={m.uid} m={m} online={online.has(m.uid)} size={24} />
+        ))}
+        {more ? <span className="face more">+{more}</span> : null}
+      </button>
     </div>
+  )
+}
+
+/** "Compartilhar" na segunda linha do topo: o nome que todo app usa para chamar alguém para planejar junto. */
+export function ShareButton() {
+  const startInvite = useApp((s) => s.startInvite)
+  if (!useCanShare()) return null
+  return (
+    <button type="button" className="hud-btn compartilhar" onClick={() => startInvite('topo')}>
+      Compartilhar
+    </button>
   )
 }
 
@@ -178,8 +176,8 @@ export function PeopleSheet() {
         </p>
       )}
       {canInvite ? (
-        <button type="button" className="btn main" onClick={startInvite}>
-          + Chamar alguém
+        <button type="button" className="btn main" onClick={() => startInvite('pessoas')}>
+          Compartilhar a viagem
         </button>
       ) : null}
       <section className="people-block">
@@ -467,7 +465,7 @@ export function MemberSheet({ uid: who }: { uid: string }) {
           {confirm === 'transfer' ? (
             <div className="confirm-box">
               <p className="sub">
-                {m.name} vira o Dono: pode chamar e tirar pessoas e apagar a viagem. Você continua planejando
+                {m.name} vira o Dono: pode convidar e tirar pessoas e apagar a viagem. Você continua planejando
                 junto.
               </p>
               <div className="row">

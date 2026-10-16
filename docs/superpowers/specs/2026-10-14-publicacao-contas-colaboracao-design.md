@@ -179,7 +179,7 @@ Há exatamente 1 Dono por viagem.
 
 ### 4.2 O painel PESSOAS
 
-- **No topo da viagem:** os rostos (avatares) de quem participa, empilhados (até 3 + "+N"), seguidos de um botão "+". Quem está com a viagem aberta agora ganha um anel colorido.
+- **No topo da viagem:** os rostos (avatares) de quem participa, empilhados (até 3 + "+N"), na primeira linha. Quem está com a viagem aberta agora ganha um anel colorido.
 - **Tocar nos rostos abre o painel PESSOAS**, com três blocos:
   1. **Quem planeja:** cada membro com o papel e "online agora". Tocar num membro abre as ações que cabem ao seu papel.
   2. **Quem vai:** os bonequinhos do mapa (`itinerary.travelers`), editáveis a qualquer momento.
@@ -187,7 +187,8 @@ Há exatamente 1 Dono por viagem.
      - Dá para tirar alguém.
      - Um membro que viaja aparece com o rosto dele.
   3. **Convites aguardando:** por exemplo "Link · enviado há 2 h · Planeja junto · vai viajar" [Cancelar].
-- **O "+" abre direto o painel CONVIDAR.**
+- **"Compartilhar" (na segunda linha do topo, junto de ☁️/☾/↶) abre direto o painel CONVIDAR.** É a palavra que Google Docs, Canva, Notion e Figma usam; o painel pergunta "Planejar junto / Só ver" como o Editor/Leitor do Docs. Antes era um "+" solto ao lado do ⋯, que ninguém achava, e depois "+ Chamar", ambíguo (2026-10-15). Some para quem só vê. Em telas de até 370 px a faixa aperta o espaçamento para caber numa linha.
+- **Outros caminhos para compartilhar:** o 4º passo de "Como jogar" ("Planejem juntos", com o holofote no "Compartilhar"), o aviso de viagem criada com mais de uma pessoa e o cartão da tela inicial (spec v2 §17.7). Cada um leva `trigger` no evento `convite_iniciado` (topo, pessoas, aviso, tutorial).
 
 ### 4.3 O painel CONVIDAR (3 toques)
 

@@ -11,8 +11,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
+// Os exemplos saíram da tela inicial: `?exemplo=japao` abre o mesmo exemplo.
 async function abrirJapao(page: Page) {
-  await page.getByRole('button', { name: /Japão de trem/ }).click()
+  await page.goto('/?exemplo=japao')
   await expect(page.locator('.map-head')).toContainText('FALTAM')
 }
 

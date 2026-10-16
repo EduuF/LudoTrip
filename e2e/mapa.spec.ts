@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 test('o mapa de tiles ocupa o painel inteiro e continua depois de ir e voltar de Atividades', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: /Japão de trem/ }).click()
+  await page.goto('/?exemplo=japao')
   const board = page.locator('.board')
   await expect(board).toHaveClass(/tiles/, { timeout: 20_000 })
   const medir = async () => {

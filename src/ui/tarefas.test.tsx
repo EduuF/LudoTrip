@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import App from '../App'
 import { useApp, useRepo } from '../app/store'
 import { memoryRepo } from '../app/repo'
@@ -46,7 +46,9 @@ beforeEach(async () => {
     celebrations: [],
   })
   render(<App />)
-  fireEvent.click(await screen.findByText('Japão de trem'))
+  // Os exemplos saíram da tela inicial: abre pelo store, como o `?exemplo=japao`.
+  await screen.findByRole('button', { name: 'Criar viagem' })
+  await act(() => useApp.getState().addExample('japao'))
   await screen.findByText('FALTAM', { selector: '.map-head .lbl' })
 })
 afterEach(cleanup)

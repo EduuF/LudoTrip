@@ -726,7 +726,9 @@ _Revisada em 2026-10-13 depois do retorno ao laboratório do motor (ver `docs/ap
 
 - **Criar com cidade (M3.2):** o passo 2 pergunta "Vão dormir em outra cidade?" ("O Rio já está. Bate-voltas e passeios entram depois, no roteiro."), campo "Outra cidade"; com país, "Em quais cidades vão dormir?" e o campo "Cidades". Campos de formulário com 16 px (sem zoom no iOS).
 - **M3.1:** cada viagem tem "⋯" com Renomear e Apagar (aviso com Desfazer). Abrir um exemplo de novo reaproveita a cópia que já existe; ao abrir, os exemplos antigos ganham as coordenadas e o escopo que faltavam.
-- Lista das viagens guardadas no aparelho, "Explorar exemplos" (as 6 viagens de teste, copiadas para mexer sem medo) e "Criar viagem".
+- Lista das viagens guardadas no aparelho e "Criar viagem".
+- **Sem exemplos na tela inicial (decisão 2026-10-15):** quem abria um exemplo se perdia no tanto que há para fazer. Os 6 exemplos continuam no código e abrem por `?exemplo=<chave>` (testes, tira de quadros, demonstração); exemplos já abertos continuam na lista.
+- **Planejar junto à vista (2026-10-15, com nuvem):** sem viagens, um cartão "Planejem juntos, ao vivo" com os bonequinhos e 3 passos (crie, compartilhe o link, todo mundo mexe no mesmo roteiro), sem botão próprio (a ação é "Criar viagem"); com viagens, vira a linha "Para planejar junto, abra a viagem e toque em Compartilhar"; some quando alguma viagem já tem mais de uma pessoa. No passo "Quem vai" da criação, com mais de uma pessoa: "Depois de criar, compartilhe o link: quem vai planeja junto com você."; ao criar com mais de uma pessoa, o aviso oferece "Compartilhar" (no lugar de "☁️ Salvar", já que compartilhar leva para a conta).
 - Criar (§7): pra onde (busca de cidades com lista própria offline e, com internet, Photon), quando (ou "ainda não sei"), quem vai, como vão se mover. As noites se dividem igualmente e a viagem abre com "Mundo criado!".
 
 ### 17.8 Desfazer em tudo
