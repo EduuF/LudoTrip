@@ -38,6 +38,7 @@ import type { Role } from '../sync/protocol'
 export type Tab = 'mapa' | 'atividades' | 'tarefas'
 export type Screen = 'home' | 'trip' | 'create' | 'invite'
 export type ExampleKey = keyof typeof ALL_TRIPS
+export type InviteOrigin = 'topo' | 'pessoas' | 'aviso' | 'tutorial'
 /** O mapa mostra a viagem inteira ou uma cidade (com as atividades de cada dia). */
 export type MapView = { kind: 'trip' } | { kind: 'city'; destId: ID }
 
@@ -131,8 +132,9 @@ export interface AppState {
   transferTrip(uid: string): Promise<void>
   restoreTrip(id: string): Promise<void>
   loadHistory(before?: number): Promise<{ items: HistoryItem[]; more: boolean } | null>
-  /** Chamar alguém: viagem do aparelho vai antes para a conta (com ENTRAR, se preciso). */
-  startInvite(): void
+  /** Chamar alguém: viagem do aparelho vai antes para a conta (com ENTRAR, se preciso). `origin` diz
+   * de onde (evento de uso). */
+  startInvite(origin?: InviteOrigin): void
   /** Abre a prévia de um convite. */
   openInvite(token: string): Promise<void>
   /** "Entrar e participar": sem conta, ENTRAR primeiro; com conta, entra e abre a viagem. */
@@ -766,6 +768,12 @@ export const useApp = create<AppState>((set, get) => {
           else pendingRoute = route.id
         }
       }
+      // Os exemplos saíram da tela inicial; `?exemplo=<chave>` ainda abre um (testes, demonstração).
+      const example = new URLSearchParams(location.search).get('exemplo')
+      if (example) {
+        history.replaceState(history.state, '', location.pathname + location.hash)
+        if (example in ALL_TRIPS) await get().addExample(example as ExampleKey)
+      }
       if (route?.kind === 'emailLink') set({ sheet: { kind: 'signin', reason: 'pelo link do e-mail' } })
       if (route?.kind === 'invite') void get().openInvite(route.token)
       unsubAuth?.()
@@ -1165,6 +1173,15 @@ export const useApp = create<AppState>((set, get) => {
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })
       sfx.level()
+      // Mais de uma pessoa: logo ao criar, o caminho para chamar quem vai (chamar já leva para a conta).
+      if (cloudDeps && doc.itinerary.travelers.length > 1) {
+        toast('Viagem criada. Chame quem vai para planejar junto.', false, false, () => {
+          set({ toast: null })
+          get().startInvite('aviso')
+        })
+        set((s) => (s.toast ? { toast: { ...s.toast, actionLabel: '+ Chamar' } } : {}))
+        return
+      }
       // Sem conta: logo ao criar, o caminho para não perder a viagem (spec publicação §3.2).
       if (cloudDeps && !up?.ok) {
         toast('Viagem criada neste aparelho. Guarde na nuvem para não perder.', false, false, () => {
@@ -1211,9 +1228,10 @@ export const useApp = create<AppState>((set, get) => {
       if (p && get().doc?.meta.id === id) set({ people: p })
     },
 
-    startInvite() {
+    startInvite(origin) {
       const doc = get().doc
       if (!doc) return
+      track('convite_iniciado', { trigger: origin ?? 'outro', cloud: !!doc.meta.cloud })
       if (doc.meta.cloud) return get().openSheet({ kind: 'invite' })
       if (!cloudDeps) return toast('Chamar pessoas precisa da versão com conta do LudoTrip.', true)
       // Viagem do aparelho: vai para a conta antes (as outras pessoas precisam de onde abrir).

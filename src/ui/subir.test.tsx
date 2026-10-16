@@ -194,13 +194,27 @@ describe('"☁️ Salvar" no topo da viagem (à vista, sem voltar à tela inicia
     await waitFor(() => expect(cloud.trips.has(doc.meta.id)).toBe(true))
   })
 
-  it('logo depois de criar sem conta, o aviso oferece "☁️ Salvar"', async () => {
+  it('logo depois de criar sem conta e sozinho, o aviso oferece "☁️ Salvar"', async () => {
     await waitFor(() => expect(S().ready).toBe(true))
     const doc = exampleDoc('japao')
     doc.meta.example = undefined
+    doc.itinerary = { ...doc.itinerary, travelers: doc.itinerary.travelers.slice(0, 1) }
     await act(() => S().addTrip(doc))
     expect(S().toast?.text).toBe('Viagem criada neste aparelho. Guarde na nuvem para não perder.')
-    expect(screen.getByRole('button', { name: '☁️ Salvar' })).toBeTruthy()
+    expect(within(document.querySelector<HTMLElement>('.toast')!).getByRole('button', { name: '☁️ Salvar' })).toBeTruthy()
+  })
+
+  it('logo depois de criar com mais gente, o aviso oferece "+ Chamar" (e chamar pede para entrar)', async () => {
+    await waitFor(() => expect(S().ready).toBe(true))
+    const doc = exampleDoc('japao')
+    doc.meta.example = undefined
+    expect(doc.itinerary.travelers.length).toBeGreaterThan(1)
+    await act(() => S().addTrip(doc))
+    expect(S().toast?.text).toBe('Viagem criada. Chame quem vai para planejar junto.')
+    fireEvent.click(within(document.querySelector<HTMLElement>('.toast')!).getByRole('button', { name: '+ Chamar' }))
+    await waitFor(() =>
+      expect(S().sheet).toMatchObject({ kind: 'signin', intent: { kind: 'invite', id: doc.meta.id } }),
+    )
   })
 })
 
@@ -249,5 +263,55 @@ describe('casos estranhos', () => {
       window.dispatchEvent(new Event('online'))
     })
     await waitFor(() => expect(cloud.trips.has(doc.meta.id)).toBe(true))
+  })
+})
+
+describe('tela inicial: sem exemplos, com "planejar junto"', () => {
+  it('sem viagens: nada de exemplos, e o cartão explica como planejar junto', async () => {
+    await waitFor(() => expect(S().ready).toBe(true))
+    expect(screen.queryByText('Explorar exemplos')).toBeNull()
+    expect(screen.queryByText('Japão de trem')).toBeNull()
+    const card = within(screen.getByRole('region', { name: 'Planejem juntos, ao vivo' }))
+    expect(card.getByText('Mande o link para quem vai')).toBeTruthy()
+  })
+
+  it('com viagens, o cartão vira uma linha; some quando alguém já planeja junto', async () => {
+    await viagemDoAparelho()
+    expect(screen.queryByRole('region', { name: 'Planejem juntos, ao vivo' })).toBeNull()
+    expect(screen.getByText(/Para planejar junto, abra a viagem e toque em/)).toBeTruthy()
+    const t = S().trips[0]!
+    act(() =>
+      useApp.setState({ trips: [{ ...t, cloud: { owner: 'ana', role: 'owner', version: 1, members: 2 } }] }),
+    )
+    expect(screen.queryByText(/Para planejar junto/)).toBeNull()
+  })
+
+  it('"?exemplo=rio" abre o exemplo e limpa o endereço; chave desconhecida fica na tela inicial', async () => {
+    await waitFor(() => expect(S().ready).toBe(true))
+    cleanup()
+    history.replaceState(null, '', '/?exemplo=rio')
+    render(<App />)
+    await waitFor(() => expect(S().doc?.meta.example).toBe('rio'))
+    expect(location.search).toBe('')
+    act(() => S().goHome())
+    cleanup()
+    history.replaceState(null, '', '/?exemplo=nada')
+    useApp.setState({ ready: false })
+    render(<App />)
+    await waitFor(() => expect(S().ready).toBe(true))
+    expect(S().screen).toBe('home')
+    expect(location.search).toBe('')
+  })
+
+  it('"Como jogar" ganha o passo de planejar junto, que mira o "+ Chamar"', async () => {
+    const doc = await viagemDoAparelho()
+    await act(() => S().openTrip(doc.meta.id))
+    act(() => S().setTutorial(true))
+    const tut = within(await screen.findByRole('dialog', { name: 'Como jogar' }))
+    expect(tut.getByText('COMO JOGAR · 1/4')).toBeTruthy()
+    for (let i = 0; i < 3; i++) fireEvent.click(tut.getByText('Próximo'))
+    expect(tut.getByText('Planejem juntos')).toBeTruthy()
+    fireEvent.click(tut.getByText('Começar'))
+    expect(screen.queryByRole('dialog', { name: 'Como jogar' })).toBeNull()
   })
 })

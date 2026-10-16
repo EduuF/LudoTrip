@@ -98,12 +98,15 @@ async function criarNaNuvem() {
 }
 
 const dialog = async () => within(await screen.findByRole('dialog'))
+/** O "+ Chamar" da segunda linha do topo (o aviso de viagem criada também pode ter um). */
+const chamarNoTopo = () =>
+  within(document.querySelector<HTMLElement>('.hud-actions')!).getByRole('button', { name: '+ Chamar' })
 
 describe('pessoas e convites', () => {
-  it('"+" no topo: planejar junto, vai viajar, o Convidado aparece na hora e o link sai', async () => {
+  it('"+ Chamar" no topo: planejar junto, vai viajar, o Convidado aparece na hora e o link sai', async () => {
     const id = await criarNaNuvem()
     const before = S().doc!.itinerary.travelers.length
-    fireEvent.click(screen.getByRole('button', { name: 'Chamar alguém' }))
+    fireEvent.click(chamarNoTopo())
     let d = await dialog()
     fireEvent.click(d.getByRole('button', { name: /Planejar junto/ }))
     d = await dialog()
@@ -143,7 +146,7 @@ describe('pessoas e convites', () => {
     const doc = exampleDoc('rio')
     doc.meta.example = undefined
     await act(() => S().addTrip(doc))
-    fireEvent.click(screen.getByRole('button', { name: 'Chamar alguém' }))
+    fireEvent.click(chamarNoTopo())
     await waitFor(() =>
       expect(S().sheet).toMatchObject({ kind: 'signin', intent: { kind: 'invite', id: doc.meta.id } }),
     )
@@ -179,6 +182,7 @@ describe('Só vê', () => {
       }),
     )
     expect(screen.queryByRole('button', { name: '↶ Desfazer' })).toBeNull()
+    expect(document.querySelector('.hud-btn.chamar')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '👁 Você está vendo' }))
     expect((await dialog()).getByRole('button', { name: 'Pedir para planejar junto' })).toBeTruthy()
     let ok = true

@@ -56,7 +56,7 @@ async function criarViagem(page: Page, nome: string) {
 
 /** CONVIDAR em 3 toques; devolve o link. */
 async function convidar(page: Page, papel: 'Planejar junto' | 'Só ver', viaja: boolean): Promise<string> {
-  await page.getByRole('button', { name: 'Chamar alguém' }).click()
+  await page.locator('.hud-actions').getByRole('button', { name: '+ Chamar' }).click()
   await painel(page)
     .getByRole('button', { name: new RegExp(`^${papel}`) })
     .click()

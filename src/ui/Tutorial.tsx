@@ -2,11 +2,13 @@ import { isCoarse } from './pointer'
 import { useEffect, useState } from 'react'
 import { useApp } from '../app/store'
 import { markTutorialSeen } from '../app/tutorial'
+import { useCanCall } from './useCanCall'
 
-// "Como jogar" (v1): três passos com holofote sobre o mapa, a trilha e o cartão do dia.
+// "Como jogar" (v1): três passos com holofote sobre o mapa, a trilha e o cartão do dia; com nuvem, um
+// quarto sobre o "+ Chamar" (planejar junto).
 // Aparece uma vez por aparelho; o "?" do HUD mostra de novo. Pode ser pulado a qualquer hora.
 
-const STEPS = [
+const BASE = [
   {
     target: '.mappanel',
     title: 'O mapa da viagem',
@@ -26,11 +28,19 @@ const STEPS = [
   },
 ]
 
+const CHAMAR = {
+  target: '.hud-btn.chamar',
+  title: 'Planejem juntos',
+  text: 'Toque em "+ Chamar" e mande o link para quem vai: a pessoa entra na viagem e vocês mexem no mesmo roteiro, ao vivo.',
+}
+
 export function Tutorial() {
   const open = useApp((s) => s.tutorial)
+  const STEPS = useCanCall() ? [...BASE, CHAMAR] : BASE
   const setTutorial = useApp((s) => s.setTutorial)
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const target = STEPS[step]?.target
 
   useEffect(() => {
     if (open) setStep(0)
@@ -38,7 +48,7 @@ export function Tutorial() {
 
   useEffect(() => {
     if (!open) return
-    const el = document.querySelector(STEPS[step]!.target)
+    const el = target ? document.querySelector(target) : null
     if (!el) {
       setRect(null)
       return
@@ -55,7 +65,7 @@ export function Tutorial() {
       removeEventListener('resize', update)
       removeEventListener('scroll', update, true)
     }
-  }, [open, step])
+  }, [open, target])
 
   // Escape fecha (como "Pular"); o foco vai para o tutorial ao abrir.
   useEffect(() => {
@@ -77,7 +87,7 @@ export function Tutorial() {
     setTutorial(false)
   }
   const last = step === STEPS.length - 1
-  const s = STEPS[step]!
+  const s = STEPS[step] ?? STEPS[STEPS.length - 1]!
   return (
     <div className="tutorial" role="dialog" aria-modal="true" aria-label="Como jogar">
       <div

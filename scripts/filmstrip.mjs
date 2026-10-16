@@ -1,6 +1,6 @@
 // Tira de quadros do Palco para o avaliador (docs/animacoes.md §4).
 //
-// Abre o app do servidor de desenvolvimento num celular de 375 × 812, abre o exemplo "Japão de trem",
+// Abre o app do servidor de desenvolvimento num celular de 375 × 812, abre o exemplo do Japão (`?exemplo=japao`),
 // dispara cada momento de verdade (window.__palco.demo), congela a cena em vários instantes e monta uma
 // folha de contato por variação, com o recorte da cena E do que está em volta (para julgar o encaixe).
 //
@@ -39,11 +39,8 @@ const page = await browser.newPage({
 // Erros da página entram no relatório (uma cena que quebra some da tira).
 page.on('pageerror', (e) => console.log(`  ! erro na página: ${e.message}`))
 page.on('console', (m) => m.type() === 'error' && console.log(`  ! console: ${m.text().slice(0, 200)}`))
-await page.goto(url, { waitUntil: 'networkidle' })
-await page
-  .getByRole('button', { name: /Japão de trem/ })
-  .first()
-  .click()
+// Os exemplos saíram da tela inicial: `?exemplo=japao` abre o mesmo exemplo.
+await page.goto(new URL('?exemplo=japao', url).href, { waitUntil: 'networkidle' })
 await page.waitForSelector('.mappanel')
 await page.waitForTimeout(1200)
 

@@ -18,6 +18,7 @@ export type EventName =
   | 'painel_aberto'
   | 'animacao'
   // Colaboração (M5)
+  | 'convite_iniciado'
   | 'convite_criado'
   | 'convite_cancelado'
   | 'convite_aberto'

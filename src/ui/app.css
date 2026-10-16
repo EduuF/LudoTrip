@@ -2094,28 +2094,53 @@ a.opt {
 .popmenu button.danger {
   color: var(--beni);
 }
-.examples {
+/* Planejar junto (sem viagens): explica, não é botão; por isso sem a sombra dos cartões tocáveis. */
+.together {
+  margin-top: 26px;
+  padding: 16px 16px 14px;
+  border: 2px dashed color-mix(in srgb, var(--sakura) 70%, var(--ink));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--sakura) 9%, var(--paper));
+}
+.together-cast {
+  display: block;
+  margin-bottom: 8px;
+}
+.together h2 {
+  font: 800 20px/1.2 var(--f-display);
+  margin: 0 0 10px;
+  text-wrap: balance;
+}
+.together ol {
+  list-style: none;
+  counter-reset: passo;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
-.example {
-  text-align: left;
-  border: 2px solid var(--line);
-  border-radius: 12px;
-  background: var(--paper);
-  padding: 10px 12px;
-  min-height: 86px;
+.together li {
+  counter-increment: passo;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.35;
 }
-.example b {
-  font: 800 15px/1.2 var(--f-display);
+.together li::before {
+  content: counter(passo);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 13px var(--f-pixel);
 }
-.example span {
-  font-size: 12.5px;
-  color: var(--ink-soft);
+.together-hint {
+  margin-top: 16px;
 }
 
 /* Criar viagem */
@@ -3525,9 +3550,16 @@ html.theme-fading {
 .people-block .face {
   border-color: var(--paper);
 }
-.hud-btn.invite-plus {
-  font-size: 18px;
-  padding: 0;
+/* "+ Chamar": a ação de planejar junto, com nome e a cor da casa para ser achada. */
+.hud-btn.chamar {
+  border-color: var(--sakura);
+  white-space: nowrap;
+}
+/* No toque, a faixa de ações com nome tem alvos de 44 px. */
+@media (pointer: coarse) {
+  .hud-actions .hud-btn {
+    min-height: 44px;
+  }
 }
 .hud-btn.viewing-tag {
   border-color: var(--gold);
