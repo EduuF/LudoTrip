@@ -132,7 +132,7 @@ export interface AppState {
   transferTrip(uid: string): Promise<void>
   restoreTrip(id: string): Promise<void>
   loadHistory(before?: number): Promise<{ items: HistoryItem[]; more: boolean } | null>
-  /** Chamar alguém: viagem do aparelho vai antes para a conta (com ENTRAR, se preciso). `origin` diz
+  /** Compartilhar a viagem: a do aparelho vai antes para a conta (com ENTRAR, se preciso). `origin` diz
    * de onde (evento de uso). */
   startInvite(origin?: InviteOrigin): void
   /** Abre a prévia de um convite. */
@@ -1173,13 +1173,13 @@ export const useApp = create<AppState>((set, get) => {
       await get().openTrip(doc.meta.id)
       celebrate({ kind: 'created', name: doc.meta.name })
       sfx.level()
-      // Mais de uma pessoa: logo ao criar, o caminho para chamar quem vai (chamar já leva para a conta).
+      // Mais de uma pessoa: logo ao criar, o caminho para compartilhar com quem vai (compartilhar já leva para a conta).
       if (cloudDeps && doc.itinerary.travelers.length > 1) {
-        toast('Viagem criada. Chame quem vai para planejar junto.', false, false, () => {
+        toast('Viagem criada. Compartilhe com quem vai para planejar junto.', false, false, () => {
           set({ toast: null })
           get().startInvite('aviso')
         })
-        set((s) => (s.toast ? { toast: { ...s.toast, actionLabel: '+ Chamar' } } : {}))
+        set((s) => (s.toast ? { toast: { ...s.toast, actionLabel: 'Compartilhar' } } : {}))
         return
       }
       // Sem conta: logo ao criar, o caminho para não perder a viagem (spec publicação §3.2).
@@ -1233,10 +1233,10 @@ export const useApp = create<AppState>((set, get) => {
       if (!doc) return
       track('convite_iniciado', { trigger: origin ?? 'outro', cloud: !!doc.meta.cloud })
       if (doc.meta.cloud) return get().openSheet({ kind: 'invite' })
-      if (!cloudDeps) return toast('Chamar pessoas precisa da versão com conta do LudoTrip.', true)
+      if (!cloudDeps) return toast('Compartilhar precisa da versão com conta do LudoTrip.', true)
       // Viagem do aparelho: vai para a conta antes (as outras pessoas precisam de onde abrir).
       if (!get().account)
-        return get().openSignIn('para chamar alguém para a viagem', { kind: 'invite', id: doc.meta.id })
+        return get().openSignIn('para compartilhar a viagem', { kind: 'invite', id: doc.meta.id })
       void (async () => {
         await get().uploadTrips([doc.meta.id])
         if (get().doc?.meta.cloud) get().openSheet({ kind: 'invite' })
@@ -1269,9 +1269,9 @@ export const useApp = create<AppState>((set, get) => {
           r.reason === 'full'
             ? 'Esta viagem já tem 20 pessoas.'
             : r.reason === 'invites-limit'
-              ? 'Já há 10 convites aguardando. Cancele algum em Pessoas para chamar mais alguém.'
+              ? 'Já há 10 convites aguardando. Cancele algum em Pessoas para convidar mais alguém.'
               : r.reason === 'role'
-                ? 'Seu papel não deixa chamar alguém com esse papel.'
+                ? 'Seu papel não deixa convidar alguém com esse papel.'
                 : 'Sem internet: não deu para criar o convite agora.',
           true,
         )

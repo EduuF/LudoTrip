@@ -181,12 +181,12 @@ describe('Só vê: varredura', () => {
     await waitFor(() => expect(S().mapView).toMatchObject({ kind: 'city' }))
   })
 
-  it('o topo mostra "Você está vendo" e não mostra Desfazer nem o "+ Chamar"', async () => {
+  it('o topo mostra "Você está vendo" e não mostra Desfazer nem o "Compartilhar"', async () => {
     await abrirComoQuemSoVe()
     const hud = within(document.querySelector('header')!)
     expect(hud.getByRole('button', { name: '👁 Você está vendo' })).toBeTruthy()
     expect(hud.queryByRole('button', { name: '↶ Desfazer' })).toBeNull()
-    expect(hud.queryByRole('button', { name: '+ Chamar' })).toBeNull()
+    expect(hud.queryByRole('button', { name: 'Compartilhar' })).toBeNull()
     void screen
   })
 })

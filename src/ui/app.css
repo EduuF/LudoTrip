@@ -3550,10 +3550,19 @@ html.theme-fading {
 .people-block .face {
   border-color: var(--paper);
 }
-/* "+ Chamar": a ação de planejar junto, com nome e a cor da casa para ser achada. */
-.hud-btn.chamar {
+/* "Compartilhar": a ação de planejar junto, com o nome de sempre e a cor da casa para ser achada. */
+.hud-btn.compartilhar {
   border-color: var(--sakura);
   white-space: nowrap;
+}
+/* Celular de 360 px: "Compartilhar", "☁️ Salvar", "☾ Noite" e "↶ Desfazer" cabem numa linha. */
+@media (max-width: 370px) {
+  .hud-actions {
+    gap: 4px;
+  }
+  .hud-actions .hud-btn {
+    padding: 0 6px;
+  }
 }
 /* No toque, a faixa de ações com nome tem alvos de 44 px. */
 @media (pointer: coarse) {

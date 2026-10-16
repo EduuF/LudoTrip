@@ -14,7 +14,7 @@ import {
 } from '../app/people'
 import type { HistoryItem, Member, PendingInvite } from '../sync/peopleApi'
 import type { Role } from '../sync/protocol'
-import { useCanCall } from './useCanCall'
+import { useCanShare } from './useCanShare'
 
 // Colaboração (spec publicação §4): os rostos no topo, PESSOAS, CONVIDAR (3 toques), o membro, o
 // convite aguardando, o Histórico e "Você está vendo".
@@ -73,13 +73,13 @@ export function Faces() {
   )
 }
 
-/** "+ Chamar" na segunda linha do topo: chamar quem vai é ação com nome, não um "+" solto. */
-export function ChamarButton() {
+/** "Compartilhar" na segunda linha do topo: o nome que todo app usa para chamar alguém para planejar junto. */
+export function ShareButton() {
   const startInvite = useApp((s) => s.startInvite)
-  if (!useCanCall()) return null
+  if (!useCanShare()) return null
   return (
-    <button type="button" className="hud-btn chamar" onClick={() => startInvite('topo')}>
-      + Chamar
+    <button type="button" className="hud-btn compartilhar" onClick={() => startInvite('topo')}>
+      Compartilhar
     </button>
   )
 }
@@ -177,7 +177,7 @@ export function PeopleSheet() {
       )}
       {canInvite ? (
         <button type="button" className="btn main" onClick={() => startInvite('pessoas')}>
-          + Chamar alguém
+          Compartilhar a viagem
         </button>
       ) : null}
       <section className="people-block">
@@ -465,7 +465,7 @@ export function MemberSheet({ uid: who }: { uid: string }) {
           {confirm === 'transfer' ? (
             <div className="confirm-box">
               <p className="sub">
-                {m.name} vira o Dono: pode chamar e tirar pessoas e apagar a viagem. Você continua planejando
+                {m.name} vira o Dono: pode convidar e tirar pessoas e apagar a viagem. Você continua planejando
                 junto.
               </p>
               <div className="row">

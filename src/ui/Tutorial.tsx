@@ -2,10 +2,10 @@ import { isCoarse } from './pointer'
 import { useEffect, useState } from 'react'
 import { useApp } from '../app/store'
 import { markTutorialSeen } from '../app/tutorial'
-import { useCanCall } from './useCanCall'
+import { useCanShare } from './useCanShare'
 
 // "Como jogar" (v1): três passos com holofote sobre o mapa, a trilha e o cartão do dia; com nuvem, um
-// quarto sobre o "+ Chamar" (planejar junto).
+// quarto sobre o "Compartilhar" (planejar junto).
 // Aparece uma vez por aparelho; o "?" do HUD mostra de novo. Pode ser pulado a qualquer hora.
 
 const BASE = [
@@ -28,15 +28,15 @@ const BASE = [
   },
 ]
 
-const CHAMAR = {
-  target: '.hud-btn.chamar',
+const SHARE = {
+  target: '.hud-btn.compartilhar',
   title: 'Planejem juntos',
-  text: 'Toque em "+ Chamar" e mande o link para quem vai: a pessoa entra na viagem e vocês mexem no mesmo roteiro, ao vivo.',
+  text: 'Toque em "Compartilhar" e mande o link para quem vai: a pessoa entra na viagem e vocês mexem no mesmo roteiro, ao vivo.',
 }
 
 export function Tutorial() {
   const open = useApp((s) => s.tutorial)
-  const STEPS = useCanCall() ? [...BASE, CHAMAR] : BASE
+  const STEPS = useCanShare() ? [...BASE, SHARE] : BASE
   const setTutorial = useApp((s) => s.setTutorial)
   const [step, setStep] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)

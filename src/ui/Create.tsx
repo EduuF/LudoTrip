@@ -267,7 +267,7 @@ export function Create() {
             <Travelers count={people} height={90} />
           </div>
           {cloudEnabled && people > 1 ? (
-            <p className="note">Depois de criar, mande um link: quem vai planeja junto com você.</p>
+            <p className="note">Depois de criar, compartilhe o link: quem vai planeja junto com você.</p>
           ) : null}
         </>
       ) : null}

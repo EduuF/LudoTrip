@@ -204,14 +204,14 @@ describe('"☁️ Salvar" no topo da viagem (à vista, sem voltar à tela inicia
     expect(within(document.querySelector<HTMLElement>('.toast')!).getByRole('button', { name: '☁️ Salvar' })).toBeTruthy()
   })
 
-  it('logo depois de criar com mais gente, o aviso oferece "+ Chamar" (e chamar pede para entrar)', async () => {
+  it('logo depois de criar com mais gente, o aviso oferece "Compartilhar" (e compartilhar pede para entrar)', async () => {
     await waitFor(() => expect(S().ready).toBe(true))
     const doc = exampleDoc('japao')
     doc.meta.example = undefined
     expect(doc.itinerary.travelers.length).toBeGreaterThan(1)
     await act(() => S().addTrip(doc))
-    expect(S().toast?.text).toBe('Viagem criada. Chame quem vai para planejar junto.')
-    fireEvent.click(within(document.querySelector<HTMLElement>('.toast')!).getByRole('button', { name: '+ Chamar' }))
+    expect(S().toast?.text).toBe('Viagem criada. Compartilhe com quem vai para planejar junto.')
+    fireEvent.click(within(document.querySelector<HTMLElement>('.toast')!).getByRole('button', { name: 'Compartilhar' }))
     await waitFor(() =>
       expect(S().sheet).toMatchObject({ kind: 'signin', intent: { kind: 'invite', id: doc.meta.id } }),
     )
@@ -272,7 +272,7 @@ describe('tela inicial: sem exemplos, com "planejar junto"', () => {
     expect(screen.queryByText('Explorar exemplos')).toBeNull()
     expect(screen.queryByText('Japão de trem')).toBeNull()
     const card = within(screen.getByRole('region', { name: 'Planejem juntos, ao vivo' }))
-    expect(card.getByText('Mande o link para quem vai')).toBeTruthy()
+    expect(card.getByText('Compartilhe o link com quem vai')).toBeTruthy()
   })
 
   it('com viagens, o cartão vira uma linha; some quando alguém já planeja junto', async () => {
@@ -303,7 +303,7 @@ describe('tela inicial: sem exemplos, com "planejar junto"', () => {
     expect(location.search).toBe('')
   })
 
-  it('"Como jogar" ganha o passo de planejar junto, que mira o "+ Chamar"', async () => {
+  it('"Como jogar" ganha o passo de planejar junto, que mira o "Compartilhar"', async () => {
     const doc = await viagemDoAparelho()
     await act(() => S().openTrip(doc.meta.id))
     act(() => S().setTutorial(true))

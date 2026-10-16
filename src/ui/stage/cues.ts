@@ -156,12 +156,12 @@ export function cueBigDay(doc: TripDoc, countdown: Element | null, map: Element 
 
 /**
  * Chegou alguém (colaboração): no topo da viagem, quem chega entra pelo vão livre da faixa de botões e
- * pula até os rostos do grupo (ou o "+ Chamar", se ainda não há rostos). `line` é o que o balão diz.
+ * pula até os rostos do grupo (ou o "Compartilhar", se ainda não há rostos). `line` é o que o balão diz.
  */
 export function cueArrival(doc: TripDoc, travelerId: ID | null, line: string) {
   afterPaint(() => {
     const hud = document.querySelector('.hud')
-    const target = hud?.querySelector('.hud-btn.faces') ?? hud?.querySelector('.hud-btn.chamar')
+    const target = hud?.querySelector('.hud-btn.faces') ?? hud?.querySelector('.hud-btn.compartilhar')
     const top = hud?.querySelector('.hud-top')
     const row = hud?.querySelector('.hud-actions')
     if (!target || !top || !row) return

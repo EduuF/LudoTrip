@@ -261,7 +261,7 @@ export function Home() {
       {cloudEnabled && !trips.some((t) => (t.cloud?.members ?? 1) > 1) ? (
         trips.length ? (
           <p className="note together-hint">
-            Para planejar junto, abra a viagem e toque em <b>+ Chamar</b>.
+            Para planejar junto, abra a viagem e toque em <b>Compartilhar</b>.
           </p>
         ) : (
           <section className="together" aria-labelledby="together-title">
@@ -272,7 +272,7 @@ export function Home() {
             {/* role="list": o Safari tira a semântica de lista com list-style: none. */}
             <ol role="list">
               <li>Crie a viagem</li>
-              <li>Mande o link para quem vai</li>
+              <li>Compartilhe o link com quem vai</li>
               <li>Todo mundo mexe no mesmo roteiro</li>
             </ol>
           </section>
